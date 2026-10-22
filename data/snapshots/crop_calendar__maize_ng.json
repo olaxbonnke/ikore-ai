@@ -1,0 +1,38 @@
+[
+  {
+    "crop": "maize",
+    "zone": "derived_savanna",
+    "season": "main",
+    "plant_start_mmdd": "03-15",
+    "plant_opt_end_mmdd": "04-30",
+    "plant_last_mmdd": "05-31",
+    "days_to_maturity": 100,
+    "water_need_min_mm": 500,
+    "water_need_max_mm": 800,
+    "source": "FAO GIEWS / IITA"
+  },
+  {
+    "crop": "maize",
+    "zone": "derived_savanna",
+    "season": "second",
+    "plant_start_mmdd": "08-01",
+    "plant_opt_end_mmdd": "08-31",
+    "plant_last_mmdd": "09-15",
+    "days_to_maturity": 90,
+    "water_need_min_mm": 450,
+    "water_need_max_mm": 700,
+    "source": "Oyo ADP / IITA"
+  },
+  {
+    "crop": "maize",
+    "zone": "northern_guinea",
+    "season": "main",
+    "plant_start_mmdd": "05-15",
+    "plant_opt_end_mmdd": "06-15",
+    "plant_last_mmdd": "07-10",
+    "days_to_maturity": 110,
+    "water_need_min_mm": 500,
+    "water_need_max_mm": 800,
+    "source": "Kaduna ADP / FAO"
+  }
+]

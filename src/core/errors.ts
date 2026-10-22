@@ -1,10 +1,39 @@
-export class ZetarisError extends Error {
-  readonly queryName: string;
+export interface ZetarisErrorOptions {
+  status?: number;
+  requestId?: string;
+  queryName?: string;
+  cause?: unknown;
+}
 
-  constructor(queryName: string, message: string, options?: { cause?: unknown }) {
-    super(message, options);
-    this.name = "ZetarisError";
-    this.queryName = queryName;
+export class ZetarisError extends Error {
+  readonly status?: number;
+  readonly requestId?: string;
+  readonly queryName?: string;
+
+  constructor(
+    messageOrQueryName: string | ({ message: string } & ZetarisErrorOptions),
+    messageOrOptions?: string | ZetarisErrorOptions,
+    options?: ZetarisErrorOptions
+  ) {
+    if (typeof messageOrQueryName === "object") {
+      super(messageOrQueryName.message, { cause: messageOrQueryName.cause });
+      this.name = "ZetarisError";
+      this.status = messageOrQueryName.status;
+      this.requestId = messageOrQueryName.requestId;
+      this.queryName = messageOrQueryName.queryName;
+    } else if (typeof messageOrOptions === "string") {
+      super(messageOrOptions, { cause: options?.cause });
+      this.name = "ZetarisError";
+      this.queryName = messageOrQueryName;
+      this.status = options?.status;
+      this.requestId = options?.requestId;
+    } else {
+      super(messageOrQueryName, { cause: messageOrOptions?.cause });
+      this.name = "ZetarisError";
+      this.status = messageOrOptions?.status;
+      this.requestId = messageOrOptions?.requestId;
+      this.queryName = messageOrOptions?.queryName;
+    }
   }
 }
 

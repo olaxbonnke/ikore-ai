@@ -1,0 +1,14 @@
+[
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-01", "price_ngn_per_kg": 260 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-02", "price_ngn_per_kg": 275 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-03", "price_ngn_per_kg": 290 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-04", "price_ngn_per_kg": 310 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-05", "price_ngn_per_kg": 335 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-06", "price_ngn_per_kg": 360 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-07", "price_ngn_per_kg": 380 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-08", "price_ngn_per_kg": 350 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-09", "price_ngn_per_kg": 320 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-10", "price_ngn_per_kg": 310 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-11", "price_ngn_per_kg": 330 },
+  { "state": "Oyo", "market": "Ibadan", "commodity": "Maize (white)", "unit": "KG", "pricetype": "Retail", "ym": "2022-12", "price_ngn_per_kg": 345 }
+]

@@ -1,17 +1,44 @@
-/** Result row from a named Zetaris query. */
-export interface QueryResult {
-  queryName: string;
-  sql: string;
-  executedAt: string;
-  rowCount: number;
-  source: string;
-  rows: Record<string, unknown>[];
+import dotenv from "dotenv";
+import { SnapshotGateway } from "./snapshot.ts";
+import { ZetarisGateway } from "./zetaris.ts";
+
+dotenv.config();
+
+export type GatewaySource = "live" | "snapshot" | "mock";
+
+export interface GatewayResult<T = Record<string, unknown>> {
+  rows: T[];
+  source: GatewaySource;
+  fetchedAt: string;
+  provenance: string;
 }
 
-/** All runtime agronomic data flows through this interface (DESIGN.md section 7). */
 export interface DataGateway {
-  /** Run a named, parameterised query from queries.ts. */
-  query(name: string, params: Record<string, string | number>): Promise<QueryResult>;
+  readonly mode?: "live" | "snapshot" | "mock";
+  query<T = Record<string, unknown>>(
+    sql: string,
+    params?: Record<string, unknown>
+  ): Promise<GatewayResult<T>>;
+}
 
-  readonly mode: "live" | "snapshot";
+export function getGateway(env: Record<string, string | undefined> = process.env): DataGateway {
+  const restUrl = env.ZETARIS_REST_URL?.trim();
+  const apiKey = env.ZETARIS_API_KEY?.trim();
+  const orgId = env.ZETARIS_ORG_ID?.trim();
+  const dataMode = env.DATA_MODE?.trim();
+
+  const isZetarisConfigured = Boolean(restUrl && apiKey && orgId) && dataMode !== "snapshot";
+
+  if (isZetarisConfigured) {
+    console.log("[DataGateway] Active gateway: ZetarisGateway (live)");
+    return new ZetarisGateway({
+      restUrl: restUrl!,
+      apiKey: apiKey!,
+      orgId: orgId!,
+      queryLimit: Number(env.ZETARIS_QUERY_LIMIT) || 5000,
+    });
+  }
+
+  console.log("[DataGateway] Active gateway: SnapshotGateway (snapshot)");
+  return new SnapshotGateway();
 }
