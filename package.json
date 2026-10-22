@@ -1,0 +1,44 @@
+{
+  "name": "oko-farm-agent",
+  "version": "0.1.0",
+  "description": "Oko — farm decision agent (Open Agent Hackathon 2026). Meterless H-MEM + Zetaris.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npx --yes degit meterless/meterless/engines/hmem/reference vendor/hmem && cd vendor/hmem && npm install --no-audit --no-fund",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "notebook": "tsx notebook.ts",
+    "zetaris:apply": "tsx scripts/zetaris-apply.ts",
+    "zetaris:verify": "tsx scripts/zetaris-verify.ts",
+    "snapshot": "tsx scripts/snapshot.ts",
+    "seed": "tsx scripts/seed-farms.ts",
+    "nightshift": "tsx scripts/nightshift.ts",
+    "demo": "tsx scripts/demo.ts"
+  },
+  "dependencies": {
+    "next": "^15.5.28",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "recharts": "^3.10.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.28",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

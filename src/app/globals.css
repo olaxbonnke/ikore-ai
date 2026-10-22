@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --oko-green: #1f5130;
+  --oko-cream: #faf7f0;
+}
+
+body {
+  @apply bg-oko-cream text-oko-soil antialiased;
+  font-family: Inter, system-ui, sans-serif;
+}
