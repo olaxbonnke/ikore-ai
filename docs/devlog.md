@@ -35,5 +35,13 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
 - Prompt: "Implement Oko's data layer behind one interface so we can run on snapshot data now and switch to live Zetaris later via .env only: DataGateway, SnapshotGateway, ZetarisGateway, zetaris-verify, and tests."
 - Result: `npx tsc --noEmit` passed; 15 vitest tests passed across 2 test files (SnapshotGateway returns snapshot rows with filename provenance, getGateway falls back on empty/missing env or DATA_MODE=snapshot, read-only guard rejects INSERT/DROP, ZetarisGateway handles headers, 5xx retries, 4xx non-retry, and query close in finally block); `npm run zetaris:verify` prints "Zetaris not configured - using SnapshotGateway" and exits 0.
 
+### 1.3 Snapshot Fetching
+- Implemented `scripts/fetch-snapshots.ts` and npm script `snapshots:fetch`.
+- Fetched NASA POWER daily climate data (PRECTOTCORR, T2M_MAX, T2M_MIN) from 1991 to present for all 3 seeded farms (13,077 daily rows each).
+- Fetched Open-Meteo 16-day historical forecast as of `OKO_DEMO_DATE` (2026-04-10) for all 3 seeded farms.
+- Converted `data/crop_calendar_maize_ng.csv` and `data/storage_loss.csv` to metadata-wrapped JSON snapshot format `{ source, sourceUrl, fetchedAt, params, rows }`.
+- Updated `SnapshotGateway` to extract source URLs as provenance.
+- Result: `npx tsc --noEmit` and all 17 vitest tests passed.
+
 ## Day 2: Fri 23 Oct 2026
 - (snapshots, H-MEM farm memory)

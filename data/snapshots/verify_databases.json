@@ -1,4 +1,10 @@
-[
-  { "database_name": "oko" },
-  { "database_name": "default" }
-]
+{
+  "source": "https://api.saas.enterprise.zetaris.com/api/v1.0",
+  "sourceUrl": "https://api.saas.enterprise.zetaris.com/api/v1.0",
+  "fetchedAt": "2026-10-22T00:00:00.000Z",
+  "params": { "query": "SHOW DATABASES" },
+  "rows": [
+    { "database_name": "oko" },
+    { "database_name": "default" }
+  ]
+}

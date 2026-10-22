@@ -1,35 +1,80 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ZetarisError } from "../src/core/errors.ts";
 import { getGateway } from "../src/data/gateway.ts";
 import { SnapshotGateway } from "../src/data/snapshot.ts";
 import { isReadOnlySql, ZetarisGateway } from "../src/data/zetaris.ts";
 
+describe("Snapshot files integrity", () => {
+  it("verifies that each snapshot file in data/snapshots parses as JSON and has rows", () => {
+    const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
+    const files = fs.readdirSync(snapshotsDir).filter((f) => f.endsWith(".json"));
+    expect(files.length).toBeGreaterThanOrEqual(10);
+
+    for (const file of files) {
+      const fullPath = path.join(snapshotsDir, file);
+      const content = fs.readFileSync(fullPath, "utf-8");
+      const parsed = JSON.parse(content);
+
+      expect(parsed, `File ${file} must have rows`).toHaveProperty("rows");
+      expect(Array.isArray(parsed.rows), `File ${file} rows must be an array`).toBe(true);
+      expect(parsed.rows.length, `File ${file} must have at least 1 row`).toBeGreaterThan(0);
+      expect(parsed, `File ${file} must have source or sourceUrl`).toHaveProperty("source");
+      expect(parsed, `File ${file} must have fetchedAt`).toHaveProperty("fetchedAt");
+      expect(parsed, `File ${file} must have params`).toHaveProperty("params");
+    }
+  });
+
+  it("verifies seeded farms have NASA POWER history and Open-Meteo forecasts", () => {
+    const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
+    const farmIds = ["farm_bisi_ogbomoso", "farm_musa_kaduna", "farm_ade_iseyin"];
+
+    for (const farmId of farmIds) {
+      const nasaPath = path.join(snapshotsDir, `nasa_power_daily__${farmId}.json`);
+      expect(fs.existsSync(nasaPath), `NASA file for ${farmId} must exist`).toBe(true);
+      const nasaData = JSON.parse(fs.readFileSync(nasaPath, "utf-8"));
+      expect(nasaData.rows.length).toBeGreaterThan(10000);
+
+      const meteoPath = path.join(snapshotsDir, `open_meteo_forecast__${farmId}.json`);
+      expect(fs.existsSync(meteoPath), `Meteo file for ${farmId} must exist`).toBe(true);
+      const meteoData = JSON.parse(fs.readFileSync(meteoPath, "utf-8"));
+      expect(meteoData.rows.length).toBe(16);
+    }
+  });
+});
+
 describe("SnapshotGateway", () => {
-  it("returns rows with source 'snapshot' and file name as provenance", async () => {
+  it("returns rows with source 'snapshot' and source URL as provenance", async () => {
     const gateway = new SnapshotGateway();
 
     const priceResult = await gateway.query("SELECT * FROM v_maize_price_monthly WHERE state = 'Oyo'");
     expect(priceResult.source).toBe("snapshot");
-    expect(priceResult.provenance).toBe("price_monthly__oyo.json");
+    expect(priceResult.provenance).toContain("https://data.humdata.org");
     expect(priceResult.rows.length).toBeGreaterThan(0);
     expect(priceResult.rows[0]).toHaveProperty("price_ngn_per_kg");
 
     const calResult = await gateway.query("SELECT * FROM crop_calendar WHERE crop = 'maize'");
     expect(calResult.source).toBe("snapshot");
-    expect(calResult.provenance).toBe("crop_calendar__maize_ng.json");
+    expect(calResult.provenance).toContain("raw.githubusercontent.com");
     expect(calResult.rows.length).toBeGreaterThan(0);
 
     const rainResult = await gateway.query("SELECT * FROM v_rain_daily WHERE farm_id = 'farm_bisi_ogbomoso'");
     expect(rainResult.source).toBe("snapshot");
-    expect(rainResult.provenance).toBe("rain_daily__farm_bisi_ogbomoso.json");
+    expect(rainResult.provenance).toContain("https://power.larc.nasa.gov");
     expect(rainResult.rows.length).toBeGreaterThan(0);
+
+    const forecastResult = await gateway.query("SELECT * FROM open_meteo_forecast WHERE farm_id = 'farm_bisi_ogbomoso'");
+    expect(forecastResult.source).toBe("snapshot");
+    expect(forecastResult.provenance).toContain("https://historical-forecast-api.open-meteo.com");
+    expect(forecastResult.rows.length).toBe(16);
   });
 
   it("supports explicit file parameter in params", async () => {
     const gateway = new SnapshotGateway();
     const result = await gateway.query("SELECT 1", { file: "crop_calendar__maize_ng.json" });
     expect(result.source).toBe("snapshot");
-    expect(result.provenance).toBe("crop_calendar__maize_ng.json");
+    expect(result.provenance).toContain("raw.githubusercontent.com");
     expect(result.rows.length).toBeGreaterThan(0);
   });
 

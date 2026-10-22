@@ -24,12 +24,14 @@ export class SnapshotGateway implements DataGateway {
     const content = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(content);
     const rows = (Array.isArray(parsed) ? parsed : (parsed.rows ?? [])) as T[];
+    const provenance = parsed.sourceUrl || parsed.source || fileName;
+    const fetchedAt = parsed.fetchedAt || new Date().toISOString();
 
     return {
       rows,
       source: "snapshot",
-      fetchedAt: new Date().toISOString(),
-      provenance: fileName,
+      fetchedAt,
+      provenance,
     };
   }
 
@@ -39,20 +41,51 @@ export class SnapshotGateway implements DataGateway {
     }
 
     const lower = sql.toLowerCase();
-    if (lower.includes("price") || lower.includes("wfp")) {
-      return "price_monthly__oyo.json";
+    const farmId = (typeof params?.farmId === "string" ? params.farmId : "").trim();
+
+    // Weather history: NASA POWER
+    if (lower.includes("power") || lower.includes("nasa") || lower.includes("history")) {
+      if (farmId) {
+        const candidate = `nasa_power_daily__${farmId}.json`;
+        if (fs.existsSync(path.join(this.snapshotsDir, candidate))) return candidate;
+      }
+      return "nasa_power_daily__farm_bisi_ogbomoso.json";
     }
+
+    // Weather forecast: Open-Meteo
+    if (lower.includes("forecast") || lower.includes("meteo") || lower.includes("forecast16d")) {
+      if (farmId) {
+        const candidate = `open_meteo_forecast__${farmId}.json`;
+        if (fs.existsSync(path.join(this.snapshotsDir, candidate))) return candidate;
+      }
+      return "open_meteo_forecast__farm_bisi_ogbomoso.json";
+    }
+
+    // Combined rain view or generic rain
+    if (lower.includes("rain")) {
+      if (farmId) {
+        const candidate = `nasa_power_daily__${farmId}.json`;
+        if (fs.existsSync(path.join(this.snapshotsDir, candidate))) return candidate;
+      }
+      return "rain_daily__farm_bisi_ogbomoso.json";
+    }
+
+    // Storage loss
+    if (lower.includes("storage") || lower.includes("loss")) {
+      return "storage_loss.json";
+    }
+
+    // Crop calendar
     if (lower.includes("calendar")) {
       return "crop_calendar__maize_ng.json";
     }
-    if (
-      lower.includes("rain") ||
-      lower.includes("forecast") ||
-      lower.includes("power") ||
-      lower.includes("meteo")
-    ) {
-      return "rain_daily__farm_bisi_ogbomoso.json";
+
+    // Market price
+    if (lower.includes("price") || lower.includes("wfp")) {
+      return "price_monthly__oyo.json";
     }
+
+    // Verification queries
     if (lower.includes("database") || lower.includes("show databases")) {
       return "verify_databases.json";
     }

@@ -1,0 +1,30 @@
+{
+  "source": "data/storage_loss.csv",
+  "sourceUrl": "https://raw.githubusercontent.com/olaxbonnke/oko-farm-agent/main/data/storage_loss.csv",
+  "fetchedAt": "2026-10-22T10:51:42.023Z",
+  "params": {
+    "file": "storage_loss.csv"
+  },
+  "rows": [
+    {
+      "storage": "sack",
+      "monthly_loss_pct": 2.5,
+      "source": "ASSUMPTION - verify vs APHLIS"
+    },
+    {
+      "storage": "sack_treated",
+      "monthly_loss_pct": 1,
+      "source": "ASSUMPTION - verify vs APHLIS"
+    },
+    {
+      "storage": "pics",
+      "monthly_loss_pct": 0.3,
+      "source": "ASSUMPTION - Purdue PICS hermetic storage literature"
+    },
+    {
+      "storage": "silo",
+      "monthly_loss_pct": 0.3,
+      "source": "ASSUMPTION"
+    }
+  ]
+}

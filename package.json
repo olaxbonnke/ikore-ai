@@ -17,6 +17,7 @@
     "zetaris:apply": "tsx scripts/zetaris-apply.ts",
     "zetaris:verify": "tsx scripts/zetaris-verify.ts",
     "snapshot": "tsx scripts/snapshot.ts",
+    "snapshots:fetch": "tsx scripts/fetch-snapshots.ts",
     "seed": "tsx scripts/seed-farms.ts",
     "nightshift": "tsx scripts/nightshift.ts",
     "demo": "tsx scripts/demo.ts"
