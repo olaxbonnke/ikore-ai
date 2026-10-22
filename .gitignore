@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.oko/
+.notebook/
+vendor/hmem/
+*.log
+*.tsbuildinfo
+.DS_Store
