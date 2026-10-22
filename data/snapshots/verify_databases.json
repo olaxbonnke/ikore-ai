@@ -1,6 +1,6 @@
 {
-  "source": "https://api.saas.enterprise.zetaris.com/api/v1.0",
-  "sourceUrl": "https://api.saas.enterprise.zetaris.com/api/v1.0",
+  "source": "mock",
+  "note": "Mock SHOW DATABASES response for offline test verification when Zetaris is not connected.",
   "fetchedAt": "2026-10-22T00:00:00.000Z",
   "params": { "query": "SHOW DATABASES" },
   "rows": [

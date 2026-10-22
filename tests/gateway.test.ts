@@ -42,17 +42,37 @@ describe("Snapshot files integrity", () => {
       expect(meteoData.rows.length).toBe(16);
     }
   });
+
+  it("verifies no snapshot file marked 'snapshot' is missing a real sourceUrl", () => {
+    const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
+    const files = fs.readdirSync(snapshotsDir).filter((f) => f.endsWith(".json"));
+
+    for (const file of files) {
+      const fullPath = path.join(snapshotsDir, file);
+      const parsed = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
+
+      if (parsed.source === "snapshot") {
+        expect(
+          typeof parsed.sourceUrl === "string" && parsed.sourceUrl.length > 0,
+          `File ${file} marked as snapshot must have sourceUrl`
+        ).toBe(true);
+        expect(
+          parsed.sourceUrl.startsWith("http://") || parsed.sourceUrl.startsWith("https://"),
+          `File ${file} sourceUrl must start with http:// or https://: received "${parsed.sourceUrl}"`
+        ).toBe(true);
+      } else if (parsed.source === "mock" || parsed.source === "assumption") {
+        expect(
+          typeof parsed.note === "string" && parsed.note.length > 0,
+          `File ${file} marked as mock must have an explanatory note`
+        ).toBe(true);
+      }
+    }
+  });
 });
 
 describe("SnapshotGateway", () => {
-  it("returns rows with source 'snapshot' and source URL as provenance", async () => {
+  it("returns rows with source 'snapshot' and real source URL as provenance for real fetched files", async () => {
     const gateway = new SnapshotGateway();
-
-    const priceResult = await gateway.query("SELECT * FROM v_maize_price_monthly WHERE state = 'Oyo'");
-    expect(priceResult.source).toBe("snapshot");
-    expect(priceResult.provenance).toContain("https://data.humdata.org");
-    expect(priceResult.rows.length).toBeGreaterThan(0);
-    expect(priceResult.rows[0]).toHaveProperty("price_ngn_per_kg");
 
     const calResult = await gateway.query("SELECT * FROM crop_calendar WHERE crop = 'maize'");
     expect(calResult.source).toBe("snapshot");
@@ -61,13 +81,36 @@ describe("SnapshotGateway", () => {
 
     const rainResult = await gateway.query("SELECT * FROM v_rain_daily WHERE farm_id = 'farm_bisi_ogbomoso'");
     expect(rainResult.source).toBe("snapshot");
-    expect(rainResult.provenance).toContain("https://power.larc.nasa.gov");
+    expect(rainResult.provenance).toContain("https://historical-forecast-api.open-meteo.com");
     expect(rainResult.rows.length).toBeGreaterThan(0);
 
     const forecastResult = await gateway.query("SELECT * FROM open_meteo_forecast WHERE farm_id = 'farm_bisi_ogbomoso'");
     expect(forecastResult.source).toBe("snapshot");
     expect(forecastResult.provenance).toContain("https://historical-forecast-api.open-meteo.com");
     expect(forecastResult.rows.length).toBe(16);
+
+    const nasaResult = await gateway.query("SELECT * FROM nasa_power_daily WHERE farm_id = 'farm_bisi_ogbomoso'");
+    expect(nasaResult.source).toBe("snapshot");
+    expect(nasaResult.provenance).toContain("https://power.larc.nasa.gov");
+    expect(nasaResult.rows.length).toBeGreaterThan(10000);
+  });
+
+  it("returns source 'mock' with explanatory note as provenance for mock or placeholder files", async () => {
+    const gateway = new SnapshotGateway();
+
+    const priceResult = await gateway.query("SELECT * FROM v_maize_price_monthly WHERE state = 'Oyo'");
+    expect(priceResult.source).toBe("mock");
+    expect(priceResult.provenance).toContain("Placeholder monthly seasonal price index");
+    expect(priceResult.rows.length).toBeGreaterThan(0);
+    expect(priceResult.rows[0]).toHaveProperty("price_ngn_per_kg");
+
+    const dbResult = await gateway.query("SHOW DATABASES");
+    expect(dbResult.source).toBe("mock");
+    expect(dbResult.provenance).toContain("Mock SHOW DATABASES");
+
+    const selResult = await gateway.query("SELECT 1");
+    expect(selResult.source).toBe("mock");
+    expect(selResult.provenance).toContain("Mock SELECT 1");
   });
 
   it("supports explicit file parameter in params", async () => {

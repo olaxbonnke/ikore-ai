@@ -50,3 +50,17 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
 - Created `data/farm_records.csv` and implemented `scripts/seed-farms.ts` (`npm run seed`) to seed farm profiles, facts (storage, location), and historical seasons.
 - Added test suite `tests/hmem.test.ts` verifying that `ask('farm_bisi_ogbomoso', 'storage method')` returns a memory ID, `audit(id)` verifies ledger history with action "create", `feedback(id, "helpful")` records in TrustLedger, and farms are cleanly isolated.
 - Result: `npx tsc --noEmit` clean pass, all 22 vitest tests passed.
+
+### 2.2 Provenance and Snapshot Audit
+- **Audit Findings**:
+  - `price_monthly__oyo.json`, `verify_databases.json`, and `verify_select_1.json` were hand-written placeholders. Marked them with `"source": "mock"` and descriptive `note` fields explaining what they stand in for.
+  - `rain_daily__farm_bisi_ogbomoso.json` previously held hand-written test rows (16 rows) because `fetch-snapshots.ts` only fetched `nasa_power_daily__*.json` and `open_meteo_forecast__*.json`.
+  - Updated `scripts/fetch-snapshots.ts` to generate `rain_daily__${farm.id}.json` combining real fetched NASA POWER daily history for 2026 leading up to `OKO_DEMO_DATE` and the Open-Meteo 16-day historical forecast, with `sourceUrl` set to the Open-Meteo forecast API.
+  - Reran `npm run snapshots:fetch`, generating 115 real rows (99 history + 16 forecast) for all 3 seeded farms.
+  - Updated `SnapshotGateway` (`src/data/snapshot.ts`) to return `source: 'mock'` with the file's note as provenance when `source` is `"mock"` or `"assumption"`.
+  - Added a disclaimer header comment in `data/farm_records.csv` and created companion `data/farm_records.README.md` identifying them as synthetic demo farm histories.
+  - Updated `scripts/seed-farms.ts` and `src/memory/hmem.ts` so historical season records carry `provenance: "demo_seed"`.
+  - Confirmed `src/engine.ts` is outside `vendor/` and zero files under `vendor/` were modified.
+  - Confirmed `.oko/` is in `.gitignore` and untracked.
+  - Added test in `tests/gateway.test.ts` verifying that no snapshot marked `'snapshot'` is missing a real `http(s)://` `sourceUrl`, and added tests for mock source returns.
+  - Result: `npx tsc --noEmit` clean pass; all 24 vitest tests passed.

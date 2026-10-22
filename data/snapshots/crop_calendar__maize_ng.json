@@ -1,7 +1,7 @@
 {
-  "source": "data/crop_calendar_maize_ng.csv",
+  "source": "snapshot",
   "sourceUrl": "https://raw.githubusercontent.com/olaxbonnke/oko-farm-agent/main/data/crop_calendar_maize_ng.csv",
-  "fetchedAt": "2026-10-22T10:51:42.020Z",
+  "fetchedAt": "2026-10-22T11:19:59.854Z",
   "params": {
     "file": "crop_calendar_maize_ng.csv"
   },

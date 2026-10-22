@@ -10,6 +10,7 @@ export interface FarmEvent {
   payload?: unknown;
   confidence?: number;
   layer?: "short_term" | "working" | "long_term";
+  provenance?: string | Record<string, unknown>;
 }
 
 export interface RetrievedMemorySummary {
@@ -19,6 +20,7 @@ export interface RetrievedMemorySummary {
   layer: string;
   type: string;
   tags: string[];
+  provenance?: any;
   memory: any;
 }
 
@@ -128,6 +130,25 @@ export async function remember(
     }
   }
 
+  let provenanceRecord: any = {
+    origin: "document",
+    learnedAt: Date.now(),
+    label: `Farm event: ${eventType} for ${farmId}`,
+  };
+
+  if (typeof event === "object" && event !== null && "provenance" in event && event.provenance) {
+    if (typeof event.provenance === "string") {
+      provenanceRecord = {
+        origin: "document",
+        learnedAt: Date.now(),
+        label: event.provenance,
+        source: event.provenance,
+      };
+    } else {
+      provenanceRecord = event.provenance;
+    }
+  }
+
   // Direct persistence through MemoryStoreService with TrustLedger logging
   const record = hmem.store.add({
     content,
@@ -136,11 +157,7 @@ export async function remember(
     tags,
     confidence,
     source: `farm:${farmId}:${eventType}`,
-    provenance: {
-      origin: "document",
-      learnedAt: Date.now(),
-      label: `Farm event: ${eventType} for ${farmId}`,
-    },
+    provenance: provenanceRecord,
   });
 
   memoryToFarmMap.set(record.id, farmId);
@@ -173,6 +190,7 @@ export async function ask(
       layer: rm.memory.layer,
       type: rm.memory.type,
       tags: rm.memory.tags,
+      provenance: rm.memory.provenance,
       memory: rm.memory,
     };
   });

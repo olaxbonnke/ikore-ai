@@ -24,12 +24,16 @@ export class SnapshotGateway implements DataGateway {
     const content = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(content);
     const rows = (Array.isArray(parsed) ? parsed : (parsed.rows ?? [])) as T[];
-    const provenance = parsed.sourceUrl || parsed.source || fileName;
+    const isMock = parsed.source === "mock" || parsed.source === "assumption";
+    const source: "mock" | "snapshot" = isMock ? "mock" : "snapshot";
+    const provenance = isMock
+      ? (parsed.note || fileName)
+      : (parsed.sourceUrl || parsed.source || fileName);
     const fetchedAt = parsed.fetchedAt || new Date().toISOString();
 
     return {
       rows,
-      source: "snapshot",
+      source,
       fetchedAt,
       provenance,
     };
@@ -64,8 +68,10 @@ export class SnapshotGateway implements DataGateway {
     // Combined rain view or generic rain
     if (lower.includes("rain")) {
       if (farmId) {
-        const candidate = `nasa_power_daily__${farmId}.json`;
+        const candidate = `rain_daily__${farmId}.json`;
         if (fs.existsSync(path.join(this.snapshotsDir, candidate))) return candidate;
+        const candidateNasa = `nasa_power_daily__${farmId}.json`;
+        if (fs.existsSync(path.join(this.snapshotsDir, candidateNasa))) return candidateNasa;
       }
       return "rain_daily__farm_bisi_ogbomoso.json";
     }

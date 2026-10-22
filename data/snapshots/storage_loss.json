@@ -1,7 +1,7 @@
 {
-  "source": "data/storage_loss.csv",
+  "source": "snapshot",
   "sourceUrl": "https://raw.githubusercontent.com/olaxbonnke/oko-farm-agent/main/data/storage_loss.csv",
-  "fetchedAt": "2026-10-22T10:51:42.023Z",
+  "fetchedAt": "2026-10-22T11:19:59.856Z",
   "params": {
     "file": "storage_loss.csv"
   },

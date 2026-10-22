@@ -26,6 +26,12 @@ function parseCsv(text: string): Record<string, string>[] {
 
 async function seedFarms(): Promise<void> {
   const projectRoot = process.cwd();
+  const stateDir = process.env.OKO_STATE_DIR || ".oko";
+  const hmemDir = path.resolve(projectRoot, stateDir, "hmem");
+  if (fs.existsSync(hmemDir)) {
+    fs.rmSync(hmemDir, { recursive: true, force: true });
+  }
+
   const farmsCsvPath = path.join(projectRoot, "data", "farms_seed.csv");
 
   if (!fs.existsSync(farmsCsvPath)) {
@@ -91,7 +97,8 @@ async function seedFarms(): Promise<void> {
         type: "farm_season_record",
         content: seasonText,
         payload: r,
-        tags: ["past_season", `year:${r.season_year}`, "yield", "records"],
+        provenance: "demo_seed",
+        tags: ["past_season", "season", "harvest", "yield", `year:${r.season_year}`, "records", "demo_seed"],
       });
       recordsCount++;
     }

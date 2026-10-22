@@ -1,0 +1,933 @@
+{
+  "source": "snapshot",
+  "sourceUrl": "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=10.52&longitude=7.44&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos",
+  "fetchedAt": "2026-10-22T11:20:07.575Z",
+  "params": {
+    "farmId": "farm_musa_kaduna",
+    "demoDate": "2026-04-10",
+    "historyCount": 99,
+    "forecastCount": 16
+  },
+  "rows": [
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-01",
+      "rain_mm": 0,
+      "tmax": 35.08,
+      "tmin": 16.54,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-02",
+      "rain_mm": 0,
+      "tmax": 34.66,
+      "tmin": 17.12,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-03",
+      "rain_mm": 0,
+      "tmax": 32.3,
+      "tmin": 17.54,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-04",
+      "rain_mm": 0,
+      "tmax": 34.15,
+      "tmin": 16.14,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-05",
+      "rain_mm": 0,
+      "tmax": 33.93,
+      "tmin": 16.17,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-06",
+      "rain_mm": 0,
+      "tmax": 34.53,
+      "tmin": 15.96,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-07",
+      "rain_mm": 0,
+      "tmax": 34.68,
+      "tmin": 15.25,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-08",
+      "rain_mm": 0,
+      "tmax": 34.67,
+      "tmin": 16.46,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-09",
+      "rain_mm": 0,
+      "tmax": 33.38,
+      "tmin": 17.53,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-10",
+      "rain_mm": 0,
+      "tmax": 32.09,
+      "tmin": 14.64,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-11",
+      "rain_mm": 0,
+      "tmax": 32.4,
+      "tmin": 15.29,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-12",
+      "rain_mm": 0,
+      "tmax": 32.73,
+      "tmin": 15.35,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-13",
+      "rain_mm": 0,
+      "tmax": 32.81,
+      "tmin": 15.11,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-14",
+      "rain_mm": 0,
+      "tmax": 33.38,
+      "tmin": 17.55,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-15",
+      "rain_mm": 0,
+      "tmax": 34.32,
+      "tmin": 17.25,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-16",
+      "rain_mm": 0,
+      "tmax": 34.88,
+      "tmin": 16.67,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-17",
+      "rain_mm": 0,
+      "tmax": 34.95,
+      "tmin": 16.73,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-18",
+      "rain_mm": 0,
+      "tmax": 34.87,
+      "tmin": 18.25,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-19",
+      "rain_mm": 0,
+      "tmax": 34.06,
+      "tmin": 19.27,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-20",
+      "rain_mm": 0,
+      "tmax": 34.56,
+      "tmin": 18.54,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-21",
+      "rain_mm": 0,
+      "tmax": 34.32,
+      "tmin": 16.72,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-22",
+      "rain_mm": 0,
+      "tmax": 33.38,
+      "tmin": 16.88,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-23",
+      "rain_mm": 0,
+      "tmax": 34.73,
+      "tmin": 16.93,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-24",
+      "rain_mm": 0,
+      "tmax": 35.87,
+      "tmin": 17.36,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-25",
+      "rain_mm": 0,
+      "tmax": 36.21,
+      "tmin": 16.92,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-26",
+      "rain_mm": 0,
+      "tmax": 36.31,
+      "tmin": 17.89,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-27",
+      "rain_mm": 0,
+      "tmax": 34.75,
+      "tmin": 17.27,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-28",
+      "rain_mm": 0,
+      "tmax": 35.12,
+      "tmin": 16.84,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-29",
+      "rain_mm": 0,
+      "tmax": 36.54,
+      "tmin": 17.22,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-30",
+      "rain_mm": 0,
+      "tmax": 36.22,
+      "tmin": 17.74,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-01-31",
+      "rain_mm": 0,
+      "tmax": 34.21,
+      "tmin": 18.5,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-01",
+      "rain_mm": 0,
+      "tmax": 35.12,
+      "tmin": 19.35,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-02",
+      "rain_mm": 0,
+      "tmax": 36.07,
+      "tmin": 18.59,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-03",
+      "rain_mm": 0,
+      "tmax": 35.97,
+      "tmin": 17.4,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-04",
+      "rain_mm": 0,
+      "tmax": 37.13,
+      "tmin": 19.41,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-05",
+      "rain_mm": 0,
+      "tmax": 37.62,
+      "tmin": 21.34,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-06",
+      "rain_mm": 0.48,
+      "tmax": 36,
+      "tmin": 18.41,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-07",
+      "rain_mm": 0,
+      "tmax": 36.32,
+      "tmin": 18.96,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-08",
+      "rain_mm": 0,
+      "tmax": 36.61,
+      "tmin": 18.76,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-09",
+      "rain_mm": 0,
+      "tmax": 37.05,
+      "tmin": 18.38,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-10",
+      "rain_mm": 0.24,
+      "tmax": 32.38,
+      "tmin": 20.15,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-11",
+      "rain_mm": 0,
+      "tmax": 36.18,
+      "tmin": 20.73,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-12",
+      "rain_mm": 0,
+      "tmax": 36.06,
+      "tmin": 19.07,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-13",
+      "rain_mm": 0,
+      "tmax": 36.39,
+      "tmin": 17.53,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-14",
+      "rain_mm": 0,
+      "tmax": 37.17,
+      "tmin": 18.19,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-15",
+      "rain_mm": 0,
+      "tmax": 36.15,
+      "tmin": 19.38,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-16",
+      "rain_mm": 0,
+      "tmax": 36.49,
+      "tmin": 18.53,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-17",
+      "rain_mm": 0,
+      "tmax": 33.63,
+      "tmin": 16.32,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-18",
+      "rain_mm": 0,
+      "tmax": 33.48,
+      "tmin": 15.52,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-19",
+      "rain_mm": 0,
+      "tmax": 34.57,
+      "tmin": 17.5,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-20",
+      "rain_mm": 0,
+      "tmax": 35.21,
+      "tmin": 18.15,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-21",
+      "rain_mm": 0,
+      "tmax": 35.93,
+      "tmin": 18.15,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-22",
+      "rain_mm": 0,
+      "tmax": 36.38,
+      "tmin": 18.53,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-23",
+      "rain_mm": 0,
+      "tmax": 34.22,
+      "tmin": 18.25,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-24",
+      "rain_mm": 0,
+      "tmax": 34.03,
+      "tmin": 17.61,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-25",
+      "rain_mm": 0,
+      "tmax": 33.58,
+      "tmin": 18.03,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-26",
+      "rain_mm": 0,
+      "tmax": 35.31,
+      "tmin": 17.07,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-27",
+      "rain_mm": 0,
+      "tmax": 34.63,
+      "tmin": 16.92,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-02-28",
+      "rain_mm": 0,
+      "tmax": 33.7,
+      "tmin": 16.26,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-01",
+      "rain_mm": 0,
+      "tmax": 34.32,
+      "tmin": 15.25,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-02",
+      "rain_mm": 0,
+      "tmax": 35.1,
+      "tmin": 15.75,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-03",
+      "rain_mm": 0,
+      "tmax": 35.1,
+      "tmin": 16.5,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-04",
+      "rain_mm": 0,
+      "tmax": 35.83,
+      "tmin": 17.49,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-05",
+      "rain_mm": 0,
+      "tmax": 36.21,
+      "tmin": 17.52,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-06",
+      "rain_mm": 0,
+      "tmax": 37.2,
+      "tmin": 18.62,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-07",
+      "rain_mm": 0,
+      "tmax": 38.9,
+      "tmin": 18.92,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-08",
+      "rain_mm": 0,
+      "tmax": 38.9,
+      "tmin": 19.05,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-09",
+      "rain_mm": 0,
+      "tmax": 39.04,
+      "tmin": 19.19,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-10",
+      "rain_mm": 0,
+      "tmax": 39.44,
+      "tmin": 19.72,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-11",
+      "rain_mm": 0,
+      "tmax": 38.49,
+      "tmin": 20.79,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-12",
+      "rain_mm": 0,
+      "tmax": 36.87,
+      "tmin": 22.93,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-13",
+      "rain_mm": 0,
+      "tmax": 38.19,
+      "tmin": 24.57,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-14",
+      "rain_mm": 0,
+      "tmax": 39.78,
+      "tmin": 21.88,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-15",
+      "rain_mm": 0,
+      "tmax": 38.31,
+      "tmin": 21.3,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-16",
+      "rain_mm": 0,
+      "tmax": 38.63,
+      "tmin": 20.54,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-17",
+      "rain_mm": 0,
+      "tmax": 37.01,
+      "tmin": 19.72,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-18",
+      "rain_mm": 0,
+      "tmax": 37.42,
+      "tmin": 18.23,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-19",
+      "rain_mm": 0,
+      "tmax": 37.88,
+      "tmin": 18.85,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-20",
+      "rain_mm": 0,
+      "tmax": 38.29,
+      "tmin": 19.24,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-21",
+      "rain_mm": 0,
+      "tmax": 38.58,
+      "tmin": 20.03,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-22",
+      "rain_mm": 0,
+      "tmax": 38.3,
+      "tmin": 19.73,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-23",
+      "rain_mm": 0,
+      "tmax": 38.83,
+      "tmin": 19.53,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-24",
+      "rain_mm": 0,
+      "tmax": 39.95,
+      "tmin": 19.88,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-25",
+      "rain_mm": 0,
+      "tmax": 39.2,
+      "tmin": 21.42,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-26",
+      "rain_mm": 0.72,
+      "tmax": 35.74,
+      "tmin": 23.87,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-27",
+      "rain_mm": 0,
+      "tmax": 39.93,
+      "tmin": 23.72,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-28",
+      "rain_mm": 0.24,
+      "tmax": 39.76,
+      "tmin": 23.61,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-29",
+      "rain_mm": 0,
+      "tmax": 34.84,
+      "tmin": 24.46,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-30",
+      "rain_mm": 13.68,
+      "tmax": 33.01,
+      "tmin": 24.29,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-03-31",
+      "rain_mm": 16.8,
+      "tmax": 33.34,
+      "tmin": 23.7,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-01",
+      "rain_mm": 0,
+      "tmax": 36.18,
+      "tmin": 23.77,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-02",
+      "rain_mm": 0,
+      "tmax": 36.02,
+      "tmin": 23.16,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-03",
+      "rain_mm": 0,
+      "tmax": 36.18,
+      "tmin": 23.71,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-04",
+      "rain_mm": 0,
+      "tmax": 37.52,
+      "tmin": 23.93,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-05",
+      "rain_mm": 0,
+      "tmax": 38.15,
+      "tmin": 24.71,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-06",
+      "rain_mm": 7.44,
+      "tmax": 39.17,
+      "tmin": 24.95,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-07",
+      "rain_mm": 282,
+      "tmax": 35.77,
+      "tmin": 24.78,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-08",
+      "rain_mm": 3.84,
+      "tmax": 36.29,
+      "tmin": 23.01,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-09",
+      "rain_mm": 0,
+      "tmax": 37.66,
+      "tmin": 21.72,
+      "source": "history"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-10",
+      "rain_mm": 0,
+      "tmax": 37.7,
+      "tmin": 23.9,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-11",
+      "rain_mm": 0,
+      "tmax": 37.3,
+      "tmin": 22.6,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-12",
+      "rain_mm": 0,
+      "tmax": 36.9,
+      "tmin": 24,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-13",
+      "rain_mm": 0,
+      "tmax": 37,
+      "tmin": 25.7,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-14",
+      "rain_mm": 0,
+      "tmax": 35.5,
+      "tmin": 25.1,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-15",
+      "rain_mm": 8.9,
+      "tmax": 35.3,
+      "tmin": 23,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-16",
+      "rain_mm": 0,
+      "tmax": 34.2,
+      "tmin": 23.6,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-17",
+      "rain_mm": 0.5,
+      "tmax": 36.2,
+      "tmin": 25,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-18",
+      "rain_mm": 0,
+      "tmax": 36.1,
+      "tmin": 26,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-19",
+      "rain_mm": 0,
+      "tmax": 36.1,
+      "tmin": 24.7,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-20",
+      "rain_mm": 0,
+      "tmax": 37.9,
+      "tmin": 24.1,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-21",
+      "rain_mm": 0,
+      "tmax": 38.7,
+      "tmin": 24.1,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-22",
+      "rain_mm": 0,
+      "tmax": 37.5,
+      "tmin": 23.8,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-23",
+      "rain_mm": 0,
+      "tmax": 39.6,
+      "tmin": 23.3,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-24",
+      "rain_mm": 0,
+      "tmax": 34.6,
+      "tmin": 24.5,
+      "source": "forecast"
+    },
+    {
+      "farm_id": "farm_musa_kaduna",
+      "date": "2026-04-25",
+      "rain_mm": 0,
+      "tmax": 35.7,
+      "tmin": 24.6,
+      "source": "forecast"
+    }
+  ]
+}

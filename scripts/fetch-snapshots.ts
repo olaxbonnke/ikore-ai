@@ -76,7 +76,7 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
   throw new Error(`Failed to fetch ${url}`);
 }
 
-async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<void> {
+async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<{ rows: any[]; url: string }> {
   console.log(`[NASA POWER] Fetching 1991-present for ${farm.id} (${farm.lat}, ${farm.lon})...`);
   const endDateCandidates = ["20261020", "20261018", "20261015", "20261010"];
   let finalData: any = null;
@@ -117,7 +117,7 @@ async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<void> {
   });
 
   const snapshot: SnapshotFile<typeof rows[0]> = {
-    source: finalUrl,
+    source: "snapshot",
     sourceUrl: finalUrl,
     fetchedAt: new Date().toISOString(),
     params: { farmId: farm.id, lat: farm.lat, lon: farm.lon, start: "19910101" },
@@ -127,9 +127,10 @@ async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<void> {
   const filePath = path.join(outDir, `nasa_power_daily__${farm.id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
   console.log(`[NASA POWER] Saved ${rows.length} rows to ${path.basename(filePath)}`);
+  return { rows, url: finalUrl };
 }
 
-async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string): Promise<void> {
+async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string): Promise<{ rows: any[]; url: string }> {
   const startDate = demoDate;
   const endDate = addDays(demoDate, 15); // 16 days inclusive
 
@@ -161,7 +162,7 @@ async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string):
   }));
 
   const snapshot: SnapshotFile<typeof rows[0]> = {
-    source: url,
+    source: "snapshot",
     sourceUrl: url,
     fetchedAt: new Date().toISOString(),
     params: { farmId: farm.id, lat: farm.lat, lon: farm.lon, demoDate, days: 16 },
@@ -171,6 +172,56 @@ async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string):
   const filePath = path.join(outDir, `open_meteo_forecast__${farm.id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
   console.log(`[Open-Meteo] Saved ${rows.length} rows to ${path.basename(filePath)}`);
+  return { rows, url };
+}
+
+function buildRainDailySnapshot(
+  farm: FarmSeed,
+  nasaRows: any[],
+  meteoRows: any[],
+  meteoUrl: string,
+  demoDate: string,
+  outDir: string
+): void {
+  // Combine recent NASA POWER history for 2026 before demoDate with 16-day Open-Meteo forecast
+  const demoYear = demoDate.slice(0, 4);
+  const historyRows = nasaRows
+    .filter((r) => r.date >= `${demoYear}-01-01` && r.date < demoDate)
+    .map((r) => ({
+      farm_id: farm.id,
+      date: r.date,
+      rain_mm: r.rain_mm ?? 0,
+      tmax: r.t2m_max ?? null,
+      tmin: r.t2m_min ?? null,
+      source: "history",
+    }));
+
+  const forecastRows = meteoRows.map((r) => ({
+    farm_id: farm.id,
+    date: r.date,
+    rain_mm: r.precipitation_sum ?? 0,
+    tmax: r.temperature_2m_max ?? null,
+    tmin: r.temperature_2m_min ?? null,
+    source: "forecast",
+  }));
+
+  const combinedRows = [...historyRows, ...forecastRows];
+  const snapshot: SnapshotFile<typeof combinedRows[0]> = {
+    source: "snapshot",
+    sourceUrl: meteoUrl,
+    fetchedAt: new Date().toISOString(),
+    params: {
+      farmId: farm.id,
+      demoDate,
+      historyCount: historyRows.length,
+      forecastCount: forecastRows.length,
+    },
+    rows: combinedRows,
+  };
+
+  const filePath = path.join(outDir, `rain_daily__${farm.id}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
+  console.log(`[Rain Daily] Saved ${combinedRows.length} real fetched rows (${historyRows.length} history + ${forecastRows.length} forecast) to ${path.basename(filePath)}`);
 }
 
 function convertCsvFiles(projectRoot: string, outDir: string): void {
@@ -192,7 +243,7 @@ function convertCsvFiles(projectRoot: string, outDir: string): void {
     }));
 
     const snapshot: SnapshotFile<typeof rows[0]> = {
-      source: "data/crop_calendar_maize_ng.csv",
+      source: "snapshot",
       sourceUrl: "https://raw.githubusercontent.com/olaxbonnke/oko-farm-agent/main/data/crop_calendar_maize_ng.csv",
       fetchedAt: new Date().toISOString(),
       params: { file: "crop_calendar_maize_ng.csv" },
@@ -213,7 +264,7 @@ function convertCsvFiles(projectRoot: string, outDir: string): void {
     }));
 
     const snapshot: SnapshotFile<typeof rows[0]> = {
-      source: "data/storage_loss.csv",
+      source: "snapshot",
       sourceUrl: "https://raw.githubusercontent.com/olaxbonnke/oko-farm-agent/main/data/storage_loss.csv",
       fetchedAt: new Date().toISOString(),
       params: { file: "storage_loss.csv" },
@@ -260,8 +311,9 @@ async function main(): Promise<void> {
   console.log(`Found ${farms.length} seeded farms.`);
 
   for (const farm of farms) {
-    await fetchNasaPower(farm, outDir);
-    await fetchOpenMeteo(farm, demoDate, outDir);
+    const { rows: nasaRows } = await fetchNasaPower(farm, outDir);
+    const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
+    buildRainDailySnapshot(farm, nasaRows, meteoRows, meteoUrl, demoDate, outDir);
   }
 
   console.log("All snapshots fetched successfully!");

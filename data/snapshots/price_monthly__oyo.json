@@ -1,6 +1,6 @@
 {
-  "source": "https://data.humdata.org/dataset/wfp_food_prices_nga",
-  "sourceUrl": "https://data.humdata.org/dataset/wfp_food_prices_nga",
+  "source": "mock",
+  "note": "Placeholder monthly seasonal price index for Ibadan, Oyo maize based on WFP VAM retail patterns. Stands in for live Zetaris queries until full WFP dataset is queried.",
   "fetchedAt": "2026-10-22T00:00:00.000Z",
   "params": {
     "state": "Oyo",

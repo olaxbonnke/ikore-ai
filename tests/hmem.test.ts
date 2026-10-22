@@ -51,11 +51,12 @@ describe("H-MEM farm memory wrapper", () => {
     expect(adeResult.memories[0].content.toLowerCase()).toContain("pics");
   });
 
-  it("retrieves past season records from H-MEM", async () => {
+  it("retrieves past season records from H-MEM and verifies demo_seed provenance", async () => {
     const pastRecords = await ask("farm_bisi_ogbomoso", "past season harvest yield");
     expect(pastRecords.memories.length).toBeGreaterThan(0);
-    const hasYield = pastRecords.memories.some((m) => m.content.includes("harvested"));
-    expect(hasYield).toBe(true);
+    const seasonRecord = pastRecords.memories.find((m) => m.content.includes("harvested"));
+    expect(seasonRecord).toBeDefined();
+    expect(seasonRecord?.provenance?.label).toBe("demo_seed");
   });
 
   it("computes sleep cycle preview without mutating state", async () => {

@@ -1,3 +1,4 @@
+# Synthetic demo farm histories for hackathon testing and demo purposes; not real farmer records.
 farm_id,season_year,planting_date,germination_ok,yield_bags,sale_month,sale_price_per_bag
 farm_bisi_ogbomoso,2024,2024-04-12,yes,38,2024-09,42000
 farm_bisi_ogbomoso,2025,2025-04-18,yes,42,2025-10,48000
