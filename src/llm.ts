@@ -2,22 +2,24 @@
 //   retrieval-only (default): the answer is assembled from retrieved
 //     memories; zero network access, zero keys.
 //   model mode: when NVIDIA_API_KEY is set, queries NVIDIA Nemotron via
-//     the OpenAI-compatible chat/completions endpoint.
+//     the OpenAI-compatible chat/completions endpoint using the openai package.
 
+import dotenv from "dotenv";
+import OpenAI from "openai";
 import { LLMError } from "./core/errors.ts";
 
-if (typeof process.loadEnvFile === "function") {
-  try {
-    process.loadEnvFile();
-  } catch {
-    // Ignore when .env does not exist
-  }
-}
+dotenv.config();
 
 export interface AnswerResult {
   mode: "retrieval-only" | "model";
   text: string;
 }
+
+type NemotronChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
+  chat_template_kwargs?: {
+    enable_thinking?: boolean;
+  };
+};
 
 export async function answer(
   question: string,
@@ -29,45 +31,37 @@ export async function answer(
     return { mode: "retrieval-only", text: retrievalOnly(question, memories) };
   }
 
-  const baseUrl = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
-  const model = process.env.NEMOTRON_MODEL || process.env.NVIDIA_MODEL || "nvidia/nemotron-4-340b-instruct";
+  const baseURL = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
+  const model = process.env.NEMOTRON_MODEL?.trim() || "nvidia/nemotron-4-340b-instruct";
+
+  const client = new OpenAI({
+    apiKey,
+    baseURL,
+  });
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an assistant answering questions strictly using the provided memory context. " +
-              "Answer ONLY from the memory context and cite memory ids inline (e.g. mem-1). " +
-              "Do not invent facts or use outside knowledge.",
-          },
-          {
-            role: "user",
-            content: `${memoryContext}\n\nAnswer using ONLY the memory context above. Cite memory ids inline.\n\nQuestion: ${question}`,
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 400,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new LLMError(`NVIDIA Nemotron API request failed (${response.status}): ${errorText}`);
-    }
-
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+    const params: NemotronChatCompletionParams = {
+      model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an assistant answering questions strictly using the provided memory context. " +
+            "Answer ONLY from the memory context and cite memory ids inline (e.g. mem-1). " +
+            "Do not invent facts or use outside knowledge.",
+        },
+        {
+          role: "user",
+          content: `${memoryContext}\n\nAnswer using ONLY the memory context above. Cite memory ids inline.\n\nQuestion: ${question}`,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 400,
+      chat_template_kwargs: { enable_thinking: false },
     };
-    const text = data.choices?.[0]?.message?.content?.trim() ?? "";
+
+    const response = await client.chat.completions.create(params);
+    const text = response.choices[0]?.message?.content?.trim() ?? "";
     return { mode: "model", text };
   } catch (err) {
     if (err instanceof LLMError) {
