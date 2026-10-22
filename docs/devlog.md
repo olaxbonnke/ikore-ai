@@ -44,4 +44,10 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
 - Result: `npx tsc --noEmit` and all 17 vitest tests passed.
 
 ## Day 2: Fri 23 Oct 2026
-- (snapshots, H-MEM farm memory)
+
+### 2.1 H-MEM Farm Memory and Seeding
+- Implemented `src/memory/hmem.ts` exposing `remember(farmId, event)`, `ask(farmId, query)`, `audit(memoryId)`, `feedback(memoryId, verdict)`, and `sleep(farmId, {preview})`.
+- Used real Meterless H-MEM services (`MemoryMiningService`, `MemoryStoreService`, `MemoryRetrievalService`, `TrustLedgerService`, `SleepCycleService`), completely namespaced by farm under `.oko/hmem/<farmId>/` (`state.json`, `ledger.jsonl`).
+- Created `data/farm_records.csv` and implemented `scripts/seed-farms.ts` (`npm run seed`) to seed farm profiles, facts (storage, location), and historical seasons.
+- Added test suite `tests/hmem.test.ts` verifying that `ask('farm_bisi_ogbomoso', 'storage method')` returns a memory ID, `audit(id)` verifies ledger history with action "create", `feedback(id, "helpful")` records in TrustLedger, and farms are cleanly isolated.
+- Result: `npx tsc --noEmit` clean pass, all 22 vitest tests passed.
