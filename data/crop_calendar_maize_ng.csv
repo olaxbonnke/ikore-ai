@@ -1,0 +1,4 @@
+crop,zone,season,plant_start_mmdd,plant_opt_end_mmdd,plant_last_mmdd,days_to_maturity,water_need_min_mm,water_need_max_mm,source
+maize,derived_savanna,main,03-15,04-30,05-31,100,500,800,VERIFY
+maize,derived_savanna,second,08-01,08-31,09-15,90,450,700,VERIFY
+maize,northern_guinea,main,05-15,06-15,07-10,110,500,800,VERIFY

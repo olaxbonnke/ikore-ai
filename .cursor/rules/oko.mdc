@@ -1,0 +1,10 @@
+---
+description: Oko project rules (always on)
+alwaysApply: true
+---
+Before any change, read AGENTS.md (rules), DESIGN.md (architecture, source of truth), DATA.md (sources) and the current day's section of INSTRUCTIONS.md.
+- Numbers shown to farmers come only from code (Decision.keyNumbers). Never from the LLM.
+- Runtime data goes only through DataGateway (Zetaris live or snapshot). All SQL lives in src/data/queries.ts.
+- Memory goes only through src/memory/hmem.ts (Meterless H-MEM).
+- Simulation and decision code is pure and tested (Vitest). Pass `asOf`; use Africa/Lagos.
+- Update DESIGN.md when architecture changes. Log notable prompts in docs/devlog.md.

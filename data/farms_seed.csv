@@ -1,0 +1,4 @@
+id,owner_name,lat,lon,state,lga,crop,hectares,storage,preferred_lang,risk_aversion,zone
+farm_bisi_ogbomoso,Mama Bisi,8.13,4.24,Oyo,Ogbomoso North,maize,2,sack,pcm,normal,derived_savanna
+farm_musa_kaduna,Musa Abdullahi,10.52,7.44,Kaduna,Chikun,maize,3,sack_treated,ha,high,northern_guinea
+farm_ade_iseyin,Baba Ade,7.97,3.60,Oyo,Iseyin,maize,1.5,pics,yo,low,derived_savanna

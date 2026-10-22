@@ -1,0 +1,5 @@
+storage,monthly_loss_pct,source
+sack,2.5,ASSUMPTION - verify vs APHLIS
+sack_treated,1.0,ASSUMPTION - verify vs APHLIS
+pics,0.3,ASSUMPTION - Purdue PICS hermetic storage literature
+silo,0.3,ASSUMPTION
