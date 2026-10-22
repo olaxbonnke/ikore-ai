@@ -43,7 +43,7 @@ describe("Snapshot files integrity", () => {
     }
   });
 
-  it("verifies no snapshot file marked 'snapshot' is missing a real sourceUrl", () => {
+  it("verifies no snapshot file marked 'snapshot' is missing a real sourceUrl or sourceUrls", () => {
     const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
     const files = fs.readdirSync(snapshotsDir).filter((f) => f.endsWith(".json"));
 
@@ -52,14 +52,21 @@ describe("Snapshot files integrity", () => {
       const parsed = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
 
       if (parsed.source === "snapshot") {
+        const urls: string[] = Array.isArray(parsed.sourceUrls)
+          ? parsed.sourceUrls
+          : (typeof parsed.sourceUrl === "string" ? [parsed.sourceUrl] : []);
+
         expect(
-          typeof parsed.sourceUrl === "string" && parsed.sourceUrl.length > 0,
-          `File ${file} marked as snapshot must have sourceUrl`
-        ).toBe(true);
-        expect(
-          parsed.sourceUrl.startsWith("http://") || parsed.sourceUrl.startsWith("https://"),
-          `File ${file} sourceUrl must start with http:// or https://: received "${parsed.sourceUrl}"`
-        ).toBe(true);
+          urls.length,
+          `File ${file} marked as snapshot must have sourceUrl or sourceUrls`
+        ).toBeGreaterThan(0);
+
+        for (const url of urls) {
+          expect(
+            url.startsWith("http://") || url.startsWith("https://"),
+            `File ${file} url must start with http:// or https://: received "${url}"`
+          ).toBe(true);
+        }
       } else if (parsed.source === "mock" || parsed.source === "assumption") {
         expect(
           typeof parsed.note === "string" && parsed.note.length > 0,
@@ -81,7 +88,8 @@ describe("SnapshotGateway", () => {
 
     const rainResult = await gateway.query("SELECT * FROM v_rain_daily WHERE farm_id = 'farm_bisi_ogbomoso'");
     expect(rainResult.source).toBe("snapshot");
-    expect(rainResult.provenance).toContain("https://historical-forecast-api.open-meteo.com");
+    expect(rainResult.provenance).toContain("power.larc.nasa.gov");
+    expect(rainResult.provenance).toContain("open-meteo.com");
     expect(rainResult.rows.length).toBeGreaterThan(0);
 
     const forecastResult = await gateway.query("SELECT * FROM open_meteo_forecast WHERE farm_id = 'farm_bisi_ogbomoso'");

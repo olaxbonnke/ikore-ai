@@ -28,7 +28,9 @@ export class SnapshotGateway implements DataGateway {
     const source: "mock" | "snapshot" = isMock ? "mock" : "snapshot";
     const provenance = isMock
       ? (parsed.note || fileName)
-      : (parsed.sourceUrl || parsed.source || fileName);
+      : (Array.isArray(parsed.sourceUrls)
+          ? parsed.sourceUrls.join(" & ")
+          : (parsed.sourceUrl || parsed.source || fileName));
     const fetchedAt = parsed.fetchedAt || new Date().toISOString();
 
     return {

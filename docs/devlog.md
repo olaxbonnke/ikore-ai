@@ -64,4 +64,6 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - Confirmed `src/engine.ts` is outside `vendor/` and zero files under `vendor/` were modified.
   - Confirmed `.oko/` is in `.gitignore` and untracked.
   - Added test in `tests/gateway.test.ts` verifying that no snapshot marked `'snapshot'` is missing a real `http(s)://` `sourceUrl`, and added tests for mock source returns.
+  - Updated `scripts/fetch-snapshots.ts` so `rain_daily__*.json` credits both sources via `sourceUrls: [NASA, Open-Meteo]` (keeping `sourceUrl` as NASA for compatibility), and updated `SnapshotGateway` to list both in provenance.
+  - Cleaned up duplicated root `devlog.md`, standardizing on `docs/devlog.md`.
   - Result: `npx tsc --noEmit` clean pass; all 24 vitest tests passed.

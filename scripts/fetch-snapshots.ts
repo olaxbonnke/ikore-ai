@@ -21,7 +21,8 @@ interface FarmSeed {
 
 interface SnapshotFile<T> {
   source: string;
-  sourceUrl: string;
+  sourceUrl?: string;
+  sourceUrls?: string[];
   fetchedAt: string;
   params: Record<string, unknown>;
   rows: T[];
@@ -179,6 +180,7 @@ function buildRainDailySnapshot(
   farm: FarmSeed,
   nasaRows: any[],
   meteoRows: any[],
+  nasaUrl: string,
   meteoUrl: string,
   demoDate: string,
   outDir: string
@@ -208,7 +210,8 @@ function buildRainDailySnapshot(
   const combinedRows = [...historyRows, ...forecastRows];
   const snapshot: SnapshotFile<typeof combinedRows[0]> = {
     source: "snapshot",
-    sourceUrl: meteoUrl,
+    sourceUrl: nasaUrl,
+    sourceUrls: [nasaUrl, meteoUrl],
     fetchedAt: new Date().toISOString(),
     params: {
       farmId: farm.id,
@@ -311,9 +314,9 @@ async function main(): Promise<void> {
   console.log(`Found ${farms.length} seeded farms.`);
 
   for (const farm of farms) {
-    const { rows: nasaRows } = await fetchNasaPower(farm, outDir);
+    const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, outDir);
     const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
-    buildRainDailySnapshot(farm, nasaRows, meteoRows, meteoUrl, demoDate, outDir);
+    buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
   }
 
   console.log("All snapshots fetched successfully!");

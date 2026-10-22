@@ -1,7 +1,7 @@
 {
   "source": "snapshot",
   "sourceUrl": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=4.24&latitude=8.13&start=19910101&end=20261020&format=JSON",
-  "fetchedAt": "2026-10-22T11:20:03.854Z",
+  "fetchedAt": "2026-10-22T11:30:29.967Z",
   "params": {
     "farmId": "farm_bisi_ogbomoso",
     "lat": 8.13,

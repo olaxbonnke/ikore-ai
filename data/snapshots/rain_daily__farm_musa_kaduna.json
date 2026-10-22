@@ -1,7 +1,11 @@
 {
   "source": "snapshot",
-  "sourceUrl": "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=10.52&longitude=7.44&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos",
-  "fetchedAt": "2026-10-22T11:20:07.575Z",
+  "sourceUrl": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=7.44&latitude=10.52&start=19910101&end=20261020&format=JSON",
+  "sourceUrls": [
+    "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=7.44&latitude=10.52&start=19910101&end=20261020&format=JSON",
+    "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=10.52&longitude=7.44&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos"
+  ],
+  "fetchedAt": "2026-10-22T11:30:32.302Z",
   "params": {
     "farmId": "farm_musa_kaduna",
     "demoDate": "2026-04-10",
