@@ -32,7 +32,7 @@ export async function answer(
   }
 
   const baseURL = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
-  const model = process.env.NEMOTRON_MODEL?.trim() || "nvidia/nemotron-4-340b-instruct";
+  const model = process.env.NEMOTRON_MODEL?.trim() || "nvidia/nemotron-3.5-lightning-30b-a3b";
 
   const client = new OpenAI({
     apiKey,
