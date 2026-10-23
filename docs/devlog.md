@@ -112,3 +112,21 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - **Wait 7 days (`2026-04-17`)**: Replant probability: 0.7%, Establishment rain: p10=100.7 mm, p50=159.2 mm, p90=251.9 mm, Rainfall adequacy: p10=99.5%, p50=100.0%, p90=100.0%, $n = 35$, Low confidence: false.
   - **Wait 14 days (`2026-04-24`)**: Replant probability: 0.7%, Establishment rain: p10=108.0 mm, p50=159.7 mm, p90=267.2 mm, Rainfall adequacy: p10=100.0%, p50=100.0%, p90=100.0%, $n = 35$, Low confidence: false.
 - **Verification**: `npx tsc --noEmit` clean, 39 vitest tests passing across 5 test suites.
+
+### 3.3 Root-Cause Fix for NASA POWER Data and Fail-Loud Sanity Check
+- **Root-Cause Discovery**:
+  - The 24x inflation observed in the NASA POWER PRECTOTCORR precipitation values was verified directly against the NASA POWER API (community AG, lat 8.13, lon 4.24):
+    - Requesting with `end=20001231` or `end=20260409`: year 2000 totals 1,235.9 mm (matching official meteorological observations).
+    - Requesting with `end=20261020` (a future end date): year 2000 totals 29,661.6 mm.
+  - The issue is caused strictly by passing an end date in the future (`end > asOf`), which causes NASA POWER to aggregate hourly accumulation flux without daily division across the dataset. It is not an internal NASA factor or random API bug; it is directly triggered by requesting future dates.
+- **Root-Cause Fix (`scripts/fetch-snapshots.ts`)**:
+  - Replaced the `/ 24` division workaround with a clean root-cause fix: capped the NASA POWER query `end` parameter at `asOf - 1 day` (and never later than the day before the run date).
+  - Removed the unconditional `/ 24` factor and preserved nulls for `-999` sentinels.
+- **Fail-Loud Sanity Check (`validateNasaYearlyRainfall`)**:
+  - Added strict annual rainfall validation after every NASA fetch: for every complete calendar year, total PRECTOTCORR must fall within reasonable climatic bounds (600 to 2,500 mm / year, with 2% tolerance to 2,550 mm for extreme flood years like Oyo 2021 at 2,545.6 mm).
+  - If any complete year falls outside this range (e.g. 29,000 mm from a corrupted query or 3,398 mm), the function throws an error naming the farm, the year, and the total, and refuses to write the snapshot to disk.
+- **Unit Testing & Sanity Validation**:
+  - Added unit test in `tests/gateway.test.ts` verifying that a fake complete year totalling 29,000 mm throws naming the farm, year, and 29000.0 mm.
+  - Re-ran `npm run snapshots:fetch`: `farm_bisi_ogbomoso` 2000-04-06 verified at 4.79 mm, year 2000 total verified at 1,235.9 mm.
+  - Re-ran `scripts/debug-planting.ts`: verified planting options remain completely unchanged (`14.1%`, `0.7%`, `0.7%`; $n = 35$).
+- **Verification**: `npx tsc --noEmit` passed with 0 errors; all 40 vitest tests passed across 5 test suites.

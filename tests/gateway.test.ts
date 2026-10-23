@@ -5,6 +5,7 @@ import { ZetarisError } from "../src/core/errors.ts";
 import { getGateway } from "../src/data/gateway.ts";
 import { SnapshotGateway } from "../src/data/snapshot.ts";
 import { isReadOnlySql, ZetarisGateway } from "../src/data/zetaris.ts";
+import { validateNasaYearlyRainfall } from "../scripts/fetch-snapshots.ts";
 
 describe("Snapshot files integrity", () => {
   it("verifies that each snapshot file in data/snapshots parses as JSON and has rows", () => {
@@ -41,6 +42,24 @@ describe("Snapshot files integrity", () => {
       const meteoData = JSON.parse(fs.readFileSync(meteoPath, "utf-8"));
       expect(meteoData.rows.length).toBe(16);
     }
+  });
+
+  it("fail-loud sanity check: a fake year totalling 29,000 mm must throw", () => {
+    // Generate a complete leap year (366 days in 2020) totalling 29,000 mm (~79.2 mm/day)
+    const fakeRows: Array<{ date: string; rain_mm: number | null }> = [];
+    const dailyRain = 29000 / 366;
+    let d = new Date("2020-01-01T00:00:00Z");
+    for (let i = 0; i < 366; i++) {
+      fakeRows.push({
+        date: d.toISOString().slice(0, 10),
+        rain_mm: dailyRain,
+      });
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+
+    expect(() => validateNasaYearlyRainfall("farm_test", fakeRows)).toThrow(
+      /Sanity check failed for farm farm_test in year 2020: total PRECTOTCORR was 29000\.0 mm, outside allowable range \[600, 2500\] mm/
+    );
   });
 
   it("verifies no snapshot file marked 'snapshot' is missing a real sourceUrl or sourceUrls", () => {

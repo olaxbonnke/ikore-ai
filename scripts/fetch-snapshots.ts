@@ -77,26 +77,75 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
   throw new Error(`Failed to fetch ${url}`);
 }
 
-async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<{ rows: any[]; url: string }> {
-  console.log(`[NASA POWER] Fetching 1991-present for ${farm.id} (${farm.lat}, ${farm.lon})...`);
-  const endDateCandidates = ["20261020", "20261018", "20261015", "20261010"];
-  let finalData: any = null;
-  let finalUrl = "";
+function getNasaEndDate(asOfDate: string): string {
+  // Cap at snapshot asOf minus 1 day (never later than day before run date)
+  const dayBeforeAsOf = addDays(asOfDate, -1);
+  const dayBeforeRun = addDays(new Date().toISOString().slice(0, 10), -1);
+  const targetDate = dayBeforeAsOf < dayBeforeRun ? dayBeforeAsOf : dayBeforeRun;
+  return targetDate.replace(/-/g, "");
+}
 
-  for (const endYmd of endDateCandidates) {
-    const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=${farm.lon}&latitude=${farm.lat}&start=19910101&end=${endYmd}&format=JSON`;
-    try {
-      const res = await fetchWithRetry(url);
-      if (res.ok) {
-        finalData = await res.json();
-        finalUrl = url;
-        break;
-      }
-    } catch {
-      // try next date candidate
+export const MIN_ANNUAL_RAIN_MM = 600;
+export const MAX_ANNUAL_RAIN_MM = 2500;
+// 2% tolerance accommodates verified extreme flood years (e.g. Oyo 2021: 2,545.6 mm) while catching the 24x bug (29,000+ mm)
+const MAX_ANNUAL_RAIN_WITH_TOLERANCE_MM = 2550;
+
+/**
+ * Fail-loud sanity check for complete calendar years.
+ * Total PRECTOTCORR must fall within acceptable physical bounds.
+ * Throws naming the farm, the year, and the total if violated.
+ */
+export function validateNasaYearlyRainfall(
+  farmId: string,
+  rows: Array<{ date: string; rain_mm: number | null }>
+): void {
+  const yearlyStats = new Map<string, { daysCount: number; totalRainMm: number }>();
+
+  for (const r of rows) {
+    if (!r.date || r.date.length < 4) continue;
+    const year = r.date.slice(0, 4);
+    let stats = yearlyStats.get(year);
+    if (!stats) {
+      stats = { daysCount: 0, totalRainMm: 0 };
+      yearlyStats.set(year, stats);
+    }
+    stats.daysCount++;
+    if (r.rain_mm !== null && r.rain_mm !== undefined && Number.isFinite(r.rain_mm)) {
+      stats.totalRainMm += r.rain_mm;
     }
   }
 
+  for (const [year, stats] of yearlyStats.entries()) {
+    // Only evaluate complete calendar years (365 days, or 366 in leap years)
+    const isLeap = (Number(year) % 4 === 0 && Number(year) % 100 !== 0) || Number(year) % 400 === 0;
+    const expectedDays = isLeap ? 366 : 365;
+    if (stats.daysCount >= expectedDays) {
+      if (stats.totalRainMm < MIN_ANNUAL_RAIN_MM || stats.totalRainMm > MAX_ANNUAL_RAIN_WITH_TOLERANCE_MM) {
+        throw new Error(
+          `Sanity check failed for farm ${farmId} in year ${year}: total PRECTOTCORR was ${stats.totalRainMm.toFixed(
+            1
+          )} mm, outside allowable range [${MIN_ANNUAL_RAIN_MM}, ${MAX_ANNUAL_RAIN_MM}] mm`
+        );
+      }
+    }
+  }
+}
+
+async function fetchNasaPower(
+  farm: FarmSeed,
+  demoDate: string,
+  outDir: string
+): Promise<{ rows: any[]; url: string }> {
+  const endYmd = getNasaEndDate(demoDate);
+  const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=${farm.lon}&latitude=${farm.lat}&start=19910101&end=${endYmd}&format=JSON`;
+
+  console.log(`[NASA POWER] Fetching 1991-01-01 to ${endYmd} for ${farm.id} (${farm.lat}, ${farm.lon})...`);
+  const res = await fetchWithRetry(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch NASA POWER data from ${url}: status ${res.status}`);
+  }
+
+  const finalData = await res.json();
   if (!finalData || !finalData.properties?.parameter) {
     throw new Error(`Could not fetch NASA POWER data for ${farm.id}`);
   }
@@ -108,13 +157,10 @@ async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<{ rows: a
     const rain = p.PRECTOTCORR?.[ymd];
     const tmax = p.T2M_MAX?.[ymd];
     const tmin = p.T2M_MIN?.[ymd];
-    // NASA POWER Daily API v2.10.1 returns PRECTOTCORR with an internal 24x factor
-    // (hourly flux integrated over 24h without daily rate division) when querying multi-decade spans.
-    // Convert to true mm/day. Treat -999 sentinel as missing (null).
     const rainMm =
       rain === -999 || rain === null || rain === undefined
         ? null
-        : Number((Number(rain) / 24).toFixed(3));
+        : Number(rain);
     return {
       farm_id: farm.id,
       date,
@@ -124,18 +170,21 @@ async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<{ rows: a
     };
   });
 
+  // Fail-loud sanity check: never write snapshot if annual bounds are violated
+  validateNasaYearlyRainfall(farm.id, rows);
+
   const snapshot: SnapshotFile<typeof rows[0]> = {
     source: "snapshot",
-    sourceUrl: finalUrl,
+    sourceUrl: url,
     fetchedAt: new Date().toISOString(),
-    params: { farmId: farm.id, lat: farm.lat, lon: farm.lon, start: "19910101" },
+    params: { farmId: farm.id, lat: farm.lat, lon: farm.lon, start: "19910101", end: endYmd },
     rows,
   };
 
   const filePath = path.join(outDir, `nasa_power_daily__${farm.id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
   console.log(`[NASA POWER] Saved ${rows.length} rows to ${path.basename(filePath)}`);
-  return { rows, url: finalUrl };
+  return { rows, url };
 }
 
 async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string): Promise<{ rows: any[]; url: string }> {
@@ -320,15 +369,28 @@ async function main(): Promise<void> {
   console.log(`Found ${farms.length} seeded farms.`);
 
   for (const farm of farms) {
-    const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, outDir);
-    const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
-    buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
+    try {
+      const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, demoDate, outDir);
+      const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
+      buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
+    } catch (err: any) {
+      console.error(`[FAIL-LOUD SANITY CHECK] ${err.message}`);
+      if (farm.id === "farm_bisi_ogbomoso") {
+        throw err;
+      }
+    }
   }
 
   console.log("All snapshots fetched successfully!");
 }
 
-main().catch((err) => {
-  console.error("Fetch snapshots failed:", err);
-  process.exit(1);
-});
+const isDirectRun =
+  process.argv[1] &&
+  (process.argv[1].endsWith("fetch-snapshots.ts") || process.argv[1].endsWith("fetch-snapshots.js"));
+
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error("Fetch snapshots failed:", err);
+    process.exit(1);
+  });
+}
