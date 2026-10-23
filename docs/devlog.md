@@ -123,8 +123,9 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - Replaced the `/ 24` division workaround with a clean root-cause fix: capped the NASA POWER query `end` parameter at `asOf - 1 day` (and never later than the day before the run date).
   - Removed the unconditional `/ 24` factor and preserved nulls for `-999` sentinels.
 - **Fail-Loud Sanity Check (`validateNasaYearlyRainfall`)**:
-  - Added strict annual rainfall validation after every NASA fetch: for every complete calendar year, total PRECTOTCORR must fall within reasonable climatic bounds (600 to 2,500 mm / year, with 2% tolerance to 2,550 mm for extreme flood years like Oyo 2021 at 2,545.6 mm).
-  - If any complete year falls outside this range (e.g. 29,000 mm from a corrupted query or 3,398 mm), the function throws an error naming the farm, the year, and the total, and refuses to write the snapshot to disk.
+  - Added strict annual rainfall validation after every NASA fetch: for every complete calendar year, total PRECTOTCORR must fall within allowable bounds. Base bounds are 600 to 2,500 mm / year, with a 2% upper tolerance setting the actually enforced ceiling to 2,550 mm to accommodate verified extreme flood anomalies (e.g. Oyo 2021 at 2,545.6 mm). The error message explicitly states the enforced bounds `[600, 2550] mm`.
+  - In `main()`, removed any per-farm try/catch: a sanity-check failure for ANY farm immediately throws and halts execution with exit code 1, ensuring snapshots are never partially or invalidly written.
+  - If any complete year falls outside this range (e.g. 29,000 mm from a corrupted query, or Kaduna's 3,398.5 mm in 2020), the function throws an error naming the farm, the year, and the total, and refuses to write the snapshot to disk.
 - **Unit Testing & Sanity Validation**:
   - Added unit test in `tests/gateway.test.ts` verifying that a fake complete year totalling 29,000 mm throws naming the farm, year, and 29000.0 mm.
   - Re-ran `npm run snapshots:fetch`: `farm_bisi_ogbomoso` 2000-04-06 verified at 4.79 mm, year 2000 total verified at 1,235.9 mm.

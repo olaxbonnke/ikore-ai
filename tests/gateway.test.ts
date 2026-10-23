@@ -58,7 +58,7 @@ describe("Snapshot files integrity", () => {
     }
 
     expect(() => validateNasaYearlyRainfall("farm_test", fakeRows)).toThrow(
-      /Sanity check failed for farm farm_test in year 2020: total PRECTOTCORR was 29000\.0 mm, outside allowable range \[600, 2500\] mm/
+      /Sanity check failed for farm farm_test in year 2020: total PRECTOTCORR was 29000\.0 mm, outside allowable range \[600, 2550\] mm/
     );
   });
 

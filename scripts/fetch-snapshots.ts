@@ -124,7 +124,7 @@ export function validateNasaYearlyRainfall(
         throw new Error(
           `Sanity check failed for farm ${farmId} in year ${year}: total PRECTOTCORR was ${stats.totalRainMm.toFixed(
             1
-          )} mm, outside allowable range [${MIN_ANNUAL_RAIN_MM}, ${MAX_ANNUAL_RAIN_MM}] mm`
+          )} mm, outside allowable range [${MIN_ANNUAL_RAIN_MM}, ${MAX_ANNUAL_RAIN_WITH_TOLERANCE_MM}] mm`
         );
       }
     }
@@ -369,16 +369,9 @@ async function main(): Promise<void> {
   console.log(`Found ${farms.length} seeded farms.`);
 
   for (const farm of farms) {
-    try {
-      const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, demoDate, outDir);
-      const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
-      buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
-    } catch (err: any) {
-      console.error(`[FAIL-LOUD SANITY CHECK] ${err.message}`);
-      if (farm.id === "farm_bisi_ogbomoso") {
-        throw err;
-      }
-    }
+    const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, demoDate, outDir);
+    const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
+    buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
   }
 
   console.log("All snapshots fetched successfully!");
