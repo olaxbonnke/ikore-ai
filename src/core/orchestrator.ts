@@ -14,14 +14,15 @@
 
 import { getConfig } from "../config.ts";
 import { getGateway } from "../data/gateway.ts";
-import { nimetOnset, rainDaily } from "../data/queries.ts";
-import { templatePlanting, templateUnavailable } from "../i18n/templates.ts";
+import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
+import { templatePlanting, templateSelling, templateUnavailable } from "../i18n/templates.ts";
 import { ask, remember } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
 import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
 import { listOptions } from "./options.ts";
 import { DEFAULT_PLANTING_ECONOMICS, simulatePlanting } from "./simulate/planting.ts";
+import { simulateSelling, type CashNeed, type MonthlyPriceRecord } from "./simulate/selling.ts";
 import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult } from "./types.ts";
 import { understand } from "./understand.ts";
 
@@ -97,6 +98,119 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     }
   } catch {
     // Non-fatal if H-MEM is unseeded
+  }
+
+  // Handle sell_or_store intent
+  if (understood.intent === "sell_or_store") {
+    // Honesty Rule: Price comes ONLY from the farmer (slots or H-MEM recall)
+    let currentPricePerBag: number | undefined = understood.slots.pricePerBag as number | undefined;
+
+    if (!currentPricePerBag) {
+      try {
+        const recalled = await ask(farmId, "offered maize price per bag");
+        if (Array.isArray(recalled) && recalled.length > 0) {
+          for (const mem of recalled) {
+            const mText = mem.content || "";
+            // Ignore past season records (e.g. historical sales from 2024/2025)
+            if (/past season|sold in 20/i.test(mText)) continue;
+            // Ignore previous advice outputs from the agent
+            if (/advice|advised/i.test(mText)) continue;
+            if (Array.isArray(mem.tags) && mem.tags.includes("advice")) continue;
+            // Must indicate a farmer-stated price or offer
+            if (!/offer|today|current/i.test(mText)) continue;
+            const match = mText.match(/(?:₦|ngn|price|offer|offering|at)?\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,6})\s*(?:naira|ngn)?\s*(?:per|\/)?\s*bag/i);
+            if (match) {
+              const p = Number(match[1].replace(/,/g, ""));
+              if (Number.isFinite(p) && p > 0) {
+                currentPricePerBag = p;
+                if (mem.id) memoryIdsUsed.push(mem.id);
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    if (!currentPricePerBag || !Number.isFinite(currentPricePerBag) || currentPricePerBag <= 0) {
+      return {
+        text: "What price per bag are buyers offering you today?",
+        lang,
+        askedQuestion: true,
+        memoryIdsUsed,
+      };
+    }
+
+    const bags = (understood.slots.bags as number) || 20;
+    const bagWeightKg = (understood.slots.bagWeightKg as number) || 100;
+    const storageMethod = (understood.slots.storageMethod as string) || farm.storage || "sack";
+    const cashNeed = understood.slots.cashNeed as CashNeed | undefined;
+
+    // Step 3: Observe (query price seasonality via DataGateway)
+    const gateway = getGateway();
+    const pQuery = priceSeasonality(farm.state);
+    const pRes = await gateway.query<MonthlyPriceRecord>(pQuery.sql);
+    const prices = pRes.rows;
+
+    // Step 4: Options
+    const candidateKeys = listOptions("sell_or_store", { asOf, cashNeedNgn: cashNeed?.amountNgn });
+
+    // Step 5: Simulate
+    const simResults = simulateSelling({
+      prices,
+      asOf,
+      currentPricePerBag,
+      bags,
+      bagWeightKg,
+      storageMethod,
+      cashNeed,
+    });
+
+    // Step 6: Decide
+    const decision = decide(simResults as unknown as OptionResult[], {
+      farmId,
+      intent: "sell_or_store",
+      asOf,
+      dataMode: config.dataMode,
+      riskAversion: farm.riskAversion,
+      querySql: pQuery.sql,
+      provenance: pRes.provenance,
+      sellingOptions: simResults,
+      currentPricePerBag,
+      bags,
+      storageMethod,
+    });
+
+    // Step 7: Explain
+    const text = templateSelling(decision, lang);
+
+    // Step 8: Remember
+    try {
+      const memoryId = await remember(farmId, {
+        type: "advice",
+        intent: decision.intent,
+        verdict: decision.chosen,
+        decisionId: decision.id,
+        keyNumbers: decision.keyNumbers,
+        content: `Sell or store advice for ${asOf}: ${decision.chosen}. Offered ₦${currentPricePerBag.toLocaleString()}/bag for ${bags} bags. Expected return ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
+        date: decision.createdAt,
+      });
+      if (memoryId) {
+        memoryIdsUsed.push(memoryId);
+      }
+    } catch (err: any) {
+      console.warn(`! Note: Could not commit to H-MEM: ${err.message}`);
+    }
+
+    return {
+      text,
+      lang,
+      decision,
+      askedQuestion: false,
+      memoryIdsUsed,
+    };
   }
 
   // If intent is not planting timing, return temporary unavailable/placeholder

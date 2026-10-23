@@ -44,8 +44,17 @@ export function recentRain(_lat: number, _lon: number, _days = 21): BuiltQuery {
   throw new Error("recentRain query not implemented yet");
 }
 
-export function priceSeasonality(_state: string): BuiltQuery {
-  throw new Error("priceSeasonality query not implemented yet");
+export function priceSeasonality(state: string, commodity = "Maize (white)"): BuiltQuery {
+  if (!/^[a-zA-Z0-9_ -]+$/.test(state)) {
+    throw new Error(`Invalid state: ${state}`);
+  }
+  if (!/^[a-zA-Z0-9_ ()-]+$/.test(commodity)) {
+    throw new Error(`Invalid commodity: ${commodity}`);
+  }
+  return {
+    name: "priceSeasonality",
+    sql: `SELECT state, market, commodity, unit, pricetype, ym, price_ngn_per_kg FROM oko_pg.prices WHERE LOWER(state) = LOWER('${state}') ORDER BY ym ASC, commodity ASC`,
+  };
 }
 
 export function cropCalendar(_crop: string, _zone: string): BuiltQuery {

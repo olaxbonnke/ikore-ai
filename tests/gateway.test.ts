@@ -188,16 +188,16 @@ describe("SnapshotGateway", () => {
     expect(nasaResult.source).toBe("snapshot");
     expect(nasaResult.provenance).toContain("https://power.larc.nasa.gov");
     expect(nasaResult.rows.length).toBeGreaterThan(10000);
-  });
-
-  it("returns source 'mock' with explanatory note as provenance for mock or placeholder files", async () => {
-    const gateway = new SnapshotGateway();
 
     const priceResult = await gateway.query("SELECT * FROM v_maize_price_monthly WHERE state = 'Oyo'");
-    expect(priceResult.source).toBe("mock");
-    expect(priceResult.provenance).toContain("Placeholder monthly seasonal price index");
+    expect(priceResult.source).toBe("snapshot");
+    expect(priceResult.provenance).toContain("wfp_food_prices_nga.csv");
     expect(priceResult.rows.length).toBeGreaterThan(0);
     expect(priceResult.rows[0]).toHaveProperty("price_ngn_per_kg");
+  });
+
+  it("returns source 'mock' with explanatory note as provenance for mock or placeholder queries", async () => {
+    const gateway = new SnapshotGateway();
 
     const dbResult = await gateway.query("SHOW DATABASES");
     expect(dbResult.source).toBe("mock");

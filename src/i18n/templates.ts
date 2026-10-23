@@ -53,3 +53,34 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
   }
   return `Plant now. Replanting risk is low at ${risk} with ${rain50} mm expected establishment rain.`;
 }
+
+/** Pre-written grounded template explanations for sell-or-store (DESIGN.md step 7). */
+export function templateSelling(decision: Decision, _lang: Lang = "en"): string {
+  const chosen = decision.chosen;
+  const k = decision.keyNumbers;
+  const bags = Number(k.bags || 20);
+  const price = Number(k.currentPricePerBag || 45000);
+  const totalNow = (bags * price).toLocaleString();
+  const lossPct = Number(k.monthlyLossPct !== undefined ? k.monthlyLossPct : 2.5);
+  const storageLabel = lossPct <= 0.5 ? "PICS hermetic bags" : "plain sacks";
+  const riskPct = k.riskPercent || "100.0%";
+
+  if (chosen === "sell_now") {
+    const riskPct = k.waitingRiskPercent || "100.0%";
+    return `Sell now for ₦${totalNow} (${bags} bags at ₦${price.toLocaleString()} per bag). In most past years, Ibadan maize prices fell in the 1 to 3 months following August harvest, so waiting carries a ${riskPct} chance of earning less than selling today after accounting for storage weight loss (${lossPct}%/month in ${storageLabel}).`;
+  }
+
+  if (chosen === "partial_sell_store_8w") {
+    const soldNow = Number(k.bagsSoldNow !== undefined ? k.bagsSoldNow : Math.ceil(bags / 2));
+    const stored = Number(k.bagsStored !== undefined ? k.bagsStored : bags - soldNow);
+    const cashNow = Number(k.cashGeneratedNow || soldNow * price).toLocaleString();
+    return `Sell ${soldNow} bags now for ₦${cashNow} to cover your immediate cash need, and store the remaining ${stored} bags for 8 weeks.`;
+  }
+
+  const weeks = k.horizonWeeks || (chosen === "store_4w" ? 4 : chosen === "store_8w" ? 8 : 12);
+  const p50 = Number(k.valueP50Ngn || k.expectedValueNgn || 0).toLocaleString();
+  const p10 = Number(k.valueP10Ngn || 0).toLocaleString();
+  const p90 = Number(k.valueP90Ngn || 0).toLocaleString();
+
+  return `Store your maize for ${weeks} weeks. In most past years, prices rose enough to cover storage weight loss (${lossPct}%/month in ${storageLabel}), with expected return around ₦${p50} across past years (typically between ₦${p10} and ₦${p90}).`;
+}

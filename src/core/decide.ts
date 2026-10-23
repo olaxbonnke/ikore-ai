@@ -14,6 +14,7 @@
 
 import type { Decision, EvidenceItem, OptionResult } from "./types.ts";
 import type { PlantingOption } from "./simulate/planting.ts";
+import type { SellingOptionResult } from "./simulate/selling.ts";
 
 export interface DecideParams {
   farmId: string;
@@ -25,7 +26,12 @@ export interface DecideParams {
   provenance?: string;
   evidenceItems?: EvidenceItem[];
   plantingOptions?: PlantingOption[];
+  sellingOptions?: SellingOptionResult[];
   assumptions?: string[];
+  currentPricePerBag?: number;
+  bags?: number;
+  storageMethod?: string;
+  monthlyLossPct?: number;
 }
 
 export function decide(
@@ -40,8 +46,12 @@ export function decide(
   const aversion = params.riskAversion || "normal";
   const lambda = aversion === "low" ? 0.25 : aversion === "high" ? 1.0 : 0.5;
 
-  // 2. Sort options by score descending
-  const sorted = [...options].sort((a, b) => b.score - a.score);
+  // 2. Sort options by score descending (filtering out any dropped options)
+  const activeOptions = options.filter((o) => !(o as any).dropped);
+  if (activeOptions.length === 0) {
+    throw new Error("All options were dropped due to constraints");
+  }
+  const sorted = [...activeOptions].sort((a, b) => b.score - a.score);
   const best = sorted[0];
   const second = sorted[1] ?? sorted[0];
 
@@ -66,22 +76,32 @@ export function decide(
       runnerUpOpt = second;
       closeCallNote = `Close call: ${best.option} and ${second.option} scores are within ${(scoreGapPct * 100).toFixed(1)}%. Recommending safer option (${best.option}) with lower risk (${(best.outcome.riskMetric * 100).toFixed(1)}% vs ${(second.outcome.riskMetric * 100).toFixed(1)}%).`;
     } else {
-      // TIE-BREAK RULE: Both replant risk and score are virtually identical.
-      // In agronomy, planting earlier (wait_7 over wait_14) is strongly preferred
-      // to maximize growing season length and avoid late-season moisture deficits.
-      const optA = best.option;
-      const optB = second.option;
-      const isWait7And14 =
-        (optA === "wait_7" && optB === "wait_14") ||
-        (optA === "wait_14" && optB === "wait_7");
-
-      if (isWait7And14) {
-        chosenOpt = optA === "wait_7" ? best : second;
-        runnerUpOpt = optA === "wait_7" ? second : best;
-        closeCallNote = `Close call: wait_7 and wait_14 have equal ${(chosenOpt.outcome.riskMetric * 100).toFixed(1)}% replant risk, so the earlier date is chosen to keep more of the season.`;
+      // TIE-BREAK RULE: Both risk and score are virtually identical.
+      if (params.intent === "sell_or_store") {
+        const hasSellNow = best.option === "sell_now" || second.option === "sell_now";
+        if (hasSellNow) {
+          chosenOpt = best.option === "sell_now" ? best : second;
+          runnerUpOpt = best.option === "sell_now" ? second : best;
+          closeCallNote = `Close call: scores are within ${(scoreGapPct * 100).toFixed(1)}%. Choosing sell_now for immediate liquidity with zero storage weight loss.`;
+        } else {
+          chosenOpt = best;
+          runnerUpOpt = second;
+        }
       } else {
-        chosenOpt = best;
-        runnerUpOpt = second;
+        const optA = best.option;
+        const optB = second.option;
+        const isWait7And14 =
+          (optA === "wait_7" && optB === "wait_14") ||
+          (optA === "wait_14" && optB === "wait_7");
+
+        if (isWait7And14) {
+          chosenOpt = optA === "wait_7" ? best : second;
+          runnerUpOpt = optA === "wait_7" ? second : best;
+          closeCallNote = `Close call: wait_7 and wait_14 have equal ${(chosenOpt.outcome.riskMetric * 100).toFixed(1)}% replant risk, so the earlier date is chosen to keep more of the season.`;
+        } else {
+          chosenOpt = best;
+          runnerUpOpt = second;
+        }
       }
     }
   }
@@ -96,10 +116,18 @@ export function decide(
   })();
 
   let confidence: Decision["confidence"] = "low";
-  if (n >= 25 && (scoreGapPct > 0.15 || gapToPlantNow > 0.15)) {
-    confidence = "high";
-  } else if (scoreGapPct > 0.05 || gapToPlantNow > 0.05) {
-    confidence = "medium";
+  if (params.intent === "sell_or_store") {
+    if (scoreGapPct > 0.1) {
+      confidence = "high";
+    } else if (scoreGapPct > 0.03) {
+      confidence = "medium";
+    }
+  } else {
+    if (n >= 25 && (scoreGapPct > 0.15 || gapToPlantNow > 0.15)) {
+      confidence = "high";
+    } else if (scoreGapPct > 0.05 || gapToPlantNow > 0.05) {
+      confidence = "medium";
+    }
   }
 
   // 5. Risk badge
@@ -123,72 +151,171 @@ export function decide(
     chosenLabel: chosenOpt.label,
     score: chosenOpt.score,
     expectedValueNgn: chosenOpt.outcome.p50 || chosenOpt.outcome.mean,
-    replantRisk: `${(chosenRisk * 100).toFixed(1)}%`,
-    replantProbability: chosenRisk,
     nAnalogYears: n,
     lambda,
   };
 
-  if (matchingPlanting) {
-    keyNumbers.plantingDate = matchingPlanting.plantingDate;
-    keyNumbers.rainP10Mm = matchingPlanting.establishmentRainMm.p10;
-    keyNumbers.rainP50Mm = matchingPlanting.establishmentRainMm.p50;
-    keyNumbers.rainP90Mm = matchingPlanting.establishmentRainMm.p90;
-    keyNumbers.adequacyP10 = `${(matchingPlanting.rainfallAdequacy.p10 * 100).toFixed(1)}%`;
-    keyNumbers.adequacyP50 = `${(matchingPlanting.rainfallAdequacy.p50 * 100).toFixed(1)}%`;
-    keyNumbers.adequacyP90 = `${(matchingPlanting.rainfallAdequacy.p90 * 100).toFixed(1)}%`;
-  }
+  if (params.intent === "sell_or_store") {
+    keyNumbers.riskMetric = chosenRisk;
+    keyNumbers.riskPercent = `${(chosenRisk * 100).toFixed(1)}%`;
+    keyNumbers.riskLabel = chosenOpt.outcome.riskLabel || "chance of earning less than selling now";
+    keyNumbers.valueP10Ngn = chosenOpt.outcome.p10;
+    keyNumbers.valueP50Ngn = chosenOpt.outcome.p50;
+    keyNumbers.valueP90Ngn = chosenOpt.outcome.p90;
 
-  if (plantNowPlanting) {
-    keyNumbers.replantRiskNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
-    keyNumbers.replantProbabilityNow = plantNowPlanting.replantProbability;
+    const storeOptions = params.sellingOptions?.filter((s) => s.option !== "sell_now") || [];
+    if (storeOptions.length > 0) {
+      const waitRisk = Math.max(...storeOptions.map((s) => s.outcome.riskMetric));
+      keyNumbers.waitingRiskPercent = `${(waitRisk * 100).toFixed(1)}%`;
+    } else {
+      keyNumbers.waitingRiskPercent = "100.0%";
+    }
+    if (params.currentPricePerBag) {
+      keyNumbers.currentPricePerBag = params.currentPricePerBag;
+    }
+    if (params.bags) {
+      keyNumbers.bags = params.bags;
+      keyNumbers.valueSellNowNgn = params.bags * (params.currentPricePerBag ?? 0);
+    }
+    const matchingSelling = params.sellingOptions?.find((s) => s.option === chosenOpt.option);
+    if (matchingSelling) {
+      keyNumbers.horizonWeeks = matchingSelling.horizonWeeks;
+      keyNumbers.horizonMonths = matchingSelling.horizonMonths;
+      keyNumbers.monthlyLossPct = matchingSelling.assumptions.monthlyLossPct;
+      if (matchingSelling.bagsSoldNow !== undefined) {
+        keyNumbers.bagsSoldNow = matchingSelling.bagsSoldNow;
+      }
+      if (matchingSelling.bagsStored !== undefined) {
+        keyNumbers.bagsStored = matchingSelling.bagsStored;
+      }
+      if (matchingSelling.cashGeneratedNow !== undefined) {
+        keyNumbers.cashGeneratedNow = matchingSelling.cashGeneratedNow;
+      }
+    }
+  } else {
+    keyNumbers.replantRisk = `${(chosenRisk * 100).toFixed(1)}%`;
+    keyNumbers.replantProbability = chosenRisk;
+    if (matchingPlanting) {
+      keyNumbers.plantingDate = matchingPlanting.plantingDate;
+      keyNumbers.rainP10Mm = matchingPlanting.establishmentRainMm.p10;
+      keyNumbers.rainP50Mm = matchingPlanting.establishmentRainMm.p50;
+      keyNumbers.rainP90Mm = matchingPlanting.establishmentRainMm.p90;
+      keyNumbers.adequacyP10 = `${(matchingPlanting.rainfallAdequacy.p10 * 100).toFixed(1)}%`;
+      keyNumbers.adequacyP50 = `${(matchingPlanting.rainfallAdequacy.p50 * 100).toFixed(1)}%`;
+      keyNumbers.adequacyP90 = `${(matchingPlanting.rainfallAdequacy.p90 * 100).toFixed(1)}%`;
+    }
+    if (plantNowPlanting) {
+      keyNumbers.replantRiskNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
+      keyNumbers.replantProbabilityNow = plantNowPlanting.replantProbability;
+    }
   }
 
   // 7. Build Decision.evidence
   const evidence: EvidenceItem[] = [
     ...(params.evidenceItems || []),
-    {
-      id: "ev_rain_history",
-      kind: "history",
-      label: `Daily rainfall history (${params.farmId})`,
-      source: params.provenance || (params.dataMode === "live" ? "Zetaris (local)" : "SnapshotGateway"),
-      sql:
-        params.querySql ||
-        `SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = '${params.farmId}' ORDER BY date ASC`,
-      queryName: "rainDaily",
-      statistic: `${n} analog years evaluated with 21-day pre-season similarity weighting`,
-      value: n,
-      unit: "analog_years",
-    },
-    {
-      id: "ev_spike_guard",
-      kind: "assumption",
-      label: "Daily precipitation spike guard (MAX_DAILY_RAIN_MM)",
-      source: "Climate Data Gateway",
-      statistic: "Values > 200 mm/day nulled to prevent unphysical sensor spikes",
-      value: 200,
-      unit: "mm/day",
-    },
-    {
-      id: "ev_sivakumar_threshold",
-      kind: "assumption",
-      label: "False-start seedling dry spell threshold",
-      source: "Adapted from Sivakumar (1988) West Africa agroclimatology",
-      statistic: "More than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
-      value: 7,
-      unit: "days",
-    },
   ];
 
+  if (params.intent === "sell_or_store") {
+    const storageLabel = params.storageMethod === "pics" ? "PICS hermetic bags" : "plain sacks";
+    const lossPct = params.monthlyLossPct ?? (params.storageMethod === "pics" ? 0.3 : 2.5);
+
+    evidence.push({
+      id: "ev_price_seasonality",
+      kind: "history",
+      label: "WFP Ibadan maize seasonal price pattern",
+      source: "WFP VAM, via HDX (Ibadan, Oyo)",
+      sql:
+        params.querySql ||
+        "SELECT state, market, commodity, unit, pricetype, ym, price_ngn_per_kg FROM oko_pg.prices WHERE LOWER(state) = 'oyo'",
+      queryName: "priceSeasonality",
+      statistic: "Seasonal pattern: WFP Ibadan maize, 2014 to 2023 (8 years). Prices after January 2023 aren't in this data.",
+      value: n,
+      unit: "years",
+    });
+
+    if (params.currentPricePerBag) {
+      evidence.push({
+        id: "ev_stated_price",
+        kind: "price",
+        label: "Today's offered price",
+        source: "Farmer statement",
+        statistic: `Today's price: you told me ₦${params.currentPricePerBag.toLocaleString()} per bag.`,
+        value: params.currentPricePerBag,
+        unit: "NGN/bag",
+      });
+    }
+
+    evidence.push({
+      id: "ev_storage_loss",
+      kind: "assumption",
+      label: `Storage weight loss rate (${params.storageMethod || "sack"})`,
+      source: "Assumption (data/storage_loss.csv)",
+      statistic: `Assumed ${lossPct}% weight loss per month in ${storageLabel}`,
+      value: lossPct,
+      unit: "%/month",
+    });
+  } else {
+    evidence.push(
+      {
+        id: "ev_rain_history",
+        kind: "history",
+        label: `Daily rainfall history (${params.farmId})`,
+        source: params.provenance || (params.dataMode === "live" ? "Zetaris (local)" : "SnapshotGateway"),
+        sql:
+          params.querySql ||
+          `SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = '${params.farmId}' ORDER BY date ASC`,
+        queryName: "rainDaily",
+        statistic: `${n} analog years evaluated with 21-day pre-season similarity weighting`,
+        value: n,
+        unit: "analog_years",
+      },
+      {
+        id: "ev_spike_guard",
+        kind: "assumption",
+        label: "Daily precipitation spike guard (MAX_DAILY_RAIN_MM)",
+        source: "Climate Data Gateway",
+        statistic: "Values > 200 mm/day nulled to prevent unphysical sensor spikes",
+        value: 200,
+        unit: "mm/day",
+      },
+      {
+        id: "ev_sivakumar_threshold",
+        kind: "assumption",
+        label: "False-start seedling dry spell threshold",
+        source: "Adapted from Sivakumar (1988) West Africa agroclimatology",
+        statistic: "More than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
+        value: 7,
+        unit: "days",
+      }
+    );
+  }
+
   // 8. Build Decision.assumptions
-  const assumptions: string[] = [
-    "Base yield for smallholder maize: 2,000 kg/ha",
-    "Seed cost: ₦25,000/ha; Replant labour: ₦20,000/ha",
-    "Dry-spell rule: more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
-    "2.0 ha from farms_seed.csv; 2,000 kg/ha is an uncited illustrative yield; ₦350/kg is an illustrative price matching the Aug 2022 Ibadan row in oko_pg.prices, not a 2026 forecast. Used only to scale scores, never shown to the farmer.",
-    "200 mm daily rainfall spike guard applied to satellite climate data",
-    ...(params.assumptions || []),
-  ];
+  const assumptions: string[] = [];
+  if (params.intent === "sell_or_store") {
+    const storageLabel = params.storageMethod === "pics" ? "PICS hermetic bags" : "plain sacks";
+    const lossPct = params.monthlyLossPct ?? (params.storageMethod === "pics" ? 0.3 : 2.5);
+    assumptions.push(
+      `Assumed ${lossPct}% weight loss per month in ${storageLabel}`,
+      "Storage cost assumed ₦0/month (stored on-farm)",
+      "Seasonal pattern: WFP Ibadan maize, 2014 to 2023 (8 years). Prices after January 2023 aren't in this data."
+    );
+    if (params.currentPricePerBag) {
+      assumptions.push(`Today's price: you told me ₦${params.currentPricePerBag.toLocaleString()} per bag.`);
+    }
+  } else {
+    assumptions.push(
+      "Base yield for smallholder maize: 2,000 kg/ha",
+      "Seed cost: ₦25,000/ha; Replant labour: ₦20,000/ha",
+      "Dry-spell rule: more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
+      "2.0 ha from farms_seed.csv; 2,000 kg/ha is an uncited illustrative yield; ₦350/kg is an illustrative price matching the Aug 2022 Ibadan row in oko_pg.prices, not a 2026 forecast. Used only to scale scores, never shown to the farmer.",
+      "200 mm daily rainfall spike guard applied to satellite climate data"
+    );
+  }
+
+  if (params.assumptions) {
+    assumptions.push(...params.assumptions);
+  }
 
   if (params.dataMode === "snapshot") {
     assumptions.push("Offline snapshot mode: verified cached Zetaris query results");

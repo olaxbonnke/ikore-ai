@@ -29,7 +29,11 @@ export function listOptions(
   }
 
   if (intent === "sell_or_store") {
-    return ["sell_now", "store_4w", "store_8w", "store_12w"];
+    const opts = ["sell_now", "store_4w", "store_8w", "store_12w"];
+    if (context?.cashNeedNgn && context.cashNeedNgn > 0) {
+      opts.push("partial_sell_store_8w");
+    }
+    return opts;
   }
 
   return [];
