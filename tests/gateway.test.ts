@@ -300,18 +300,118 @@ describe("isReadOnlySql and read-only guard", () => {
 });
 
 describe("ZetarisGateway HTTP and retry lifecycle", () => {
-  it("sends required headers including Authorization, X-Org-ID, and fresh X-Request-ID", async () => {
-    const recordedHeaders: Record<string, string>[] = [];
-    const mockFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
-      const headers = (init?.headers as Record<string, string>) || {};
-      recordedHeaders.push(headers);
+  it("sends required headers and body to /sql-editor/sqls/run", async () => {
+    let recordedUrl = "";
+    let recordedHeaders: Record<string, string> = {};
+    let recordedBody: any = null;
+
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      recordedUrl = url.toString();
+      recordedHeaders = (init?.headers as Record<string, string>) || {};
+      recordedBody = JSON.parse(init?.body as string);
       return {
         ok: true,
         status: 200,
         json: async () => ({
-          queryId: "qid-1",
-          data: [{ col: 1 }],
-          hasMore: false,
+          headers: ["ok"],
+          data: [["1"]],
+        }),
+      } as unknown as Response;
+    });
+
+    const gateway = new ZetarisGateway({
+      restUrl: "https://api.example.com/api/v1.0",
+      apiKey: "secret-key",
+      orgId: "org-456",
+      queryLimit: 100,
+      fetchFn: mockFetch,
+    });
+
+    const result = await gateway.query("SELECT 1 AS ok");
+    expect(result.source).toBe("live");
+    expect(result.rows).toEqual([{ ok: "1" }]);
+
+    expect(recordedUrl).toBe("https://api.example.com/api/v1.0/sql-editor/sqls/run");
+    expect(recordedHeaders["Authorization"]).toBe("Bearer secret-key");
+    expect(recordedHeaders["X-Org-ID"]).toBe("org-456");
+    expect(recordedHeaders["X-Request-ID"]).toBeDefined();
+    expect(recordedHeaders["Content-Type"]).toBe("application/json");
+
+    expect(recordedBody.sql).toBe("SELECT 1 AS ok");
+    expect(recordedBody.source).toBe("SqlEditor");
+    expect(recordedBody.limit).toBe(100);
+    expect(recordedBody.queryId).toBeDefined();
+  });
+
+  it("handles array of arrays mapped with headers or columnNames to objects", async () => {
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          headers: ["state", "price_ngn"],
+          data: [
+            ["Oyo", 42000],
+            ["Ogun", 45000],
+          ],
+        }),
+      } as unknown as Response;
+    });
+
+    const gateway = new ZetarisGateway({
+      restUrl: "https://api.example.com/api/v1.0",
+      apiKey: "k",
+      orgId: "o",
+      fetchFn: mockFetch,
+    });
+
+    const result = await gateway.query<{ state: string; price_ngn: number }>("SELECT state, price_ngn FROM prices");
+    expect(result.rows).toEqual([
+      { state: "Oyo", price_ngn: 42000 },
+      { state: "Ogun", price_ngn: 45000 },
+    ]);
+  });
+
+  it("handles array of objects directly", async () => {
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [{ id: "farm_1", lga: "Ogbomoso" }],
+        }),
+      } as unknown as Response;
+    });
+
+    const gateway = new ZetarisGateway({
+      restUrl: "https://api.example.com/api/v1.0",
+      apiKey: "k",
+      orgId: "o",
+      fetchFn: mockFetch,
+    });
+
+    const result = await gateway.query("SELECT * FROM farms");
+    expect(result.rows).toEqual([{ id: "farm_1", lga: "Ogbomoso" }]);
+  });
+
+  it("retries on 5xx errors up to 2 times and succeeds if error resolves", async () => {
+    let callCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      const urlStr = url.toString();
+      expect(urlStr).toContain("/sql-editor/sqls/run");
+      callCount++;
+      if (callCount <= 2) {
+        return {
+          ok: false,
+          status: 503,
+          text: async () => "Service temporarily unavailable",
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [{ resolved: true }],
         }),
       } as unknown as Response;
     });
@@ -323,63 +423,8 @@ describe("ZetarisGateway HTTP and retry lifecycle", () => {
       fetchFn: mockFetch,
     });
 
-    const result = await gateway.query("SELECT 1 AS ok");
-    expect(result.source).toBe("live");
-    expect(result.rows).toEqual([{ col: 1 }]);
-
-    expect(recordedHeaders.length).toBeGreaterThanOrEqual(1);
-    const startHeaders = recordedHeaders[0];
-    expect(startHeaders["Authorization"]).toBe("Bearer secret-key");
-    expect(startHeaders["X-Org-ID"]).toBe("org-456");
-    expect(startHeaders["X-Request-ID"]).toBeDefined();
-    expect(startHeaders["X-Request-ID"].length).toBeGreaterThan(10);
-  });
-
-  it("retries on 5xx errors up to 2 times and succeeds if error resolves", async () => {
-    let startCalls = 0;
-    let closeCalls = 0;
-    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
-      const urlStr = url.toString();
-      if (urlStr.includes("/query/sql/start")) {
-        startCalls++;
-        if (startCalls <= 2) {
-          return {
-            ok: false,
-            status: 503,
-            text: async () => "Service temporarily unavailable",
-          } as unknown as Response;
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            queryId: "qid-retry",
-            data: [{ resolved: true }],
-            hasMore: false,
-          }),
-        } as unknown as Response;
-      }
-      if (urlStr.includes("/query/sql/close")) {
-        closeCalls++;
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ ok: true }),
-        } as unknown as Response;
-      }
-      return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
-    });
-
-    const gateway = new ZetarisGateway({
-      restUrl: "https://api.example.com/api/v1.0",
-      apiKey: "secret-key",
-      orgId: "org-456",
-      fetchFn: mockFetch,
-    });
-
     const result = await gateway.query("SELECT * FROM v_rain_daily");
-    expect(startCalls).toBe(3); // 2 retries + 1 initial
-    expect(closeCalls).toBe(1); // Closed via finally block
+    expect(callCount).toBe(3); // 2 retries + 1 initial
     expect(result.rows).toEqual([{ resolved: true }]);
   });
 
@@ -416,38 +461,20 @@ describe("ZetarisGateway HTTP and retry lifecycle", () => {
     expect(zErr.message).toContain("401");
   });
 
-  it("closes query in finally block when queryId was issued", async () => {
-    const endpointsCalled: string[] = [];
-    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
-      endpointsCalled.push(url.toString());
-      if (url.toString().includes("/query/sql/start")) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            queryId: "qid-cleanup-test",
-            data: [{ a: 1 }],
-            hasMore: false,
-          }),
-        } as unknown as Response;
-      }
-      // close endpoint
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ ok: true }),
-      } as unknown as Response;
+  it("supports configurable timeout defaulting to 180s", () => {
+    const defaultGateway = new ZetarisGateway({
+      restUrl: "https://api.example.com",
+      apiKey: "k",
+      orgId: "o",
     });
+    expect((defaultGateway as any).timeoutMs).toBe(180_000);
 
-    const gateway = new ZetarisGateway({
-      restUrl: "https://api.example.com/api/v1.0",
-      apiKey: "key",
-      orgId: "org",
-      fetchFn: mockFetch,
+    const customGateway = new ZetarisGateway({
+      restUrl: "https://api.example.com",
+      apiKey: "k",
+      orgId: "o",
+      timeoutMs: 60_000,
     });
-
-    await gateway.query("SELECT 1");
-    expect(endpointsCalled.some((url) => url.includes("/query/sql/start"))).toBe(true);
-    expect(endpointsCalled.some((url) => url.includes("/query/sql/close"))).toBe(true);
+    expect((customGateway as any).timeoutMs).toBe(60_000);
   });
 });

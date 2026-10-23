@@ -7,6 +7,7 @@ export interface ZetarisGatewayOptions {
   apiKey: string;
   orgId: string;
   queryLimit?: number;
+  timeoutMs?: number;
   fetchFn?: typeof fetch;
 }
 
@@ -24,6 +25,7 @@ export class ZetarisGateway implements DataGateway {
   private readonly apiKey: string;
   private readonly orgId: string;
   private readonly queryLimit: number;
+  private readonly timeoutMs: number;
   private readonly fetchFn: typeof fetch;
 
   constructor(options: ZetarisGatewayOptions) {
@@ -31,6 +33,9 @@ export class ZetarisGateway implements DataGateway {
     this.apiKey = options.apiKey;
     this.orgId = options.orgId;
     this.queryLimit = options.queryLimit ?? 5000;
+    const envTimeout = process.env.ZETARIS_TIMEOUT_MS ? Number(process.env.ZETARIS_TIMEOUT_MS) : undefined;
+    this.timeoutMs =
+      options.timeoutMs ?? (Number.isFinite(envTimeout) && envTimeout! > 0 ? envTimeout! : 180_000);
     this.fetchFn = options.fetchFn ?? fetch;
   }
 
@@ -44,71 +49,129 @@ export class ZetarisGateway implements DataGateway {
       });
     }
 
-    let queryId: string | undefined;
-    const rows: T[] = [];
-
     try {
-      const startResult = await this.postJson<{
-        queryId?: string;
-        id?: string;
-        rows?: T[];
-        data?: T[];
-        result?: T[];
-        hasMore?: boolean;
-      }>("/query/sql/start", {
-        sql,
-        params,
-        limit: this.queryLimit,
+      return await this.executeRun<T>(sql, params);
+    } catch (err: unknown) {
+      if (
+        err instanceof ZetarisError &&
+        err.status === 400 &&
+        /SHOW NAMESPACES \/ SHOW TABLES are disabled/i.test(err.message) &&
+        /^\s*show\s+databases\s*;?\s*$/i.test(sql)
+      ) {
+        return await this.executeRun<T>("SHOW UC NAMESPACES IN spark_catalog", params);
+      }
+      throw err;
+    }
+  }
+
+  private async executeRun<T>(
+    sql: string,
+    _params?: Record<string, unknown>
+  ): Promise<GatewayResult<T>> {
+    const queryId = crypto.randomUUID();
+    const body = {
+      queryId,
+      sql,
+      source: "SqlEditor",
+      limit: this.queryLimit,
+    };
+
+    const response = await this.postJson<Record<string, unknown>>("/sql-editor/sqls/run", body);
+    const rows = this.extractRows<T>(response);
+
+    return {
+      rows: rows.slice(0, this.queryLimit),
+      source: "live",
+      fetchedAt: new Date().toISOString(),
+      provenance: `Zetaris Cloud (${this.restUrl})`,
+    };
+  }
+
+  private extractRows<T>(json: Record<string, unknown>): T[] {
+    const rawData = json.data ?? json.rows ?? json.result;
+
+    if (!Array.isArray(rawData)) {
+      const topLevelKeys = Object.keys(json);
+      console.error(
+        "[ZetarisGateway] Response data is not an array. Top-level keys:",
+        topLevelKeys,
+        "Data type:",
+        typeof rawData
+      );
+      throw new ZetarisError({
+        message: `Zetaris response data is not an array. Keys: [${topLevelKeys.join(", ")}]`,
       });
+    }
 
-      queryId = startResult.queryId ?? startResult.id;
-      const initialRows = this.extractRows<T>(startResult);
-      rows.push(...initialRows);
+    if (rawData.length === 0) {
+      return [];
+    }
 
-      let hasMore = Boolean(startResult.hasMore);
-      while (hasMore && queryId && rows.length < this.queryLimit) {
-        const nextBatch = await this.postJson<{
-          rows?: T[];
-          data?: T[];
-          result?: T[];
-          hasMore?: boolean;
-        }>("/query/sql/next", {
-          queryId,
-          limit: Math.min(1000, this.queryLimit - rows.length),
+    const firstRow = rawData[0];
+
+    // Case 1: Array of objects
+    if (firstRow !== null && typeof firstRow === "object" && !Array.isArray(firstRow)) {
+      return rawData as T[];
+    }
+
+    // Case 2: Array of arrays -> map column names to objects
+    if (Array.isArray(firstRow)) {
+      const colNames = this.findColumnNames(json);
+      if (colNames && colNames.length > 0) {
+        return rawData.map((rowArr: unknown[]) => {
+          const obj: Record<string, unknown> = {};
+          colNames.forEach((colName, idx) => {
+            obj[colName] = rowArr[idx];
+          });
+          return obj as T;
         });
-
-        const nextRows = this.extractRows<T>(nextBatch);
-        if (nextRows.length === 0) break;
-        rows.push(...nextRows);
-        hasMore = Boolean(nextBatch.hasMore);
       }
 
-      return {
-        rows: rows.slice(0, this.queryLimit),
-        source: "live",
-        fetchedAt: new Date().toISOString(),
-        provenance: `Zetaris Cloud (${this.restUrl})`,
-      };
-    } finally {
-      if (queryId) {
-        await this.closeQuery(queryId);
-      }
+      // Cannot find column names
+      const topLevelKeys = Object.keys(json);
+      const firstRowShape = `array[${firstRow.length}] (${firstRow.map((v) => typeof v).join(", ")})`;
+      console.error(
+        "[ZetarisGateway] Cannot determine column names for row array. Top-level keys:",
+        topLevelKeys,
+        "First row shape:",
+        firstRowShape
+      );
+      throw new ZetarisError({
+        message: `Cannot determine column names from Zetaris response. Keys: [${topLevelKeys.join(", ")}], first row shape: ${firstRowShape}`,
+      });
     }
+
+    // Neither object nor array
+    const topLevelKeys = Object.keys(json);
+    const firstRowShape = typeof firstRow;
+    console.error(
+      "[ZetarisGateway] Unexpected row item shape. Top-level keys:",
+      topLevelKeys,
+      "First row shape:",
+      firstRowShape
+    );
+    throw new ZetarisError({
+      message: `Unexpected row item shape in Zetaris response. Keys: [${topLevelKeys.join(", ")}], shape: ${firstRowShape}`,
+    });
   }
 
-  private extractRows<T>(body: { rows?: T[]; data?: T[]; result?: T[] }): T[] {
-    if (Array.isArray(body.rows)) return body.rows;
-    if (Array.isArray(body.data)) return body.data;
-    if (Array.isArray(body.result)) return body.result;
-    return [];
-  }
-
-  private async closeQuery(queryId: string): Promise<void> {
-    try {
-      await this.postJson("/query/sql/close", { queryId });
-    } catch {
-      // Best-effort cleanup, do not mask primary query errors
+  private findColumnNames(json: Record<string, unknown>): string[] | null {
+    if (Array.isArray(json.headers) && json.headers.every((h) => typeof h === "string")) {
+      return json.headers as string[];
     }
+    if (Array.isArray(json.columns)) {
+      return json.columns.map((c) => (typeof c === "string" ? c : (c as any)?.name ?? String(c)));
+    }
+    if (Array.isArray(json.schema)) {
+      return json.schema.map((c) => (typeof c === "string" ? c : (c as any)?.name ?? String(c)));
+    }
+    if (Array.isArray(json.columnNames) && json.columnNames.every((h) => typeof h === "string")) {
+      return json.columnNames as string[];
+    }
+    if (Array.isArray(json.fields)) {
+      return json.fields.map((c) => (typeof c === "string" ? c : (c as any)?.name ?? String(c)));
+    }
+    return null;
   }
 
   private async postJson<R>(endpoint: string, body: Record<string, unknown>): Promise<R> {
@@ -117,6 +180,8 @@ export class ZetarisGateway implements DataGateway {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const requestId = crypto.randomUUID();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
       try {
         const response = await this.fetchFn(url, {
@@ -128,7 +193,7 @@ export class ZetarisGateway implements DataGateway {
             "X-Request-ID": requestId,
           },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30_000),
+          signal: controller.signal,
         });
 
         if (response.ok) {
@@ -160,6 +225,8 @@ export class ZetarisGateway implements DataGateway {
           message: `Network error connecting to Zetaris at ${url}: ${(err as Error).message}`,
           cause: err,
         });
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 

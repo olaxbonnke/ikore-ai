@@ -36,6 +36,7 @@ export function getGateway(env: Record<string, string | undefined> = process.env
       apiKey: apiKey!,
       orgId: orgId!,
       queryLimit: Number(env.ZETARIS_QUERY_LIMIT) || 5000,
+      timeoutMs: Number(env.ZETARIS_TIMEOUT_MS) || undefined,
     });
   }
 

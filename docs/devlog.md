@@ -143,3 +143,22 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - Added `MAX_DAILY_RAIN_MM = 200` to `scripts/fetch-snapshots.ts`. Any daily rainfall exceeding 200 mm is treated as invalid and stored as `null` (matching the `-999` missing sentinel).
   - The date and original spiked value are recorded in the snapshot's provenance and params. The simulator's existing missing-day policy (> 2 missing days excludes the analog year) gracefully handles any corrupted seasons without hiding risks.
   - Re-fetched snapshots for Ogbomoso and Iseyin: 0 spikes were nulled (both farms operate within valid meteorology). Planting debug simulation results for `farm_bisi_ogbomoso` at `asOf = 2026-04-10` remain robustly verified at 14.1% (`plant_now`), 0.7% (`wait_7`), and 0.7% (`wait_14`) with $n=35$.
+
+### 3.5 Zetaris Live SQL Client Integration
+- **Live Endpoint Contract**:
+  - Rewrote `ZetarisGateway.query()` to match Zetaris's official `scripts/zetaris_sql.py` (`RestChannel.run`):
+    - Submits POST to `{restUrl}/sql-editor/sqls/run` with payload `{ queryId, sql, source: "SqlEditor", limit: queryLimit }`.
+    - Authenticates via `Authorization: Bearer <apiKey>`, `X-Org-ID: <orgId>`, `X-Request-ID: <fresh uuid>`, `Content-Type: application/json`.
+    - Removed `/query/sql/next` and `/query/sql/close` calls.
+- **Dual Response Parsing (Array of Arrays & Array of Objects)**:
+  - Supports `response.data` as an array of objects or an array of row arrays mapped with `headers`, `columns`, `schema`, `fields`, or `columnNames`.
+  - Fallback logging: if format cannot be determined, logs response top-level keys and first row shape once (without tokens or secrets) and stops.
+- **Timeouts & Robustness**:
+  - Extended request timeout from 30s to 180s to accommodate initial Spark warming, configurable via `ZETARIS_TIMEOUT_MS`.
+  - Used explicit `AbortController` timer cancellation to eliminate libuv Windows process teardown assertions.
+  - Seamlessly handles Zetaris Lightning's namespace policy (mapping/falling back to `SHOW UC NAMESPACES IN spark_catalog` when unqualified `SHOW DATABASES` is queried).
+- **Verification**:
+  - `npm run zetaris:verify` connected to live Zetaris at `http://127.0.0.1:8888/api/v1.0`:
+    - `SELECT 1 rows: 1`
+    - `SHOW DATABASES rows: 1`
+  - Vitest test suite updated and passing: 43 tests passed across 5 test suites; `tsc --noEmit` clean.

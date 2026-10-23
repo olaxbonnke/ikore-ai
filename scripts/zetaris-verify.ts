@@ -26,11 +26,9 @@ async function verify(): Promise<void> {
 
     const dbs = await gateway.query("SHOW DATABASES");
     console.log(`SHOW DATABASES rows: ${dbs.rows.length}`);
-
-    process.exit(0);
   } catch (err) {
     console.error("Zetaris verification error:", (err as Error).message);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
