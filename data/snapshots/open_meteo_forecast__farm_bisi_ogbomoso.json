@@ -1,7 +1,7 @@
 {
   "source": "snapshot",
   "sourceUrl": "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=8.13&longitude=4.24&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos",
-  "fetchedAt": "2026-10-23T08:31:46.427Z",
+  "fetchedAt": "2026-10-23T09:27:23.928Z",
   "params": {
     "farmId": "farm_bisi_ogbomoso",
     "lat": 8.13,

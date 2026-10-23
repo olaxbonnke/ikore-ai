@@ -5,7 +5,12 @@ import { ZetarisError } from "../src/core/errors.ts";
 import { getGateway } from "../src/data/gateway.ts";
 import { SnapshotGateway } from "../src/data/snapshot.ts";
 import { isReadOnlySql, ZetarisGateway } from "../src/data/zetaris.ts";
-import { validateNasaYearlyRainfall } from "../scripts/fetch-snapshots.ts";
+import {
+  MAX_DAILY_RAIN_MM,
+  parseDailyRainMm,
+  type NulledSpikeDay,
+  validateNasaYearlyRainfall,
+} from "../scripts/fetch-snapshots.ts";
 
 describe("Snapshot files integrity", () => {
   it("verifies that each snapshot file in data/snapshots parses as JSON and has rows", () => {
@@ -29,7 +34,7 @@ describe("Snapshot files integrity", () => {
 
   it("verifies seeded farms have NASA POWER history and Open-Meteo forecasts", () => {
     const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
-    const farmIds = ["farm_bisi_ogbomoso", "farm_musa_kaduna", "farm_ade_iseyin"];
+    const farmIds = ["farm_bisi_ogbomoso", "farm_ade_iseyin"];
 
     for (const farmId of farmIds) {
       const nasaPath = path.join(snapshotsDir, `nasa_power_daily__${farmId}.json`);
@@ -60,6 +65,69 @@ describe("Snapshot files integrity", () => {
     expect(() => validateNasaYearlyRainfall("farm_test", fakeRows)).toThrow(
       /Sanity check failed for farm farm_test in year 2020: total PRECTOTCORR was 29000\.0 mm, outside allowable range \[600, 2550\] mm/
     );
+  });
+
+  it("fixture day with a spike of 724.3 mm becomes null and is recorded in provenance", async () => {
+    // 1. Verify single-day spike logic
+    const nulled: NulledSpikeDay[] = [];
+    const val = parseDailyRainMm("2022-07-15", 724.3, nulled);
+    expect(val).toBeNull();
+    expect(nulled).toEqual([{ date: "2022-07-15", originalRainMm: 724.3 }]);
+
+    // 2. Fixture test through SnapshotGateway
+    const snapshotsDir = path.resolve(process.cwd(), "data", "snapshots");
+    const testFileName = "rain_daily__fixture_spike_test.json";
+    const testFilePath = path.join(snapshotsDir, testFileName);
+
+    const testNulled: NulledSpikeDay[] = [];
+    const rows = [
+      {
+        farm_id: "farm_test",
+        date: "2022-07-14",
+        rain_mm: parseDailyRainMm("2022-07-14", 18.5, testNulled),
+      },
+      {
+        farm_id: "farm_test",
+        date: "2022-07-15",
+        rain_mm: parseDailyRainMm("2022-07-15", 724.3, testNulled),
+      },
+    ];
+
+    const provenance = `https://power.larc.nasa.gov/api/temporal/daily/point | Nulled spikes (> ${MAX_DAILY_RAIN_MM} mm): ${testNulled
+      .map((d) => `${d.date}: ${d.originalRainMm} mm`)
+      .join(", ")}`;
+
+    fs.writeFileSync(
+      testFilePath,
+      JSON.stringify(
+        {
+          source: "snapshot",
+          sourceUrl: "https://power.larc.nasa.gov/api/temporal/daily/point",
+          provenance,
+          fetchedAt: new Date().toISOString(),
+          params: { file: testFileName },
+          nulledDays: testNulled,
+          rows,
+        },
+        null,
+        2
+      ),
+      "utf-8"
+    );
+
+    try {
+      const gateway = new SnapshotGateway(snapshotsDir);
+      const res = await gateway.query("SELECT * FROM weather", { file: testFileName });
+      const spikeRow = res.rows.find((r: any) => r.date === "2022-07-15") as any;
+      expect(spikeRow).toBeDefined();
+      expect(spikeRow.rain_mm).toBeNull();
+      expect(res.provenance).toContain("2022-07-15");
+      expect(res.provenance).toContain("724.3");
+    } finally {
+      if (fs.existsSync(testFilePath)) {
+        fs.unlinkSync(testFilePath);
+      }
+    }
   });
 
   it("verifies no snapshot file marked 'snapshot' is missing a real sourceUrl or sourceUrls", () => {

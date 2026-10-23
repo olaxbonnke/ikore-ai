@@ -131,3 +131,15 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - Re-ran `npm run snapshots:fetch`: `farm_bisi_ogbomoso` 2000-04-06 verified at 4.79 mm, year 2000 total verified at 1,235.9 mm.
   - Re-ran `scripts/debug-planting.ts`: verified planting options remain completely unchanged (`14.1%`, `0.7%`, `0.7%`; $n = 35$).
 - **Verification**: `npx tsc --noEmit` passed with 0 errors; all 40 vitest tests passed across 5 test suites.
+
+### 3.4 Data Limitations Note: Oyo Focus & Spike Guard
+- **Kaduna Dropped for Daily Spikes**:
+  - Investigation into Kaduna (`farm_musa_kaduna`, lat 10.52, lon 7.44) revealed severe, physically impossible single-day precipitation spikes in NASA POWER PRECTOTCORR from 2019 onward (e.g. 724.3 mm on a single day in 2022, 340.1 mm in 2023; pre-2019 maximum daily precipitation was ~46-65 mm).
+  - Consequently, `farm_musa_kaduna` was removed entirely from active snapshots, seeds, and tests. Oko is strictly focused on Oyo State (`farm_bisi_ogbomoso` and `farm_ade_iseyin`).
+- **NASA vs ERA5 Divergence in Oyo**:
+  - NASA PRECTOTCORR at Oyo farms exhibits no extreme single-day spikes (maximum observed day is ~114 mm), but reads systematically higher than ERA5 reanalysis from 2018 onward. Because ERA5 is documented to underestimate West African monsoon rainfall, absolute rainfall totals across datasets carry inherent uncertainty.
+  - Crucially, Oko's decision models rely on **relative timing comparisons** (dry spell durations, analog-year similarity weighting, and relative adequacy across candidate planting windows) rather than uncalibrated absolute volumetric thresholds.
+- **Daily Spike Guard (`MAX_DAILY_RAIN_MM = 200`)**:
+  - Added `MAX_DAILY_RAIN_MM = 200` to `scripts/fetch-snapshots.ts`. Any daily rainfall exceeding 200 mm is treated as invalid and stored as `null` (matching the `-999` missing sentinel).
+  - The date and original spiked value are recorded in the snapshot's provenance and params. The simulator's existing missing-day policy (> 2 missing days excludes the analog year) gracefully handles any corrupted seasons without hiding risks.
+  - Re-fetched snapshots for Ogbomoso and Iseyin: 0 spikes were nulled (both farms operate within valid meteorology). Planting debug simulation results for `farm_bisi_ogbomoso` at `asOf = 2026-04-10` remain robustly verified at 14.1% (`plant_now`), 0.7% (`wait_7`), and 0.7% (`wait_14`) with $n=35$.

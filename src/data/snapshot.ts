@@ -26,11 +26,25 @@ export class SnapshotGateway implements DataGateway {
     const rows = (Array.isArray(parsed) ? parsed : (parsed.rows ?? [])) as T[];
     const isMock = parsed.source === "mock" || parsed.source === "assumption";
     const source: "mock" | "snapshot" = isMock ? "mock" : "snapshot";
-    const provenance = isMock
+    let provenance = isMock
       ? (parsed.note || fileName)
-      : (Array.isArray(parsed.sourceUrls)
+      : (parsed.provenance ||
+         (Array.isArray(parsed.sourceUrls)
           ? parsed.sourceUrls.join(" & ")
-          : (parsed.sourceUrl || parsed.source || fileName));
+          : (parsed.sourceUrl || parsed.source || fileName)));
+
+    if (
+      parsed.nulledDays &&
+      Array.isArray(parsed.nulledDays) &&
+      parsed.nulledDays.length > 0 &&
+      !provenance.includes("Nulled")
+    ) {
+      const nulledStr = parsed.nulledDays
+        .map((d: any) => `${d.date}: ${d.originalRainMm ?? d.originalValue} mm`)
+        .join(", ");
+      provenance = `${provenance} | Nulled spikes (> 200 mm): ${nulledStr}`;
+    }
+
     const fetchedAt = parsed.fetchedAt || new Date().toISOString();
 
     return {

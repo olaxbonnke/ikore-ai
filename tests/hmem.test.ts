@@ -42,10 +42,6 @@ describe("H-MEM farm memory wrapper", () => {
     const bisiResult = await ask("farm_bisi_ogbomoso", "storage method");
     expect(bisiResult.memories[0].content.toLowerCase()).toContain("sack");
 
-    // Musa uses sack_treated
-    const musaResult = await ask("farm_musa_kaduna", "storage method");
-    expect(musaResult.memories[0].content.toLowerCase()).toContain("sack_treated");
-
     // Baba Ade uses pics
     const adeResult = await ask("farm_ade_iseyin", "storage method");
     expect(adeResult.memories[0].content.toLowerCase()).toContain("pics");

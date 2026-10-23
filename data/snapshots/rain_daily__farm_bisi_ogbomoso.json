@@ -5,13 +5,17 @@
     "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=4.24&latitude=8.13&start=19910101&end=20260409&format=JSON",
     "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=8.13&longitude=4.24&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos"
   ],
-  "fetchedAt": "2026-10-23T08:31:46.432Z",
+  "provenance": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=4.24&latitude=8.13&start=19910101&end=20260409&format=JSON & https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=8.13&longitude=4.24&start_date=2026-04-10&end_date=2026-04-25&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Africa%2FLagos",
+  "fetchedAt": "2026-10-23T09:27:23.932Z",
   "params": {
     "farmId": "farm_bisi_ogbomoso",
     "demoDate": "2026-04-10",
     "historyCount": 12883,
-    "forecastCount": 16
+    "forecastCount": 16,
+    "nulledDaysCount": 0,
+    "nulledDays": []
   },
+  "nulledDays": [],
   "rows": [
     {
       "farm_id": "farm_bisi_ogbomoso",

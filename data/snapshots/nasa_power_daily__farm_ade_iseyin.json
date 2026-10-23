@@ -1,14 +1,18 @@
 {
   "source": "snapshot",
   "sourceUrl": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=3.6&latitude=7.97&start=19910101&end=20260409&format=JSON",
-  "fetchedAt": "2026-10-23T08:31:52.753Z",
+  "provenance": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=3.6&latitude=7.97&start=19910101&end=20260409&format=JSON",
+  "fetchedAt": "2026-10-23T09:27:26.663Z",
   "params": {
     "farmId": "farm_ade_iseyin",
     "lat": 7.97,
     "lon": 3.6,
     "start": "19910101",
-    "end": "20260409"
+    "end": "20260409",
+    "nulledDaysCount": 0,
+    "nulledDays": []
   },
+  "nulledDays": [],
   "rows": [
     {
       "farm_id": "farm_ade_iseyin",

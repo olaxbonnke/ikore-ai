@@ -7,7 +7,7 @@ export default function HomePage() {
         <p className="text-sm font-medium uppercase tracking-wide text-oko-green">Oko · ọkọ̀</p>
         <h1 className="mt-2 text-3xl font-semibold text-oko-green">Farm decision advisor</h1>
         <p className="mt-3 text-base leading-relaxed text-oko-soil/90">
-          Chat, evidence panel, and morning briefings for maize farmers in Oyo and Kaduna. Core
+          Chat, evidence panel, and morning briefings for maize farmers in Oyo State. Core
           agent loop and data layers are stubbed — Day 1 scaffold.
         </p>
       </div>

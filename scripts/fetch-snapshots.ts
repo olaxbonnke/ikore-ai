@@ -19,12 +19,40 @@ interface FarmSeed {
   zone: string;
 }
 
+export const MAX_DAILY_RAIN_MM = 200;
+
+export interface NulledSpikeDay {
+  date: string;
+  originalRainMm: number;
+}
+
+export function parseDailyRainMm(
+  date: string,
+  rawRain: number | null | undefined,
+  nulledSpikes: NulledSpikeDay[]
+): number | null {
+  if (rawRain === -999 || rawRain === null || rawRain === undefined) {
+    return null;
+  }
+  const rain = Number(rawRain);
+  if (!Number.isFinite(rain)) {
+    return null;
+  }
+  if (rain > MAX_DAILY_RAIN_MM) {
+    nulledSpikes.push({ date, originalRainMm: rain });
+    return null;
+  }
+  return rain;
+}
+
 interface SnapshotFile<T> {
   source: string;
   sourceUrl?: string;
   sourceUrls?: string[];
+  provenance?: string;
   fetchedAt: string;
   params: Record<string, unknown>;
+  nulledDays?: NulledSpikeDay[];
   rows: T[];
 }
 
@@ -135,7 +163,7 @@ async function fetchNasaPower(
   farm: FarmSeed,
   demoDate: string,
   outDir: string
-): Promise<{ rows: any[]; url: string }> {
+): Promise<{ rows: any[]; url: string; nulledDays: NulledSpikeDay[] }> {
   const endYmd = getNasaEndDate(demoDate);
   const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=${farm.lon}&latitude=${farm.lat}&start=19910101&end=${endYmd}&format=JSON`;
 
@@ -152,15 +180,13 @@ async function fetchNasaPower(
 
   const p = finalData.properties.parameter;
   const dates = Object.keys(p.PRECTOTCORR || {}).sort();
+  const nulledDays: NulledSpikeDay[] = [];
   const rows = dates.map((ymd) => {
     const date = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
     const rain = p.PRECTOTCORR?.[ymd];
     const tmax = p.T2M_MAX?.[ymd];
     const tmin = p.T2M_MIN?.[ymd];
-    const rainMm =
-      rain === -999 || rain === null || rain === undefined
-        ? null
-        : Number(rain);
+    const rainMm = parseDailyRainMm(date, rain, nulledDays);
     return {
       farm_id: farm.id,
       date,
@@ -173,18 +199,36 @@ async function fetchNasaPower(
   // Fail-loud sanity check: never write snapshot if annual bounds are violated
   validateNasaYearlyRainfall(farm.id, rows);
 
+  const nulledNotes =
+    nulledDays.length > 0
+      ? ` | Nulled spikes (> ${MAX_DAILY_RAIN_MM} mm): ${nulledDays
+          .map((d) => `${d.date}: ${d.originalRainMm} mm`)
+          .join(", ")}`
+      : "";
+  const provenance = `${url}${nulledNotes}`;
+
   const snapshot: SnapshotFile<typeof rows[0]> = {
     source: "snapshot",
     sourceUrl: url,
+    provenance,
     fetchedAt: new Date().toISOString(),
-    params: { farmId: farm.id, lat: farm.lat, lon: farm.lon, start: "19910101", end: endYmd },
+    params: {
+      farmId: farm.id,
+      lat: farm.lat,
+      lon: farm.lon,
+      start: "19910101",
+      end: endYmd,
+      nulledDaysCount: nulledDays.length,
+      nulledDays,
+    },
+    nulledDays,
     rows,
   };
 
   const filePath = path.join(outDir, `nasa_power_daily__${farm.id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
-  console.log(`[NASA POWER] Saved ${rows.length} rows to ${path.basename(filePath)}`);
-  return { rows, url };
+  console.log(`[NASA POWER] Saved ${rows.length} rows (${nulledDays.length} spikes nulled) to ${path.basename(filePath)}`);
+  return { rows, url, nulledDays };
 }
 
 async function fetchOpenMeteo(farm: FarmSeed, demoDate: string, outDir: string): Promise<{ rows: any[]; url: string }> {
@@ -238,6 +282,7 @@ function buildRainDailySnapshot(
   meteoRows: any[],
   nasaUrl: string,
   meteoUrl: string,
+  nulledDays: NulledSpikeDay[],
   demoDate: string,
   outDir: string
 ): void {
@@ -263,23 +308,35 @@ function buildRainDailySnapshot(
   }));
 
   const combinedRows = [...historyRows, ...forecastRows];
+  const nulledNotes =
+    nulledDays.length > 0
+      ? ` | Nulled spikes (> ${MAX_DAILY_RAIN_MM} mm): ${nulledDays
+          .map((d) => `${d.date}: ${d.originalRainMm} mm`)
+          .join(", ")}`
+      : "";
+  const provenance = `${[nasaUrl, meteoUrl].join(" & ")}${nulledNotes}`;
+
   const snapshot: SnapshotFile<typeof combinedRows[0]> = {
     source: "snapshot",
     sourceUrl: nasaUrl,
     sourceUrls: [nasaUrl, meteoUrl],
+    provenance,
     fetchedAt: new Date().toISOString(),
     params: {
       farmId: farm.id,
       demoDate,
       historyCount: historyRows.length,
       forecastCount: forecastRows.length,
+      nulledDaysCount: nulledDays.length,
+      nulledDays,
     },
+    nulledDays,
     rows: combinedRows,
   };
 
   const filePath = path.join(outDir, `rain_daily__${farm.id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
-  console.log(`[Rain Daily] Saved ${combinedRows.length} real fetched rows (${historyRows.length} history + ${forecastRows.length} forecast) to ${path.basename(filePath)}`);
+  console.log(`[Rain Daily] Saved ${combinedRows.length} real fetched rows (${historyRows.length} history + ${forecastRows.length} forecast, ${nulledDays.length} spikes nulled) to ${path.basename(filePath)}`);
 }
 
 function convertCsvFiles(projectRoot: string, outDir: string): void {
@@ -351,27 +408,29 @@ async function main(): Promise<void> {
   }
 
   const rawFarms = parseCsv(fs.readFileSync(farmsCsvPath, "utf-8"));
-  const farms: FarmSeed[] = rawFarms.map((r) => ({
-    id: r.id,
-    ownerName: r.owner_name,
-    lat: Number(r.lat),
-    lon: Number(r.lon),
-    state: r.state,
-    lga: r.lga,
-    crop: r.crop,
-    hectares: Number(r.hectares),
-    storage: r.storage,
-    preferredLang: r.preferred_lang,
-    riskAversion: r.risk_aversion,
-    zone: r.zone,
-  }));
+  const farms: FarmSeed[] = rawFarms
+    .filter((r) => r.state === "Oyo")
+    .map((r) => ({
+      id: r.id,
+      ownerName: r.owner_name,
+      lat: Number(r.lat),
+      lon: Number(r.lon),
+      state: r.state,
+      lga: r.lga,
+      crop: r.crop,
+      hectares: Number(r.hectares),
+      storage: r.storage,
+      preferredLang: r.preferred_lang,
+      riskAversion: r.risk_aversion,
+      zone: r.zone,
+    }));
 
-  console.log(`Found ${farms.length} seeded farms.`);
+  console.log(`Found ${farms.length} seeded Oyo farms.`);
 
   for (const farm of farms) {
-    const { rows: nasaRows, url: nasaUrl } = await fetchNasaPower(farm, demoDate, outDir);
+    const { rows: nasaRows, url: nasaUrl, nulledDays } = await fetchNasaPower(farm, demoDate, outDir);
     const { rows: meteoRows, url: meteoUrl } = await fetchOpenMeteo(farm, demoDate, outDir);
-    buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, demoDate, outDir);
+    buildRainDailySnapshot(farm, nasaRows, meteoRows, nasaUrl, meteoUrl, nulledDays, demoDate, outDir);
   }
 
   console.log("All snapshots fetched successfully!");

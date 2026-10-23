@@ -2,7 +2,5 @@
 farm_id,season_year,planting_date,germination_ok,yield_bags,sale_month,sale_price_per_bag
 farm_bisi_ogbomoso,2024,2024-04-12,yes,38,2024-09,42000
 farm_bisi_ogbomoso,2025,2025-04-18,yes,42,2025-10,48000
-farm_musa_kaduna,2024,2024-05-28,yes,65,2024-11,40000
-farm_musa_kaduna,2025,2025-06-02,yes,70,2025-12,46000
 farm_ade_iseyin,2024,2024-04-05,no,22,2024-08,44000
 farm_ade_iseyin,2025,2025-04-20,yes,34,2025-10,50000
