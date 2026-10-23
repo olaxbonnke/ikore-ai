@@ -35,7 +35,24 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
 - Prompt: "Implement Oko's data layer behind one interface so we can run on snapshot data now and switch to live Zetaris later via .env only: DataGateway, SnapshotGateway, ZetarisGateway, zetaris-verify, and tests."
 - Result: `npx tsc --noEmit` passed; 15 vitest tests passed across 2 test files (SnapshotGateway returns snapshot rows with filename provenance, getGateway falls back on empty/missing env or DATA_MODE=snapshot, read-only guard rejects INSERT/DROP, ZetarisGateway handles headers, 5xx retries, 4xx non-retry, and query close in finally block); `npm run zetaris:verify` prints "Zetaris not configured - using SnapshotGateway" and exits 0.
 
-### 1.3 Snapshot Fetching
+### 1.3 Zetaris: how the blocker was solved (Fri 23 Oct 2026)
+
+The two official routes to running Zetaris were both closed to me. The local Docker install needs about 6 to 8 GB of memory for Docker alone, and my laptop has 8 GB in total. The managed route runs on your own AWS account, and AWS declined my Nigerian Naira card at account verification, so I couldn't create the account the cluster needs.
+
+I emailed the organisers and asked on the hackathon's Zetaris help channel. The Zetaris team confirmed that they don't host instances for participants and that the approved routes are AWS or the local Docker install. A Zetaris team member then confirmed that a 4-core, 16 GB GitHub Codespace has enough resources to run the local install, which gave me a third path that stays within the rules.
+
+What I set up:
+- A private repository (oko-zetaris-box) with a devcontainer that requests a 4-core, 16 GB Codespace. The licensed Zetaris platform bundle and its .env stay inside the Codespace and are never committed.
+- The standard local Docker Compose install of Zetaris, run inside the Codespace and checked with the platform's own verification script.
+- An SSH tunnel from my Windows machine (gh codespace ssh with port forwards for 3000 and 8888), because the simpler gh codespace ports forward command failed with a channel error. With the tunnel open, the Zetaris UI and API appear on localhost as if Zetaris were running on my laptop.
+- A separate PostgreSQL container (oko-postgres) on the same Docker network, registered in Zetaris as the JDBC datasource oko_pg. Ikore's farms, farm records, prices and 25,798 days of rainfall are loaded there, and the agent reads them only through Zetaris queries.
+- Credentials come from .env and are templated into the SQL, so no password appears in the repository or its history.
+
+While access was blocked I kept building against a SnapshotGateway that returns saved query results through the same interface. Now that Zetaris is live, the planting decision gives identical output whether it runs live through Zetaris or from snapshots, which is checked on every run.
+
+Known limitations: Codespaces on a free GitHub account have a monthly usage limit, so I stop the Codespace when I'm not working and use snapshot mode for day-to-day coding. This setup suits a hackathon. A real deployment would run Zetaris on proper cloud infrastructure.
+
+### 1.4 Snapshot Fetching
 - Implemented `scripts/fetch-snapshots.ts` and npm script `snapshots:fetch`.
 - Fetched NASA POWER daily climate data (PRECTOTCORR, T2M_MAX, T2M_MIN) from 1991 to present for all 3 seeded farms (13,077 daily rows each).
 - Fetched Open-Meteo 16-day historical forecast as of `OKO_DEMO_DATE` (2026-04-10) for all 3 seeded farms.
