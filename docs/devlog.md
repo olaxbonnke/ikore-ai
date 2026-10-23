@@ -92,3 +92,23 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
     - **Wait 7 days (`2026-04-17`)**: Replant risk: 0.0%, Establishment adequacy: p10=100.0%, p50=100.0%, p90=100.0%, Expected value: ₦1,400,000, Score: 1,400,000.
     - **Wait 14 days (`2026-04-24`)**: Replant risk: 0.0%, Establishment adequacy: p10=100.0%, p50=100.0%, p90=100.0%, Expected value: ₦1,400,000, Score: 1,400,000.
 - **Compilation**: `npx tsc --noEmit` passed cleanly with 0 errors.
+
+### 3.2 Day 3.1 Review Fixes: Plausibility, Scaling, and Pure Simulation
+- **Root Cause & Diagnosis**:
+  - Added `scripts/debug-planting.ts` printing per-year diagnostic table across all 35 analog years (1991 to 2025).
+  - Identified two bugs causing the implausible 0% replant / 100% adequacy across all dates:
+    1. **NASA POWER 24x unit multiplier**: When NASA POWER API v2.10.1 was queried with a future end date (`20261020`), its internal flux aggregation returned `PRECTOTCORR` with an hourly accumulation factor of 24x (e.g., 1991-04-01 was 46.08 mm instead of 1.92 mm; 2024-04-06 was 196.56 mm instead of 8.19 mm; annual rainfall in 2000 was 29,661 mm instead of 1,235.9 mm). This flooded the simulation with 2,000-5,000 mm of establishment rain and eliminated dry days (< 1.0 mm).
+    2. **Forecast Splicing onto History**: Splicing the 2026 Open-Meteo forecast onto the first 16 days of every historical year masked each year's historical climate during the critical seedling stage.
+- **Fixes Applied**:
+  - **Unit Correction**: In `scripts/fetch-snapshots.ts`, divided NASA POWER `PRECTOTCORR` by 24 to restore true `mm/day`. Preserved `null` for missing sentinels (`-999`) rather than coercing to `0`. Re-ran `npm run snapshots:fetch` to update all snapshot files.
+  - **Historical Analog Isolation**: Analog years evaluate THAT historical year's observed daily weather for seedling dry spells ($D+1..D+21$) and 30-day establishment ($D..D+30$). Forecast data is only used for the upcoming 2026 season.
+  - **Missing-Day Policy**: In `src/core/simulate/stats.ts` (`longestDrySpell`), missing days (`null`) do NOT reset `currentStreak`, preventing hidden seedling death risks. If $>2$ missing days occur in seedling or establishment windows, the year is excluded and recorded in `evidence.excludedYears`. If $\le 2$ missing days occur, the year is retained with `lowConfidence: true`.
+  - **Adequacy & Spread**: Returned uncapped `establishmentRainMm: { p10, p50, p90 }` alongside capped `rainfallAdequacy: { p10, p50, p90 }` (capped at 100 mm). Constants cited from DESIGN.md 6.1 or marked as assumptions.
+  - **Removed Invented Economics**: Deleted all default economic constants (`DEFAULT_HECTARES`, `DEFAULT_BASE_YIELD_KG_PER_HA`, `DEFAULT_MAIZE_PRICE_NGN_PER_KG`, `DEFAULT_SEED_KG_PER_HA`, `DEFAULT_SEED_PRICE_NGN_PER_KG`, `DEFAULT_REPLANT_LABOUR_NGN_PER_HA`, `DEFAULT_RISK_AVERSION_LAMBDA`, default scores). Simulation returns pure weather-derived risk, adequacy, establishment rain, n, evidence, and notes unless typed economics are explicitly passed.
+  - **Temporary script explanation (`update-leap.ts`)**: Clarified that `update-leap.ts` was a one-time utility to generate historical years 2016-2026 in `tests/fixtures/simulate/leap_year.json` so the fixture satisfied the minimum 5 analog years requirement. No tests were loosened.
+  - **Regression Test**: Added test in `tests/planting.test.ts` verifying that if half of analog years have a 10-day dry spell, `replantProbability` is $\approx 0.5$ and adequacy $p10 < p90$.
+- **Corrected Real-Data Simulation Results (`farm_bisi_ogbomoso`, `asOf=2026-04-10`)**:
+  - **Plant now (`2026-04-10`)**: Replant probability: 14.1%, Establishment rain: p10=60.0 mm, p50=167.9 mm, p90=230.7 mm, Rainfall adequacy: p10=60.0%, p50=100.0%, p90=100.0%, $n = 35$, Low confidence: false.
+  - **Wait 7 days (`2026-04-17`)**: Replant probability: 0.7%, Establishment rain: p10=100.7 mm, p50=159.2 mm, p90=251.9 mm, Rainfall adequacy: p10=99.5%, p50=100.0%, p90=100.0%, $n = 35$, Low confidence: false.
+  - **Wait 14 days (`2026-04-24`)**: Replant probability: 0.7%, Establishment rain: p10=108.0 mm, p50=159.7 mm, p90=267.2 mm, Rainfall adequacy: p10=100.0%, p50=100.0%, p90=100.0%, $n = 35$, Low confidence: false.
+- **Verification**: `npx tsc --noEmit` clean, 39 vitest tests passing across 5 test suites.

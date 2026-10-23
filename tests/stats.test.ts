@@ -58,12 +58,18 @@ describe("pure stats helpers (simulate/stats.ts)", () => {
     expect(res.longestDrySpellDays).toBe(5);
     expect(res.missingDaysCount).toBe(0);
 
-    // With nulls
+    // With nulls (missing day does NOT break dry streak, as that would hide risk)
     const withNulls = [0, 0, null, 0, 0];
     const resNulls = longestDrySpell(withNulls, 0, withNulls.length - 1, 1.0);
-    // null breaks the streak: max streak is 2, not 4
-    expect(resNulls.longestDrySpellDays).toBe(2);
+    // null does not break the streak: max streak is 5 (0, 0, null, 0, 0)
+    expect(resNulls.longestDrySpellDays).toBe(5);
     expect(resNulls.missingDaysCount).toBe(1);
+
+    // Wet day (>= 1.0 mm) DOES break the streak
+    const withWet = [0, 0, 10, 0, 0];
+    const resWet = longestDrySpell(withWet, 0, withWet.length - 1, 1.0);
+    expect(resWet.longestDrySpellDays).toBe(2);
+    expect(resWet.missingDaysCount).toBe(0);
 
     // All wet
     const allWet = [10, 20, 15, 30];

@@ -108,10 +108,17 @@ async function fetchNasaPower(farm: FarmSeed, outDir: string): Promise<{ rows: a
     const rain = p.PRECTOTCORR?.[ymd];
     const tmax = p.T2M_MAX?.[ymd];
     const tmin = p.T2M_MIN?.[ymd];
+    // NASA POWER Daily API v2.10.1 returns PRECTOTCORR with an internal 24x factor
+    // (hourly flux integrated over 24h without daily rate division) when querying multi-decade spans.
+    // Convert to true mm/day. Treat -999 sentinel as missing (null).
+    const rainMm =
+      rain === -999 || rain === null || rain === undefined
+        ? null
+        : Number((Number(rain) / 24).toFixed(3));
     return {
       farm_id: farm.id,
       date,
-      rain_mm: rain === -999 ? null : Number(rain),
+      rain_mm: rainMm,
       t2m_max: tmax === -999 ? null : Number(tmax),
       t2m_min: tmin === -999 ? null : Number(tmin),
     };
@@ -191,7 +198,7 @@ function buildRainDailySnapshot(
     .map((r) => ({
       farm_id: farm.id,
       date: r.date,
-      rain_mm: r.rain_mm ?? 0,
+      rain_mm: r.rain_mm !== null && r.rain_mm !== undefined ? r.rain_mm : null,
       tmax: r.t2m_max ?? null,
       tmin: r.t2m_min ?? null,
       source: "history",

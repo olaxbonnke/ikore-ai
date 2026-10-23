@@ -142,13 +142,16 @@ export function rollingWindowSums(values: number[], windowSize: number): number[
 
 /**
  * Measures the longest continuous run of dry days within a slice of daily rainfall.
- * Missing days (null) are NOT invented as dry days; they are tracked explicitly and
- * break the consecutive dry day sequence conservatively.
+ *
+ * Missing-day policy (Day 3.1 review):
+ * A missing day (null or undefined) must NOT break a dry streak, because that hides risk.
+ * A missing day continues the streak (treated as unknown / non-breaking).
+ * Only a verified wet day (rain >= dryThresholdMm) breaks the dry streak.
  *
  * @param series Daily rainfall values in mm (or null if missing)
  * @param startIndex Inclusive start index in series
  * @param endIndex Inclusive end index in series
- * @param dryThresholdMm Threshold below which a day is considered dry (< 1.0 mm by default)
+ * @param dryThresholdMm Threshold below which a day is considered dry (< 1.0 mm by default, DESIGN.md section 6.1)
  */
 export function longestDrySpell(
   series: (number | null | undefined)[],
@@ -167,7 +170,11 @@ export function longestDrySpell(
     const val = series[i];
     if (val === null || val === undefined || !Number.isFinite(val)) {
       missingDaysCount++;
-      currentStreak = 0; // missing day is not assumed dry
+      // Missing day must NOT break dry streak, because that hides risk.
+      currentStreak++;
+      if (currentStreak > maxStreak) {
+        maxStreak = currentStreak;
+      }
     } else if (val < dryThresholdMm) {
       currentStreak++;
       if (currentStreak > maxStreak) {
