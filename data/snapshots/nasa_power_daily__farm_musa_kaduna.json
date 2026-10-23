@@ -1,7 +1,7 @@
 {
   "source": "snapshot",
   "sourceUrl": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=7.44&latitude=10.52&start=19910101&end=20261020&format=JSON",
-  "fetchedAt": "2026-10-22T11:30:32.103Z",
+  "fetchedAt": "2026-10-23T07:10:10.690Z",
   "params": {
     "farmId": "farm_musa_kaduna",
     "lat": 10.52,
@@ -91544,9 +91544,9 @@
     {
       "farm_id": "farm_musa_kaduna",
       "date": "2026-10-20",
-      "rain_mm": null,
-      "t2m_max": null,
-      "t2m_min": null
+      "rain_mm": 0,
+      "t2m_max": 33.86,
+      "t2m_min": 21.19
     }
   ]
 }

@@ -50,3 +50,15 @@ export class ValidationError extends Error {
     this.name = "ValidationError";
   }
 }
+
+export class SimulationError extends Error {
+  readonly reason?: string;
+  readonly n?: number;
+
+  constructor(message: string, options?: { reason?: string; n?: number; cause?: unknown }) {
+    super(message, { cause: options?.cause });
+    this.name = "SimulationError";
+    this.reason = options?.reason;
+    this.n = options?.n;
+  }
+}

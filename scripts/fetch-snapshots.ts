@@ -185,10 +185,9 @@ function buildRainDailySnapshot(
   demoDate: string,
   outDir: string
 ): void {
-  // Combine recent NASA POWER history for 2026 before demoDate with 16-day Open-Meteo forecast
-  const demoYear = demoDate.slice(0, 4);
+  // Combine full NASA POWER history before demoDate with 16-day Open-Meteo forecast
   const historyRows = nasaRows
-    .filter((r) => r.date >= `${demoYear}-01-01` && r.date < demoDate)
+    .filter((r) => r.date < demoDate)
     .map((r) => ({
       farm_id: farm.id,
       date: r.date,

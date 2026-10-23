@@ -67,3 +67,28 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
   - Updated `scripts/fetch-snapshots.ts` so `rain_daily__*.json` credits both sources via `sourceUrls: [NASA, Open-Meteo]` (keeping `sourceUrl` as NASA for compatibility), and updated `SnapshotGateway` to list both in provenance.
   - Cleaned up duplicated root `devlog.md`, standardizing on `docs/devlog.md`.
   - Result: `npx tsc --noEmit` clean pass; all 24 vitest tests passed.
+
+## Day 3: Fri 23 Oct 2026
+
+### 3.1 Planting Simulation Core (Pure & Deterministic)
+- **Built**:
+  - `src/core/simulate/stats.ts`: pure statistical helpers including `standardDeviation`, `weightedMean`, `weightedPercentile` (Hmisc midpoint continuous quantile interpolation), `weightedQuantiles` (p10, p50, p90), `rollingWindowSums`, `longestDrySpell` (missing values handled without fabricating data), `analogYearWeights`, and pure UTC date arithmetic (`addDays`, `daysBetween`, `isLeapYear`, `alignDateToYear` with Feb 29 leap-day alignment).
+  - `src/core/simulate/planting.ts`: pure planting-window simulation returning exactly 3 options (`plant_now`, `wait_7`, `wait_14`).
+  - Added typed `SimulationError` to `src/core/errors.ts`.
+- **Formulas & Agroclimatology Rules**:
+  - **Analog-year weighting**: $w_y = \exp(-|R21_y - R21_{now}| / \sigma)$, where $R21$ is cumulative rainfall in the 21 days before `asOf`, and $\sigma = \text{stdDev}(R21)$ across historical analog years (1991 onward).
+  - **False-start / replant risk**: $D$ is candidate planting date; a false start occurs if a dry spell $> 7$ consecutive days ($< 1.0$ mm) happens during the seedling stage (days $D+1$ to $D+21$). Weighted risk: $\text{replantProbability} = \sum w_y \cdot \text{replant}_y / \sum w_y$.
+  - **Establishment adequacy**: $\min(1.0, \sum_{t=0}^{30} \text{rain}(D+t) / 100.0)$ over the first 30 days of crop establishment.
+  - **Forecast splice**: For each historical analogue, the upcoming 16 days use Open-Meteo forecast rainfall, spliced seamlessly with historical daily records thereafter.
+  - **Expected value & score**: Expected yield in Naira minus replanting cost penalty: $\text{score} = \text{mean} - \lambda \times (\text{replantProb} \times \text{replantCost})$ with $\lambda = 0.5$.
+- **Test Fixtures & Test Results**:
+  - Created hand-built fixtures under `tests/fixtures/simulate/`: `all_dry.json`, `all_wet.json`, `false_start.json`, `missing_days.json`, `leap_year.json`.
+  - Added unit test suites `tests/stats.test.ts` (7 tests) and `tests/planting.test.ts` (7 tests) covering all edge cases (all dry, all wet, false start, missing data flagging, leap year alignment, and deterministic reproducibility).
+  - Vitest test count: **38 passed** across 5 test suites (smoke: 1, gateway: 18, hmem: 5, stats: 7, planting: 7).
+- **Validation on Real Data (`farm_bisi_ogbomoso`, `OKO_DEMO_DATE=2026-04-10`)**:
+  - Analog years count: $n = 35$ analog years ($\ge 25$).
+  - Results:
+    - **Plant now (`2026-04-10`)**: Replant risk: 0.0%, Establishment adequacy: p10=100.0%, p50=100.0%, p90=100.0%, Expected value: ₦1,400,000, Score: 1,400,000 (Low replanting risk; safe seedling establishment window).
+    - **Wait 7 days (`2026-04-17`)**: Replant risk: 0.0%, Establishment adequacy: p10=100.0%, p50=100.0%, p90=100.0%, Expected value: ₦1,400,000, Score: 1,400,000.
+    - **Wait 14 days (`2026-04-24`)**: Replant risk: 0.0%, Establishment adequacy: p10=100.0%, p50=100.0%, p90=100.0%, Expected value: ₦1,400,000, Score: 1,400,000.
+- **Compilation**: `npx tsc --noEmit` passed cleanly with 0 errors.
