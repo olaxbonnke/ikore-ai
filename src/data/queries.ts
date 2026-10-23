@@ -18,6 +18,14 @@ function rejectBadNumber(n: number, field: string): void {
 }
 
 /** Stub builders — SQL wired in Day 2. */
+export function rainDaily(farmId: string): BuiltQuery {
+  rejectBadId(farmId, "farmId");
+  return {
+    name: "rainDaily",
+    sql: `SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = '${farmId}' ORDER BY date ASC`,
+  };
+}
+
 export function forecast16d(_lat: number, _lon: number): BuiltQuery {
   rejectBadNumber(_lat, "lat");
   rejectBadNumber(_lon, "lon");

@@ -329,6 +329,7 @@ describe("ZetarisGateway HTTP and retry lifecycle", () => {
 
     const result = await gateway.query("SELECT 1 AS ok");
     expect(result.source).toBe("live");
+    expect(result.provenance).toBe("Zetaris (local)");
     expect(result.rows).toEqual([{ ok: "1" }]);
 
     expect(recordedUrl).toBe("https://api.example.com/api/v1.0/sql-editor/sqls/run");

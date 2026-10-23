@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "notebook": "tsx notebook.ts",
     "zetaris:apply": "tsx scripts/zetaris-apply.ts",
+    "zetaris:load": "tsx scripts/zetaris-load.ts",
     "zetaris:verify": "tsx scripts/zetaris-verify.ts",
     "snapshot": "tsx scripts/snapshot.ts",
     "snapshots:fetch": "tsx scripts/fetch-snapshots.ts",

@@ -66,24 +66,25 @@ export class ZetarisGateway implements DataGateway {
 
   private async executeRun<T>(
     sql: string,
-    _params?: Record<string, unknown>
+    params?: Record<string, unknown>
   ): Promise<GatewayResult<T>> {
     const queryId = crypto.randomUUID();
+    const limit = params?.limit ? Number(params.limit) : this.queryLimit;
     const body = {
       queryId,
       sql,
       source: "SqlEditor",
-      limit: this.queryLimit,
+      limit,
     };
 
     const response = await this.postJson<Record<string, unknown>>("/sql-editor/sqls/run", body);
     const rows = this.extractRows<T>(response);
 
     return {
-      rows: rows.slice(0, this.queryLimit),
+      rows: rows.slice(0, limit),
       source: "live",
       fetchedAt: new Date().toISOString(),
-      provenance: `Zetaris Cloud (${this.restUrl})`,
+      provenance: "Zetaris (local)",
     };
   }
 

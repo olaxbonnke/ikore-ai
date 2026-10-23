@@ -61,7 +61,13 @@ export class SnapshotGateway implements DataGateway {
     }
 
     const lower = sql.toLowerCase();
-    const farmId = (typeof params?.farmId === "string" ? params.farmId : "").trim();
+    let farmId = (typeof params?.farmId === "string" ? params.farmId : "").trim();
+    if (!farmId) {
+      const match = sql.match(/farm_id\s*=\s*['"]([a-z0-9_]+)['"]/i);
+      if (match) {
+        farmId = match[1];
+      }
+    }
 
     // Weather history: NASA POWER
     if (lower.includes("power") || lower.includes("nasa") || lower.includes("history")) {

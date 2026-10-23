@@ -162,3 +162,49 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
     - `SELECT 1 rows: 1`
     - `SHOW DATABASES rows: 1`
   - Vitest test suite updated and passing: 43 tests passed across 5 test suites; `tsc --noEmit` clean.
+
+### 3.6 Zetaris Data Ingestion (Option A: PostgreSQL JDBC Datasource)
+- **Architecture (Option A)**:
+  - Spun up an isolated PostgreSQL container `oko-postgres` (`postgres:16-alpine`) attached to the `zetaris_default` bridge network with dedicated volume `oko_postgres_data` (IP: `172.18.0.6:5432`, db: `oko`, user: `oko`).
+  - No existing Zetaris containers or volumes were modified.
+- **Data Loading (`scripts/zetaris-load.ts`)**:
+  - Built an automated, reproducible ingestion pipeline (`npm run zetaris:load`) that reads CSVs (`data/farms.csv`, `data/farm_records.csv`, `data/prices_monthly.csv`) and daily rainfall snapshots (`rain_daily__farm_bisi_ogbomoso.json`, `rain_daily__farm_ade_iseyin.json`).
+  - Streams the SQL DDL and 25,800+ INSERT statements directly into `oko-postgres` via SSH `docker exec -i` in a single transaction.
+  - Ingested table row counts:
+    - `oko_pg.farms`: 2 rows
+    - `oko_pg.farm_records`: 4 rows
+    - `oko_pg.prices`: 12 rows
+    - `oko_pg.rain_daily`: 25,798 rows
+- **Zetaris Datasource Registration (`zetaris/sql/01_register_oko.sql`)**:
+  - Leveraged Zetaris's bundled PostgreSQL driver (`/home/zetaris/zetaris-ndp-driver/lib/org.postgresql.postgresql-42.7.12.jar`).
+  - Registered the datasource and imported table definitions using:
+    ```sql
+    CREATE DATASOURCE oko_pg DESCRIBE BY 'Oko Farm Agent Postgres Database' OPTIONS (
+      jdbcdriver 'org.postgresql.Driver',
+      jdbcurl 'jdbc:postgresql://${OKO_PG_HOST}:${OKO_PG_PORT}/${OKO_PG_DB}',
+      username '${OKO_PG_USER}',
+      password '${OKO_PG_PASSWORD}',
+      fetchsize '1000'
+    );
+
+    REGISTER DATASOURCE TABLES FROM oko_pg;
+    ```
+- **Gateway Provenance & Proof Verification**:
+  - Updated `ZetarisGateway` (`src/data/zetaris.ts`) to return `provenance: "Zetaris (local)"` for rows sourced from live Zetaris.
+  - Executed proof query through `ZetarisGateway`:
+    ```sql
+    SELECT farm_id, year(date) y, sum(rain_mm)
+    FROM oko_pg.rain_daily
+    WHERE farm_id = 'farm_bisi_ogbomoso'
+    GROUP BY 1, 2
+    ORDER BY 2
+    LIMIT 5
+    ```
+    Results:
+    - 1991: 1,518.45 mm
+    - 1992: 1,260.94 mm
+    - 1993: 1,498.81 mm
+    - 1994: 1,684.42 mm
+    - 1995: 1,943.53 mm
+    - Year 2000: **1,235.90 mm** (exact match to snapshot).
+- **Verification**: `npx tsc --noEmit` passed with 0 errors; all 43 vitest tests passed across 5 test suites.
