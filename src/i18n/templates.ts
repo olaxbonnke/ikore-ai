@@ -66,8 +66,9 @@ export function templateSelling(decision: Decision, _lang: Lang = "en"): string 
   const riskPct = k.riskPercent || "100.0%";
 
   if (chosen === "sell_now") {
-    const riskPct = k.waitingRiskPercent || "100.0%";
-    return `Sell now for ₦${totalNow} (${bags} bags at ₦${price.toLocaleString()} per bag). In most past years, Ibadan maize prices fell in the 1 to 3 months following August harvest, so waiting carries a ${riskPct} chance of earning less than selling today after accounting for storage weight loss (${lossPct}%/month in ${storageLabel}).`;
+    const cheaper = k.cheaperCount ?? 8;
+    const n = k.nYears ?? 9;
+    return `Sell now for ₦${totalNow} (${bags} bags at ₦${price.toLocaleString()} per bag). In ${cheaper} of the ${n} past years with data, Ibadan wholesale maize was cheaper a month after August than in August. After accounting for storage weight loss (assumed ${lossPct}% per month in ${storageLabel}), waiting carries high risk of earning less than selling today.`;
   }
 
   if (chosen === "partial_sell_store_8w") {
@@ -77,10 +78,12 @@ export function templateSelling(decision: Decision, _lang: Lang = "en"): string 
     return `Sell ${soldNow} bags now for ₦${cashNow} to cover your immediate cash need, and store the remaining ${stored} bags for 8 weeks.`;
   }
 
-  const weeks = k.horizonWeeks || (chosen === "store_4w" ? 4 : chosen === "store_8w" ? 8 : 12);
+  const weeks = k.horizonWeeks || (chosen === "store_4w" ? 4 : chosen === "store_8w" ? 8 : chosen === "store_12w" ? 12 : 24);
   const p50 = Number(k.valueP50Ngn || k.expectedValueNgn || 0).toLocaleString();
   const p10 = Number(k.valueP10Ngn || 0).toLocaleString();
   const p90 = Number(k.valueP90Ngn || 0).toLocaleString();
+  const n = Number(k.nYears || 10);
+  const higher = n - Number(k.cheaperCount ?? 0);
 
-  return `Store your maize for ${weeks} weeks. In most past years, prices rose enough to cover storage weight loss (${lossPct}%/month in ${storageLabel}), with expected return around ₦${p50} across past years (typically between ₦${p10} and ₦${p90}).`;
+  return `Store your maize for ${weeks} weeks. In ${higher} of the ${n} past years with data, wholesale prices rose enough to cover storage weight loss (assumed ${lossPct}% per month in ${storageLabel}), with expected return around ₦${p50} across past years (typically between ₦${p10} and ₦${p90}).`;
 }

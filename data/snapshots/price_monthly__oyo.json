@@ -1,13 +1,273 @@
 {
   "source": "snapshot",
   "sourceUrl": "https://data.humdata.org/dataset/42db041f-7aaf-4ab4-961f-2a12096861e7/resource/12b51155-0cd3-4806-9924-61ede4077591/download/wfp_food_prices_nga.csv",
-  "fetchedAt": "2026-10-23T22:20:00.000Z",
+  "fetchedAt": "2026-10-23T23:55:00.000Z",
   "params": {
     "state": "Oyo",
-    "market": "Ibadan",
-    "unit": "KG"
+    "market": "Ibadan"
   },
   "rows": [
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2010-09",
+      "price_ngn_per_kg": 4500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2010-10",
+      "price_ngn_per_kg": 4500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2010-11",
+      "price_ngn_per_kg": 4500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2011-09",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2011-10",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-05",
+      "price_ngn_per_kg": 6500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-06",
+      "price_ngn_per_kg": 6775
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-07",
+      "price_ngn_per_kg": 7000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-08",
+      "price_ngn_per_kg": 7000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-09",
+      "price_ngn_per_kg": 6850
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-10",
+      "price_ngn_per_kg": 5830
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-11",
+      "price_ngn_per_kg": 5725
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2012-12",
+      "price_ngn_per_kg": 5800
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-01",
+      "price_ngn_per_kg": 6000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-02",
+      "price_ngn_per_kg": 6800
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-03",
+      "price_ngn_per_kg": 6900
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-04",
+      "price_ngn_per_kg": 7200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-05",
+      "price_ngn_per_kg": 8200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-06",
+      "price_ngn_per_kg": 8575
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-07",
+      "price_ngn_per_kg": 8600
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-08",
+      "price_ngn_per_kg": 8075
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-09",
+      "price_ngn_per_kg": 7750
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-10",
+      "price_ngn_per_kg": 7100
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-11",
+      "price_ngn_per_kg": 6350
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2013-12",
+      "price_ngn_per_kg": 4400
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-01",
+      "price_ngn_per_kg": 4400
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-02",
+      "price_ngn_per_kg": 4600
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-03",
+      "price_ngn_per_kg": 4600
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-04",
+      "price_ngn_per_kg": 4600
+    },
     {
       "state": "Oyo",
       "market": "Ibadan",
@@ -25,6 +285,690 @@
       "pricetype": "Retail",
       "ym": "2014-05",
       "price_ngn_per_kg": 70
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-07",
+      "price_ngn_per_kg": 6200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-07",
+      "price_ngn_per_kg": 7500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-08",
+      "price_ngn_per_kg": 5675
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-08",
+      "price_ngn_per_kg": 6000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-09",
+      "price_ngn_per_kg": 5000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-09",
+      "price_ngn_per_kg": 4200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-10",
+      "price_ngn_per_kg": 4750
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-10",
+      "price_ngn_per_kg": 4800
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-11",
+      "price_ngn_per_kg": 5160
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-11",
+      "price_ngn_per_kg": 5360
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-12",
+      "price_ngn_per_kg": 5160
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2014-12",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-01",
+      "price_ngn_per_kg": 5000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-01",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-02",
+      "price_ngn_per_kg": 5000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-02",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-03",
+      "price_ngn_per_kg": 5000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-03",
+      "price_ngn_per_kg": 5500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-04",
+      "price_ngn_per_kg": 5550
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-04",
+      "price_ngn_per_kg": 6500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-05",
+      "price_ngn_per_kg": 6000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-05",
+      "price_ngn_per_kg": 7000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-06",
+      "price_ngn_per_kg": 6000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-06",
+      "price_ngn_per_kg": 7000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-07",
+      "price_ngn_per_kg": 6080
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-07",
+      "price_ngn_per_kg": 7500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-08",
+      "price_ngn_per_kg": 6200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-08",
+      "price_ngn_per_kg": 7500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-09",
+      "price_ngn_per_kg": 7700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-09",
+      "price_ngn_per_kg": 8300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-10",
+      "price_ngn_per_kg": 6300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-10",
+      "price_ngn_per_kg": 6300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-11",
+      "price_ngn_per_kg": 6300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-11",
+      "price_ngn_per_kg": 6300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-12",
+      "price_ngn_per_kg": 6500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2015-12",
+      "price_ngn_per_kg": 6700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-01",
+      "price_ngn_per_kg": 7000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-01",
+      "price_ngn_per_kg": 7305
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-02",
+      "price_ngn_per_kg": 7500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-02",
+      "price_ngn_per_kg": 8125
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-03",
+      "price_ngn_per_kg": 8820
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-03",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-04",
+      "price_ngn_per_kg": 8820
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-04",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-05",
+      "price_ngn_per_kg": 10455
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-05",
+      "price_ngn_per_kg": 11250
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-06",
+      "price_ngn_per_kg": 11700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-06",
+      "price_ngn_per_kg": 12700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-07",
+      "price_ngn_per_kg": 11500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-07",
+      "price_ngn_per_kg": 12625
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-08",
+      "price_ngn_per_kg": 14920
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-08",
+      "price_ngn_per_kg": 14600
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-09",
+      "price_ngn_per_kg": 12750
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-09",
+      "price_ngn_per_kg": 14200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-10",
+      "price_ngn_per_kg": 12000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-10",
+      "price_ngn_per_kg": 13800
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-11",
+      "price_ngn_per_kg": 12600
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-11",
+      "price_ngn_per_kg": 13500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-12",
+      "price_ngn_per_kg": 13000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2016-12",
+      "price_ngn_per_kg": 14250
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-01",
+      "price_ngn_per_kg": 14875
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-01",
+      "price_ngn_per_kg": 15875
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-02",
+      "price_ngn_per_kg": 15000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-02",
+      "price_ngn_per_kg": 15750
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-03",
+      "price_ngn_per_kg": 15700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-03",
+      "price_ngn_per_kg": 16700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-04",
+      "price_ngn_per_kg": 16250
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-04",
+      "price_ngn_per_kg": 17750
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-05",
+      "price_ngn_per_kg": 17000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-05",
+      "price_ngn_per_kg": 19000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-06",
+      "price_ngn_per_kg": 16500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-06",
+      "price_ngn_per_kg": 19000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-07",
+      "price_ngn_per_kg": 16250
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-07",
+      "price_ngn_per_kg": 19000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-08",
+      "price_ngn_per_kg": 16000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-08",
+      "price_ngn_per_kg": 19000
     },
     {
       "state": "Oyo",
@@ -48,6 +992,69 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-10",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-10",
+      "price_ngn_per_kg": 10250
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-11",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-11",
+      "price_ngn_per_kg": 11000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-12",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2017-12",
+      "price_ngn_per_kg": 11000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-01",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2018-01",
@@ -65,11 +1072,218 @@
     {
       "state": "Oyo",
       "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-02",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-02",
+      "price_ngn_per_kg": 12500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-03",
+      "price_ngn_per_kg": 11000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-03",
+      "price_ngn_per_kg": 12000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-04",
+      "price_ngn_per_kg": 12000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-04",
+      "price_ngn_per_kg": 12880
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-05",
+      "price_ngn_per_kg": 12500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-05",
+      "price_ngn_per_kg": 13260
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-06",
+      "price_ngn_per_kg": 12500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-07",
+      "price_ngn_per_kg": 12035
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-07",
+      "price_ngn_per_kg": 13065
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-08",
+      "price_ngn_per_kg": 11100
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-08",
+      "price_ngn_per_kg": 13000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-09",
+      "price_ngn_per_kg": 10050
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-09",
+      "price_ngn_per_kg": 12000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-10",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-10",
+      "price_ngn_per_kg": 10500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-11",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-11",
+      "price_ngn_per_kg": 10500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-12",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2018-12",
+      "price_ngn_per_kg": 10500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-01",
+      "price_ngn_per_kg": 9000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
       "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-01",
       "price_ngn_per_kg": 97.68
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-02",
+      "price_ngn_per_kg": 9250
     },
     {
       "state": "Oyo",
@@ -84,6 +1298,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-02",
+      "price_ngn_per_kg": 10625
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-02",
@@ -93,10 +1316,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-03",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-03",
       "price_ngn_per_kg": 100.19
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-03",
+      "price_ngn_per_kg": 11000
     },
     {
       "state": "Oyo",
@@ -111,6 +1352,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-04",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-04",
@@ -120,6 +1370,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-04",
+      "price_ngn_per_kg": 11150
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-04",
@@ -128,20 +1387,11 @@
     {
       "state": "Oyo",
       "market": "Ibadan",
-      "commodity": "Maize (yellow)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2019-05",
-      "price_ngn_per_kg": 108.76
-    },
-    {
-      "state": "Oyo",
-      "market": "Ibadan",
-      "commodity": "Maize (yellow)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2019-06",
-      "price_ngn_per_kg": 108.76
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-07",
+      "price_ngn_per_kg": 9800
     },
     {
       "state": "Oyo",
@@ -156,10 +1406,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-08",
+      "price_ngn_per_kg": 9500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-08",
       "price_ngn_per_kg": 93.92
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-08",
+      "price_ngn_per_kg": 10800
     },
     {
       "state": "Oyo",
@@ -174,10 +1442,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-09",
+      "price_ngn_per_kg": 8000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-09",
       "price_ngn_per_kg": 79.59
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-09",
+      "price_ngn_per_kg": 9075
     },
     {
       "state": "Oyo",
@@ -192,10 +1478,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-10",
+      "price_ngn_per_kg": 9166.67
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2019-10",
       "price_ngn_per_kg": 83.49
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-10",
+      "price_ngn_per_kg": 9500
     },
     {
       "state": "Oyo",
@@ -210,10 +1514,64 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-11",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-11",
+      "price_ngn_per_kg": 10350
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-12",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2019-12",
+      "price_ngn_per_kg": 10400
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-01",
+      "price_ngn_per_kg": 10000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-01",
       "price_ngn_per_kg": 102.7
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-01",
+      "price_ngn_per_kg": 10320
     },
     {
       "state": "Oyo",
@@ -228,6 +1586,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-02",
+      "price_ngn_per_kg": 10125
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-02",
@@ -237,10 +1604,82 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-02",
+      "price_ngn_per_kg": 11125
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-02",
       "price_ngn_per_kg": 111.22
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-11",
+      "price_ngn_per_kg": 22800
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "KG",
+      "pricetype": "Retail",
+      "ym": "2021-11",
+      "price_ngn_per_kg": 190.44
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "KG",
+      "pricetype": "Retail",
+      "ym": "2021-11",
+      "price_ngn_per_kg": 182.51
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-12",
+      "price_ngn_per_kg": 22300
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "KG",
+      "pricetype": "Retail",
+      "ym": "2021-12",
+      "price_ngn_per_kg": 215.5
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-12",
+      "price_ngn_per_kg": 23040
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "KG",
+      "pricetype": "Retail",
+      "ym": "2021-12",
+      "price_ngn_per_kg": 225.55
     },
     {
       "state": "Oyo",
@@ -264,10 +1703,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-04",
+      "price_ngn_per_kg": 12366.67
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-04",
       "price_ngn_per_kg": 128.7
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-04",
+      "price_ngn_per_kg": 14250
     },
     {
       "state": "Oyo",
@@ -282,10 +1739,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-05",
+      "price_ngn_per_kg": 13000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-05",
       "price_ngn_per_kg": 125.35
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-05",
+      "price_ngn_per_kg": 16500
     },
     {
       "state": "Oyo",
@@ -300,10 +1775,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-06",
+      "price_ngn_per_kg": 16739.13
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-06",
       "price_ngn_per_kg": 164.99
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-06",
+      "price_ngn_per_kg": 18375.65
     },
     {
       "state": "Oyo",
@@ -318,10 +1811,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-07",
+      "price_ngn_per_kg": 18451.61
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-07",
       "price_ngn_per_kg": 180.61
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-07",
+      "price_ngn_per_kg": 19834.84
     },
     {
       "state": "Oyo",
@@ -336,10 +1847,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-08",
+      "price_ngn_per_kg": 19858.06
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-08",
       "price_ngn_per_kg": 197.35
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-08",
+      "price_ngn_per_kg": 20683.87
     },
     {
       "state": "Oyo",
@@ -354,10 +1883,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-09",
+      "price_ngn_per_kg": 19053.33
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-09",
       "price_ngn_per_kg": 187.91
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-09",
+      "price_ngn_per_kg": 13850
     },
     {
       "state": "Oyo",
@@ -372,10 +1919,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-10",
+      "price_ngn_per_kg": 15535.48
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-10",
       "price_ngn_per_kg": 157.21
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-10",
+      "price_ngn_per_kg": 14500
     },
     {
       "state": "Oyo",
@@ -390,10 +1955,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-11",
+      "price_ngn_per_kg": 15243.33
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-11",
       "price_ngn_per_kg": 157.46
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-11",
+      "price_ngn_per_kg": 14750
     },
     {
       "state": "Oyo",
@@ -408,10 +1991,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-12",
+      "price_ngn_per_kg": 16612.9
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2020-12",
       "price_ngn_per_kg": 168.97
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2020-12",
+      "price_ngn_per_kg": 17419.36
     },
     {
       "state": "Oyo",
@@ -426,10 +2027,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-01",
+      "price_ngn_per_kg": 19370.97
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-01",
       "price_ngn_per_kg": 193.79
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-01",
+      "price_ngn_per_kg": 19919.36
     },
     {
       "state": "Oyo",
@@ -444,10 +2063,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-02",
+      "price_ngn_per_kg": 22000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-02",
       "price_ngn_per_kg": 222.22
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-02",
+      "price_ngn_per_kg": 22575
     },
     {
       "state": "Oyo",
@@ -462,6 +2099,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-03",
+      "price_ngn_per_kg": 22000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-03",
@@ -471,10 +2117,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-03",
+      "price_ngn_per_kg": 22700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-03",
       "price_ngn_per_kg": 226.02
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-04",
+      "price_ngn_per_kg": 22000
     },
     {
       "state": "Oyo",
@@ -489,10 +2153,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-04",
+      "price_ngn_per_kg": 22700
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-04",
       "price_ngn_per_kg": 226.02
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-05",
+      "price_ngn_per_kg": 22283.87
     },
     {
       "state": "Oyo",
@@ -507,10 +2189,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-05",
+      "price_ngn_per_kg": 24851.61
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-05",
       "price_ngn_per_kg": 243.17
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-06",
+      "price_ngn_per_kg": 23600
     },
     {
       "state": "Oyo",
@@ -525,10 +2225,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-06",
+      "price_ngn_per_kg": 26000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-06",
       "price_ngn_per_kg": 254.53
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-07",
+      "price_ngn_per_kg": 26735.48
     },
     {
       "state": "Oyo",
@@ -543,6 +2261,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-07",
+      "price_ngn_per_kg": 29232.26
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-07",
@@ -552,10 +2279,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-08",
+      "price_ngn_per_kg": 26565.52
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2021-08",
       "price_ngn_per_kg": 270.94
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2021-08",
+      "price_ngn_per_kg": 28613.79
     },
     {
       "state": "Oyo",
@@ -606,37 +2351,10 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2021-11",
-      "price_ngn_per_kg": 190.44
-    },
-    {
-      "state": "Oyo",
-      "market": "Ibadan",
-      "commodity": "Maize (yellow)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2021-11",
-      "price_ngn_per_kg": 182.51
-    },
-    {
-      "state": "Oyo",
-      "market": "Ibadan",
-      "commodity": "Maize (white)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2021-12",
-      "price_ngn_per_kg": 215.5
-    },
-    {
-      "state": "Oyo",
-      "market": "Ibadan",
-      "commodity": "Maize (yellow)",
-      "unit": "KG",
-      "pricetype": "Retail",
-      "ym": "2021-12",
-      "price_ngn_per_kg": 225.55
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-01",
+      "price_ngn_per_kg": 25000
     },
     {
       "state": "Oyo",
@@ -651,6 +2369,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-01",
+      "price_ngn_per_kg": 28000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-01",
@@ -660,6 +2387,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-02",
+      "price_ngn_per_kg": 25000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-02",
@@ -669,10 +2405,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-02",
+      "price_ngn_per_kg": 28000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-02",
       "price_ngn_per_kg": 279.27
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-03",
+      "price_ngn_per_kg": 25000
     },
     {
       "state": "Oyo",
@@ -687,6 +2441,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-03",
+      "price_ngn_per_kg": 28000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-03",
@@ -696,10 +2459,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-04",
+      "price_ngn_per_kg": 25040
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-04",
       "price_ngn_per_kg": 255.43
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-04",
+      "price_ngn_per_kg": 28000
     },
     {
       "state": "Oyo",
@@ -714,10 +2495,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-05",
+      "price_ngn_per_kg": 25245.16
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-05",
       "price_ngn_per_kg": 255.43
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-05",
+      "price_ngn_per_kg": 28000
     },
     {
       "state": "Oyo",
@@ -732,6 +2531,15 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-06",
+      "price_ngn_per_kg": 25200
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-06",
@@ -741,10 +2549,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-06",
+      "price_ngn_per_kg": 28000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-06",
       "price_ngn_per_kg": 279.27
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-07",
+      "price_ngn_per_kg": 25200
     },
     {
       "state": "Oyo",
@@ -754,6 +2580,15 @@
       "pricetype": "Retail",
       "ym": "2022-07",
       "price_ngn_per_kg": 255.43
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-07",
+      "price_ngn_per_kg": 28000
     },
     {
       "state": "Oyo",
@@ -768,10 +2603,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-08",
+      "price_ngn_per_kg": 23225
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-08",
       "price_ngn_per_kg": 237.4
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-08",
+      "price_ngn_per_kg": 26216.67
     },
     {
       "state": "Oyo",
@@ -786,10 +2639,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-09",
+      "price_ngn_per_kg": 22000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-09",
       "price_ngn_per_kg": 223.16
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-09",
+      "price_ngn_per_kg": 25400
     },
     {
       "state": "Oyo",
@@ -804,10 +2675,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-10",
+      "price_ngn_per_kg": 20548.39
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-10",
       "price_ngn_per_kg": 207.78
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-10",
+      "price_ngn_per_kg": 25060
     },
     {
       "state": "Oyo",
@@ -822,10 +2711,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-11",
+      "price_ngn_per_kg": 22500
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-11",
       "price_ngn_per_kg": 226.87
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-11",
+      "price_ngn_per_kg": 22600
     },
     {
       "state": "Oyo",
@@ -840,10 +2747,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-12",
+      "price_ngn_per_kg": 26000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2022-12",
       "price_ngn_per_kg": 250.8
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2022-12",
+      "price_ngn_per_kg": 27593.55
     },
     {
       "state": "Oyo",
@@ -858,10 +2783,28 @@
       "state": "Oyo",
       "market": "Ibadan",
       "commodity": "Maize (white)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2023-01",
+      "price_ngn_per_kg": 26000
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (white)",
       "unit": "KG",
       "pricetype": "Retail",
       "ym": "2023-01",
       "price_ngn_per_kg": 251.05
+    },
+    {
+      "state": "Oyo",
+      "market": "Ibadan",
+      "commodity": "Maize (yellow)",
+      "unit": "100 KG",
+      "pricetype": "Wholesale",
+      "ym": "2023-01",
+      "price_ngn_per_kg": 28000
     },
     {
       "state": "Oyo",

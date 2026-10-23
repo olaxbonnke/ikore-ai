@@ -29,7 +29,7 @@ export function listOptions(
   }
 
   if (intent === "sell_or_store") {
-    const opts = ["sell_now", "store_4w", "store_8w", "store_12w"];
+    const opts = ["sell_now", "store_4w", "store_8w", "store_12w", "store_24w"];
     if (context?.cashNeedNgn && context.cashNeedNgn > 0) {
       opts.push("partial_sell_store_8w");
     }
@@ -67,6 +67,7 @@ export function getOptionDefinitions(
       { key: "store_4w", label: "Store 4 weeks", weeks: 4, notes: [] },
       { key: "store_8w", label: "Store 8 weeks", weeks: 8, notes: [] },
       { key: "store_12w", label: "Store 12 weeks", weeks: 12, notes: [] },
+      { key: "store_24w", label: "Store 24 weeks (6 months)", weeks: 24, notes: [] },
     ];
   }
 

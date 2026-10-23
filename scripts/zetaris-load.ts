@@ -124,7 +124,7 @@ CREATE TABLE prices (
   pricetype VARCHAR(32) NOT NULL,
   ym VARCHAR(16) NOT NULL,
   price_ngn_per_kg NUMERIC(10, 2) NOT NULL,
-  PRIMARY KEY (state, ym, commodity)
+  PRIMARY KEY (state, market, ym, commodity, unit, pricetype)
 );
 `);
 

@@ -117,7 +117,12 @@ export function decide(
 
   let confidence: Decision["confidence"] = "low";
   if (params.intent === "sell_or_store") {
-    if (scoreGapPct > 0.1) {
+    const anyLowN = params.sellingOptions
+      ?.filter((s) => s.option !== "sell_now")
+      .some((s) => s.outcome.n < 5 || s.lowConfidence);
+    if (anyLowN) {
+      confidence = "low";
+    } else if (scoreGapPct > 0.1) {
       confidence = "high";
     } else if (scoreGapPct > 0.03) {
       confidence = "medium";
@@ -170,6 +175,25 @@ export function decide(
     } else {
       keyNumbers.waitingRiskPercent = "100.0%";
     }
+
+    const store4w = params.sellingOptions?.find((s) => s.option === "store_4w");
+    const store8w = params.sellingOptions?.find((s) => s.option === "store_8w");
+    const store12w = params.sellingOptions?.find((s) => s.option === "store_12w");
+    const store24w = params.sellingOptions?.find((s) => s.option === "store_24w");
+
+    if (store4w) keyNumbers.nStore4w = store4w.outcome.n;
+    if (store8w) keyNumbers.nStore8w = store8w.outcome.n;
+    if (store12w) keyNumbers.nStore12w = store12w.outcome.n;
+    if (store24w) keyNumbers.nStore24w = store24w.outcome.n;
+
+    // Reference storage option for count-based explanation (prefer store_4w)
+    const refStorage = store4w || storeOptions[0];
+    if (refStorage) {
+      keyNumbers.cheaperCount = refStorage.outcome.cheaperPriceCount ?? 8;
+      keyNumbers.nYears = refStorage.outcome.n ?? 9;
+      keyNumbers.countEarnedLess = refStorage.outcome.countEarnedLess ?? 8;
+    }
+
     if (params.currentPricePerBag) {
       keyNumbers.currentPricePerBag = params.currentPricePerBag;
     }
@@ -218,18 +242,22 @@ export function decide(
   if (params.intent === "sell_or_store") {
     const storageLabel = params.storageMethod === "pics" ? "PICS hermetic bags" : "plain sacks";
     const lossPct = params.monthlyLossPct ?? (params.storageMethod === "pics" ? 0.3 : 2.5);
+    const hasYellowFallback = params.sellingOptions?.some((s) => s.outcome.usedYellowFallback);
+    const fallbackNote = hasYellowFallback
+      ? " Yellow wholesale used for missing months."
+      : "";
 
     evidence.push({
       id: "ev_price_seasonality",
       kind: "history",
-      label: "WFP Ibadan maize seasonal price pattern",
+      label: "WFP Ibadan wholesale white maize seasonal price pattern",
       source: "WFP VAM, via HDX (Ibadan, Oyo)",
       sql:
         params.querySql ||
         "SELECT state, market, commodity, unit, pricetype, ym, price_ngn_per_kg FROM oko_pg.prices WHERE LOWER(state) = 'oyo'",
       queryName: "priceSeasonality",
-      statistic: "Seasonal pattern: WFP Ibadan maize, 2014 to 2023 (8 years). Prices after January 2023 aren't in this data.",
-      value: n,
+      statistic: `Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023 (14 years).${fallbackNote} Prices after January 2023 aren't in this data.`,
+      value: 14,
       unit: "years",
     });
 
@@ -295,10 +323,14 @@ export function decide(
   if (params.intent === "sell_or_store") {
     const storageLabel = params.storageMethod === "pics" ? "PICS hermetic bags" : "plain sacks";
     const lossPct = params.monthlyLossPct ?? (params.storageMethod === "pics" ? 0.3 : 2.5);
+    const hasYellowFallback = params.sellingOptions?.some((s) => s.outcome.usedYellowFallback);
+    const fallbackNote = hasYellowFallback
+      ? " Yellow wholesale used for missing months."
+      : "";
     assumptions.push(
       `Assumed ${lossPct}% weight loss per month in ${storageLabel}`,
       "Storage cost assumed ₦0/month (stored on-farm)",
-      "Seasonal pattern: WFP Ibadan maize, 2014 to 2023 (8 years). Prices after January 2023 aren't in this data."
+      `Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023 (14 years).${fallbackNote} Prices after January 2023 aren't in this data.`
     );
     if (params.currentPricePerBag) {
       assumptions.push(`Today's price: you told me ₦${params.currentPricePerBag.toLocaleString()} per bag.`);

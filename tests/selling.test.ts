@@ -191,12 +191,14 @@ describe("simulateSelling (src/core/simulate/selling.ts)", () => {
     expect(partialOpt?.bagsStored).toBe(11);
     expect(partialOpt?.cashGeneratedNow).toBe(9 * 45000);
 
-    // store_8w and store_12w hold all grain past 4 weeks, so they should be marked dropped
+    // store_8w, store_12w and store_24w hold all grain past 4 weeks, so they should be marked dropped
     const store8w = simWithCashNeed.find((o) => o.option === "store_8w")!;
     const store12w = simWithCashNeed.find((o) => o.option === "store_12w")!;
+    const store24w = simWithCashNeed.find((o) => o.option === "store_24w")!;
     expect(store8w.dropped).toBe(true);
     expect(store8w.dropReason).toContain("leaving ₦0 cash");
     expect(store12w.dropped).toBe(true);
+    expect(store24w.dropped).toBe(true);
   });
 });
 
@@ -241,10 +243,10 @@ describe("Orchestrator sell_or_store end-to-end", () => {
 
     const seasonEv = d.evidence.find((e) => e.id === "ev_price_seasonality");
     expect(seasonEv).toBeDefined();
-    expect(seasonEv?.statistic).toContain("Seasonal pattern: WFP Ibadan maize, 2014 to 2023");
+    expect(seasonEv?.statistic).toContain("Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023");
 
-    // Reply text contains honest explanation
+    // Reply text contains honest explanation with count-based wording
     expect(reply.text.toLowerCase()).toContain("sell now for ₦900,000");
-    expect(reply.text.toLowerCase()).toContain("in most past years");
+    expect(reply.text.toLowerCase()).toContain("cheaper a month after august");
   });
 });

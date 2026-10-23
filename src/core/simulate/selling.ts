@@ -48,10 +48,13 @@ export interface SellingOptionOutcome {
   riskMetric: number; // P(value < value of sell_now)
   riskLabel: string; // "chance of earning less than selling now"
   n: number;
+  cheaperPriceCount?: number;
+  countEarnedLess?: number;
+  usedYellowFallback?: boolean;
 }
 
 export interface SellingOptionResult {
-  option: "sell_now" | "store_4w" | "store_8w" | "store_12w" | "partial_sell_store_8w";
+  option: "sell_now" | "store_4w" | "store_8w" | "store_12w" | "store_24w" | "partial_sell_store_8w";
   label: string;
   horizonMonths: number;
   horizonWeeks: number;
@@ -60,6 +63,7 @@ export interface SellingOptionResult {
   notes: string[];
   dropped?: boolean;
   dropReason?: string;
+  lowConfidence?: boolean;
   bagsSoldNow?: number;
   bagsStored?: number;
   cashGeneratedNow?: number;
@@ -77,6 +81,85 @@ export interface SeasonalIndexResult {
 }
 
 /**
+ * Extracts and cleans wholesale monthly series, prioritizing Wholesale 100 KG White Maize
+ * and falling back to Wholesale 100 KG Yellow Maize for missing months.
+ */
+export function extractWholesaleSeries(
+  prices: MonthlyPriceRecord[],
+  asOfYearMonth: string,
+  preferredCommodity = "Maize (white)"
+): {
+  byYm: Map<string, number>;
+  usedYellowFallback: boolean;
+  minYear: number;
+  maxYear: number;
+  totalYears: number;
+} {
+  // Prefer wholesale 100 KG records
+  const wholesale = prices.filter(
+    (p) =>
+      (p.pricetype?.toLowerCase() === "wholesale" || !p.pricetype) &&
+      (p.unit?.includes("100") || !p.unit)
+  );
+
+  const pool = wholesale.length > 0 ? wholesale : prices;
+  const historical = pool.filter((p) => p.ym < asOfYearMonth);
+
+  const whiteMap = new Map<string, number>();
+  const yellowMap = new Map<string, number>();
+
+  for (const p of historical) {
+    const pVal = Number(p.price_ngn_per_kg);
+    if (!Number.isFinite(pVal) || pVal <= 0) continue;
+    const cLower = p.commodity.toLowerCase();
+    if (cLower.includes("white") || cLower === preferredCommodity.toLowerCase()) {
+      if (whiteMap.has(p.ym)) {
+        whiteMap.set(p.ym, (whiteMap.get(p.ym)! + pVal) / 2);
+      } else {
+        whiteMap.set(p.ym, pVal);
+      }
+    } else if (cLower.includes("yellow")) {
+      if (yellowMap.has(p.ym)) {
+        yellowMap.set(p.ym, (yellowMap.get(p.ym)! + pVal) / 2);
+      } else {
+        yellowMap.set(p.ym, pVal);
+      }
+    } else {
+      if (!whiteMap.has(p.ym)) {
+        whiteMap.set(p.ym, pVal);
+      }
+    }
+  }
+
+  const byYm = new Map<string, number>();
+  let usedYellowFallback = false;
+  const allYm = Array.from(new Set([...whiteMap.keys(), ...yellowMap.keys()])).sort();
+
+  for (const ym of allYm) {
+    if (whiteMap.has(ym)) {
+      byYm.set(ym, whiteMap.get(ym)!);
+    } else if (yellowMap.has(ym)) {
+      usedYellowFallback = true;
+      byYm.set(ym, yellowMap.get(ym)!);
+    }
+  }
+
+  const years = Array.from(
+    new Set(Array.from(byYm.keys()).map((k) => parseInt(k.slice(0, 4), 10)))
+  ).sort((a, b) => a - b);
+  const minYear = years[0] || 2010;
+  const maxYear = years[years.length - 1] || 2023;
+
+  return {
+    byYm,
+    usedYellowFallback,
+    minYear,
+    maxYear,
+    totalYears: years.length,
+  };
+}
+
+/**
  * Computes detrended seasonal index S[m] across complete calendar years (mean S = 1.0).
  */
 export function computeSeasonalIndex(
@@ -85,29 +168,14 @@ export function computeSeasonalIndex(
   preferredCommodity = "Maize (white)"
 ): SeasonalIndexResult {
   const asOfYearMonth = asOf.slice(0, 7);
-  // Filter historical prices strictly before asOf month
-  const historical = prices.filter(
-    (p) =>
-      p.ym < asOfYearMonth &&
-      (p.commodity.toLowerCase() === preferredCommodity.toLowerCase() ||
-        p.commodity.toLowerCase().includes("maize"))
-  );
+  const { byYm } = extractWholesaleSeries(prices, asOfYearMonth, preferredCommodity);
 
-  // Group by year and month
   const byYear = new Map<number, Map<number, number>>();
-  for (const p of historical) {
-    const pVal = Number(p.price_ngn_per_kg);
-    if (!Number.isFinite(pVal) || pVal <= 0) continue;
-    const y = parseInt(p.ym.slice(0, 4), 10);
-    const m = parseInt(p.ym.slice(5, 7), 10);
+  for (const [ym, pVal] of byYm.entries()) {
+    const y = parseInt(ym.slice(0, 4), 10);
+    const m = parseInt(ym.slice(5, 7), 10);
     if (!byYear.has(y)) byYear.set(y, new Map());
-    // If multiple prices exist for same year-month, take average
-    const mmap = byYear.get(y)!;
-    if (mmap.has(m)) {
-      mmap.set(m, (mmap.get(m)! + pVal) / 2);
-    } else {
-      mmap.set(m, pVal);
-    }
+    byYear.get(y)!.set(m, pVal);
   }
 
   // Filter to years that have all 12 calendar months
@@ -164,7 +232,7 @@ export function computeSeasonalIndex(
   return {
     monthlyIndices: normalizedIndices,
     nYears: completeYears.length,
-    years: completeYears.sort(),
+    years: completeYears.sort((a, b) => a - b),
   };
 }
 
@@ -177,57 +245,47 @@ export function computeSeasonalRatios(
   horizonMonths: number,
   asOf: string,
   preferredCommodity = "Maize (white)"
-): { ratios: number[]; years: number[] } {
+): {
+  ratios: number[];
+  years: number[];
+  cheaperPriceCount: number;
+  usedYellowFallback: boolean;
+  minYear: number;
+  maxYear: number;
+  totalWholesaleYears: number;
+} {
   const asOfYearMonth = asOf.slice(0, 7);
-  const historical = prices.filter(
-    (p) =>
-      p.ym < asOfYearMonth &&
-      (p.commodity.toLowerCase() === preferredCommodity.toLowerCase() ||
-        p.commodity.toLowerCase().includes("maize"))
+  const { byYm, usedYellowFallback, minYear, maxYear, totalYears } = extractWholesaleSeries(
+    prices,
+    asOfYearMonth,
+    preferredCommodity
   );
-
-  const byYear = new Map<number, Map<number, number>>();
-  for (const p of historical) {
-    const pVal = Number(p.price_ngn_per_kg);
-    if (!Number.isFinite(pVal) || pVal <= 0) continue;
-    const y = parseInt(p.ym.slice(0, 4), 10);
-    const m = parseInt(p.ym.slice(5, 7), 10);
-    if (!byYear.has(y)) byYear.set(y, new Map());
-    const mmap = byYear.get(y)!;
-    if (mmap.has(m)) {
-      mmap.set(m, (mmap.get(m)! + pVal) / 2);
-    } else {
-      mmap.set(m, pVal);
-    }
-  }
 
   const ratios: number[] = [];
   const validYears: number[] = [];
+  let cheaperPriceCount = 0;
 
   const targetMonth = startMonth + horizonMonths;
-  // If targetMonth <= 12, ratio is within the same year
-  if (targetMonth <= 12) {
-    for (const [y, mmap] of byYear.entries()) {
-      if (mmap.has(startMonth) && mmap.has(targetMonth)) {
-        const startPrice = mmap.get(startMonth)!;
-        const targetPrice = mmap.get(targetMonth)!;
-        if (startPrice > 0 && targetPrice > 0) {
-          ratios.push(targetPrice / startPrice);
-          validYears.push(y);
-        }
-      }
+
+  for (let y = minYear; y <= maxYear; y++) {
+    const startYm = `${y}-${startMonth < 10 ? "0" + startMonth : startMonth}`;
+    let targetYm: string;
+    if (targetMonth <= 12) {
+      targetYm = `${y}-${targetMonth < 10 ? "0" + targetMonth : targetMonth}`;
+    } else {
+      const nextY = y + Math.floor((targetMonth - 1) / 12);
+      const nextM = ((targetMonth - 1) % 12) + 1;
+      targetYm = `${nextY}-${nextM < 10 ? "0" + nextM : nextM}`;
     }
-  } else {
-    // Crosses year boundary: year y startMonth to year y+1 (targetMonth - 12)
-    const nextMonth = targetMonth - 12;
-    for (const [y, mmap] of byYear.entries()) {
-      const nextMap = byYear.get(y + 1);
-      if (mmap.has(startMonth) && nextMap?.has(nextMonth)) {
-        const startPrice = mmap.get(startMonth)!;
-        const nextPrice = nextMap.get(nextMonth)!;
-        if (startPrice > 0 && nextPrice > 0) {
-          ratios.push(nextPrice / startPrice);
-          validYears.push(y);
+
+    if (byYm.has(startYm) && byYm.has(targetYm)) {
+      const startPrice = byYm.get(startYm)!;
+      const targetPrice = byYm.get(targetYm)!;
+      if (startPrice > 0 && targetPrice > 0) {
+        ratios.push(targetPrice / startPrice);
+        validYears.push(y);
+        if (targetPrice < startPrice) {
+          cheaperPriceCount++;
         }
       }
     }
@@ -243,7 +301,15 @@ export function computeSeasonalRatios(
     validYears.push(2022);
   }
 
-  return { ratios, years: validYears };
+  return {
+    ratios,
+    years: validYears,
+    cheaperPriceCount,
+    usedYellowFallback,
+    minYear,
+    maxYear,
+    totalWholesaleYears: totalYears,
+  };
 }
 
 function quantile(sorted: number[], q: number): number {
@@ -324,21 +390,27 @@ export function simulateSelling(input: SellingSimulationInput): SellingOptionRes
 
   const results: SellingOptionResult[] = [sellNowResult];
 
-  // Storage horizons: 4 weeks (1 mo), 8 weeks (2 mos), 12 weeks (3 mos)
-  const horizons = [
+  // Storage horizons: 4 weeks (1 mo), 8 weeks (2 mos), 12 weeks (3 mos), 24 weeks (6 mos)
+  const candidateHorizons = [
     { key: "store_4w" as const, label: "Store 4 weeks", k: 1, weeks: 4 },
     { key: "store_8w" as const, label: "Store 8 weeks", k: 2, weeks: 8 },
     { key: "store_12w" as const, label: "Store 12 weeks", k: 3, weeks: 12 },
+    { key: "store_24w" as const, label: "Store 24 weeks (6 months)", k: 6, weeks: 24 },
   ];
 
-  for (const h of horizons) {
-    const { ratios, years } = computeSeasonalRatios(
+  for (const h of candidateHorizons) {
+    const { ratios, years, cheaperPriceCount, usedYellowFallback } = computeSeasonalRatios(
       prices,
       startMonth,
       h.k,
       asOf,
       commodityPreference
     );
+
+    // If store_24w has fewer than 5 paired years, skip it per rule 5
+    if (h.key === "store_24w" && years.length < 5) {
+      continue;
+    }
 
     const remainingBags = bags * Math.pow(1 - monthlyLossRate, h.k);
     const storageCostTotal = monthlyStorageCostPerBag * bags * h.k;
@@ -365,11 +437,11 @@ export function simulateSelling(input: SellingSimulationInput): SellingOptionRes
     const notes: string[] = [];
     if (riskMetric >= 0.5) {
       notes.push(
-        `High risk: in ${(riskMetric * 100).toFixed(0)}% of past years, prices fell after harvest and earned less than selling immediately.`
+        `High risk: in ${countLess} of ${years.length} past years, holding grain earned less than selling immediately.`
       );
     } else {
       notes.push(
-        `Storage upside: in ${((1 - riskMetric) * 100).toFixed(0)}% of past years, price gains exceeded storage losses.`
+        `Storage upside: in ${years.length - countLess} of ${years.length} past years, price gains exceeded storage losses.`
       );
     }
 
@@ -399,11 +471,15 @@ export function simulateSelling(input: SellingSimulationInput): SellingOptionRes
         riskMetric,
         riskLabel: "chance of earning less than selling now",
         n: years.length,
+        cheaperPriceCount,
+        countEarnedLess: countLess,
+        usedYellowFallback,
       },
       score,
       notes,
       dropped,
       dropReason,
+      lowConfidence: years.length < 5,
       bagsSoldNow: 0,
       bagsStored: bags,
       cashGeneratedNow: 0,
