@@ -161,6 +161,61 @@ describe("simulatePlanting (src/core/simulate/planting.ts)", () => {
     expect(JSON.stringify(run1)).toBe(JSON.stringify(run2));
   });
 
+  it("no look-ahead: mutating or deleting all rain data on or after asOf does not change simulation or risk results", () => {
+    const snapshotPath = path.resolve(
+      process.cwd(),
+      "data",
+      "snapshots",
+      "rain_daily__farm_bisi_ogbomoso.json"
+    );
+    const parsedSnapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf-8"));
+    const asOf = "2026-04-10";
+
+    const baseOptions = simulatePlanting({
+      series: parsedSnapshot.rows,
+      asOf,
+    });
+
+    // Mutate every row on or after asOf: inject extreme spikes (150 mm/day)
+    const mutatedSeries: DailyRainRecord[] = parsedSnapshot.rows.map((r: DailyRainRecord) => {
+      if (r.date >= asOf) {
+        return { date: r.date, rain_mm: 150.0 };
+      }
+      return { ...r };
+    });
+
+    const mutatedOptions = simulatePlanting({
+      series: mutatedSeries,
+      asOf,
+    });
+
+    // Truncated series: completely delete all rows on or after asOf
+    const truncatedSeries: DailyRainRecord[] = parsedSnapshot.rows.filter(
+      (r: DailyRainRecord) => r.date < asOf
+    );
+
+    const truncatedOptions = simulatePlanting({
+      series: truncatedSeries,
+      asOf,
+    });
+
+    expect(baseOptions).toHaveLength(3);
+    expect(mutatedOptions).toHaveLength(3);
+    expect(truncatedOptions).toHaveLength(3);
+
+    for (let i = 0; i < 3; i++) {
+      expect(mutatedOptions[i].replantProbability).toBe(baseOptions[i].replantProbability);
+      expect(mutatedOptions[i].rainfallAdequacy).toEqual(baseOptions[i].rainfallAdequacy);
+      expect(mutatedOptions[i].establishmentRainMm).toEqual(baseOptions[i].establishmentRainMm);
+      expect(mutatedOptions[i].score).toBe(baseOptions[i].score);
+
+      expect(truncatedOptions[i].replantProbability).toBe(baseOptions[i].replantProbability);
+      expect(truncatedOptions[i].rainfallAdequacy).toEqual(baseOptions[i].rainfallAdequacy);
+      expect(truncatedOptions[i].establishmentRainMm).toEqual(baseOptions[i].establishmentRainMm);
+      expect(truncatedOptions[i].score).toBe(baseOptions[i].score);
+    }
+  });
+
   describe("Validation on real data (farm_bisi_ogbomoso snapshot)", () => {
     it("runs for farm_bisi_ogbomoso as of 2026-04-10 with n >= 25", () => {
       const snapshotPath = path.resolve(

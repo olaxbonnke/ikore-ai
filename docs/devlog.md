@@ -243,3 +243,18 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
 - **CLI (`scripts/ask.ts`)**:
   - `npx tsx scripts/ask.ts farm_bisi_ogbomoso "when should I plant?"` tested and verified in both live Zetaris mode (provenance: `Zetaris (local)`) and snapshot mode (provenance: NASA POWER + Open-Meteo URLs). Both return identical verdicts (`wait_7`) and identical replant risk reduction (14.1% down to 0.7%).
 - **Verification**: `npx tsc --noEmit` clean (0 errors); all 47 vitest tests passed across 6 test suites.
+
+### 3.9 Day 3 Simulation Audit & NiMet 2026 Onset Benchmark
+- **Simulation Audit & Zero Look-Ahead**:
+  - Audited `src/core/simulate/planting.ts` and removed post-`asOf` forecast checks from the pure analog-year simulation.
+  - Added unit test in `tests/planting.test.ts` verifying that mutating (injecting extreme 150 mm/day spikes) or completely truncating all rainfall on or after `asOf` results in bit-for-bit identical risk probabilities (14.1% vs 0.7%), rainfall adequacy, establishment precipitation, and scoring.
+  - Updated snapshot provenance reporting in `src/core/observe.ts` to reflect only the historical NASA POWER climate dataset actually utilized.
+  - Formatted farmer-facing tie-break note to state only what the model computes ("equal replant risk, so the earlier date is chosen to keep more of the season") and properly attributed the seedling dry spell criterion ("more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days").
+  - Grounded the internal expected value baseline of ₦1,400,000 (2 ha × 2,000 kg/ha × ₦350/kg) in `Decision.assumptions` rather than presenting it as an ungrounded farmer revenue guarantee.
+- **NiMet 2026 Onset Benchmark Integration**:
+  - Seeded official NiMet 2026 Oyo onset forecast (15–30 April 2026, wait 10–15 days, 50% soil moisture threshold; NIHORT downscaled SCP citation) into `data/nimet_onset_2026.csv` and created offline snapshot `data/snapshots/nimet_onset__2026.json`.
+  - Added `nimet_onset` DDL and quote-aware CSV parsing to `scripts/zetaris-load.ts`, loaded the table into `oko-postgres`, and registered as `oko_pg.nimet_onset` in Zetaris.
+  - Added parameterized query `queries.nimetOnset(state, season)` to `src/data/queries.ts`.
+  - Wired in `src/core/orchestrator.ts` to query NiMet onset for the farm's state and season, and add neutral benchmark evidence to `Decision.evidence` comparing recommended planting date (e.g. 17 April) against NiMet's window (omitted silently if no benchmark row exists for state/season).
+  - Added comprehensive unit tests in `tests/decide.test.ts` covering inside-window, outside-window, and missing benchmark rows.
+- **Verification**: `npx tsc --noEmit` clean (0 errors); all 51 vitest tests passed across 6 test suites; live query via `scripts/ask.ts` verified with Zetaris.

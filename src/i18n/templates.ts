@@ -46,10 +46,10 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
 
   // Default English
   if (chosen === "wait_7") {
-    return `Wait 7 days to plant (around ${date}). Planting now carries a ${riskNow} risk of false start requiring replanting, whereas waiting drops the replanting risk to ${risk} with ${rain50} mm median establishment rainfall expected across 35 analog years.`;
+    return `Wait 7 days to plant (around ${date}). Planting now carries a ${riskNow} risk of false start requiring replanting, whereas waiting drops the replanting risk to ${risk} with ${rain50} mm median establishment rainfall expected across 35 analog years (equal replant risk to waiting 14 days, so the earlier date is chosen to keep more of the season).`;
   }
   if (chosen === "wait_14") {
-    return `Wait 14 days to plant (around ${date}). Replanting risk drops to ${risk} with steady onset rains.`;
+    return `Wait 14 days to plant (around ${date}). Replanting risk drops to ${risk}.`;
   }
   return `Plant now. Replanting risk is low at ${risk} with ${rain50} mm expected establishment rain.`;
 }

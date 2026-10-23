@@ -20,6 +20,25 @@ function runCodespace(cmd: string): string {
   }
 }
 
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result.map((v) => (v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1).replace(/""/g, '"') : v));
+}
+
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text
     .split(/\r?\n/)
@@ -27,9 +46,9 @@ function parseCsv(text: string): Record<string, string>[] {
     .filter((l) => l.length > 0 && !l.startsWith("#"));
 
   if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim());
+  const headers = splitCsvLine(lines[0]);
   return lines.slice(1).map((line) => {
-    const values = line.split(",").map((v) => v.trim());
+    const values = splitCsvLine(line);
     const row: Record<string, string> = {};
     headers.forEach((h, idx) => {
       row[h] = values[idx] ?? "";
@@ -48,6 +67,7 @@ BEGIN;
 DROP TABLE IF EXISTS rain_daily CASCADE;
 DROP TABLE IF EXISTS farm_records CASCADE;
 DROP TABLE IF EXISTS prices CASCADE;
+DROP TABLE IF EXISTS nimet_onset CASCADE;
 DROP TABLE IF EXISTS farms CASCADE;
 
 CREATE TABLE farms (
@@ -63,6 +83,19 @@ CREATE TABLE farms (
   preferred_lang VARCHAR(16) NOT NULL,
   risk_aversion VARCHAR(32) NOT NULL,
   zone VARCHAR(64) NOT NULL
+);
+
+CREATE TABLE nimet_onset (
+  state VARCHAR(64) NOT NULL,
+  season INT NOT NULL,
+  onset_start DATE NOT NULL,
+  onset_end DATE NOT NULL,
+  wait_after_onset_days_min INT NOT NULL,
+  wait_after_onset_days_max INT NOT NULL,
+  source_name VARCHAR(256) NOT NULL,
+  source_url VARCHAR(512) NOT NULL,
+  note TEXT,
+  PRIMARY KEY (state, season)
 );
 
 CREATE TABLE rain_daily (
@@ -148,6 +181,21 @@ CREATE TABLE prices (
 
       sqlChunks.push(
         `INSERT INTO rain_daily (farm_id, date, rain_mm) VALUES \n${valuesStr}\nON CONFLICT (farm_id, date) DO NOTHING;`
+      );
+    }
+  }
+
+  // 5. NiMet onset
+  const nimetPath = path.join(projectRoot, "data", "nimet_onset_2026.csv");
+  if (fs.existsSync(nimetPath)) {
+    const nimetCsv = fs.readFileSync(nimetPath, "utf-8");
+    const nimetRows = parseCsv(nimetCsv);
+    for (const n of nimetRows) {
+      const srcName = (n.source_name || "").replace(/'/g, "''");
+      const srcUrl = (n.source_url || "").replace(/'/g, "''");
+      const note = (n.note || "").replace(/'/g, "''");
+      sqlChunks.push(
+        `INSERT INTO nimet_onset (state, season, onset_start, onset_end, wait_after_onset_days_min, wait_after_onset_days_max, source_name, source_url, note) VALUES ('${n.state}', ${n.season}, '${n.onset_start}', '${n.onset_end}', ${n.wait_after_onset_days_min}, ${n.wait_after_onset_days_max}, '${srcName}', '${srcUrl}', '${note}');`
       );
     }
   }
@@ -287,6 +335,9 @@ async function main(): Promise<void> {
 
   const rainCount = await gateway.query("SELECT COUNT(*) AS c FROM oko_pg.rain_daily");
   console.log(`oko_pg.rain_daily count:`, rainCount.rows[0]);
+
+  const nimetCount = await gateway.query("SELECT COUNT(*) AS c FROM oko_pg.nimet_onset");
+  console.log(`oko_pg.nimet_onset count:`, nimetCount.rows[0]);
 
   console.log("\n--- Proof Query ---");
   const proofSql =

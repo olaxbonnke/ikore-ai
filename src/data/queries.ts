@@ -66,3 +66,17 @@ export function soil(_lat: number, _lon: number): BuiltQuery {
   rejectBadNumber(_lon, "lon");
   throw new Error("soil query not implemented yet");
 }
+
+export function nimetOnset(state: string, season: string | number): BuiltQuery {
+  if (!/^[a-zA-Z0-9_]+$/.test(state)) {
+    throw new Error(`Invalid state: ${state}`);
+  }
+  const seasonStr = String(season);
+  if (!/^[0-9]+$/.test(seasonStr)) {
+    throw new Error(`Invalid season: ${seasonStr}`);
+  }
+  return {
+    name: "nimetOnset",
+    sql: `SELECT state, season, onset_start, onset_end, wait_after_onset_days_min, wait_after_onset_days_max, source_name, source_url, note FROM oko_pg.nimet_onset WHERE LOWER(state) = LOWER('${state}') AND season = ${seasonStr} LIMIT 1`,
+  };
+}

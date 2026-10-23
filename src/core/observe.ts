@@ -30,9 +30,14 @@ export async function loadRainDaily(
     source: r.source,
   }));
 
+  // Simulation uses only historical data before asOf (NASA POWER), not the forecast
+  const actualProvenance = result.provenance.includes("power.larc.nasa.gov")
+    ? result.provenance.split(" & ")[0]
+    : result.provenance;
+
   return {
     records,
-    provenance: result.provenance,
+    provenance: actualProvenance,
     source: result.source,
     fetchedAt: result.fetchedAt,
   };

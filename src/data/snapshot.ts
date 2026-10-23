@@ -103,6 +103,11 @@ export class SnapshotGateway implements DataGateway {
       return "storage_loss.json";
     }
 
+    // NiMet onset benchmark
+    if (lower.includes("nimet") || lower.includes("onset")) {
+      return "nimet_onset__2026.json";
+    }
+
     // Crop calendar
     if (lower.includes("calendar")) {
       return "crop_calendar__maize_ng.json";

@@ -14,7 +14,7 @@
 
 import { getConfig } from "../config.ts";
 import { getGateway } from "../data/gateway.ts";
-import { rainDaily } from "../data/queries.ts";
+import { nimetOnset, rainDaily } from "../data/queries.ts";
 import { templatePlanting, templateUnavailable } from "../i18n/templates.ts";
 import { ask, remember } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
@@ -22,8 +22,59 @@ import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
 import { listOptions } from "./options.ts";
 import { simulatePlanting } from "./simulate/planting.ts";
-import type { AgentReply, IncomingMessage, OptionResult } from "./types.ts";
+import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult } from "./types.ts";
 import { understand } from "./understand.ts";
+
+export function formatNiMetBenchmarkEvidence(
+  row: {
+    state: string;
+    season: number | string;
+    onset_start: string;
+    onset_end: string;
+    source_name?: string;
+    source_url?: string;
+  },
+  suggestedDate: string,
+  querySql?: string
+): EvidenceItem {
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  const parsePart = (dStr: string) => {
+    const parts = dStr.split("-");
+    const d = parseInt(parts[2], 10);
+    const m = months[parseInt(parts[1], 10) - 1];
+    return { day: d, month: m };
+  };
+
+  const start = parsePart(row.onset_start);
+  const end = parsePart(row.onset_end);
+  const rec = parsePart(suggestedDate);
+
+  const windowStr =
+    start.month === end.month
+      ? `${start.day} and ${end.day} ${end.month}`
+      : `${start.day} ${start.month} and ${end.day} ${end.month}`;
+
+  const recStr = `${rec.day} ${rec.month}`;
+
+  const isInside = suggestedDate >= row.onset_start && suggestedDate <= row.onset_end;
+  const comparison = isInside ? "falls inside that window." : "falls outside that window.";
+  const statistic = `NiMet's ${row.season} forecast puts onset in ${row.state} between ${windowStr}. Ikore's suggested date, ${recStr}, ${comparison}`;
+
+  return {
+    id: "ev_nimet_benchmark",
+    kind: "forecast",
+    label: `NiMet ${row.season} Seasonal Climate Prediction benchmark (${row.state})`,
+    source: row.source_name || "NiMet 2026 Seasonal Climate Prediction",
+    sql: querySql,
+    queryName: "nimetOnset",
+    statistic,
+    value: isInside ? "inside" : "outside",
+  };
+}
 
 export async function handle(message: IncomingMessage): Promise<AgentReply> {
   const config = getConfig();
@@ -63,6 +114,28 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
   const loaded = await loadRainDaily(gateway, farmId);
   const query = rainDaily(farmId);
 
+  // Step 3b: NiMet Onset Benchmark (observed context, NOT input to simulation)
+  let nimetRow: any = null;
+  let nimetQuerySql: string | undefined;
+  try {
+    const asOfYear = asOf.split("-")[0];
+    const nQuery = nimetOnset(farm.state, asOfYear);
+    nimetQuerySql = nQuery.sql;
+    const res = await gateway.query<any>(nQuery.sql);
+    if (res.rows && res.rows.length > 0) {
+      const match = res.rows.find(
+        (r: any) =>
+          String(r.state).toLowerCase() === farm.state.toLowerCase() &&
+          String(r.season) === asOfYear
+      );
+      if (match) {
+        nimetRow = match;
+      }
+    }
+  } catch {
+    // Skip silently if no row exists or table not available
+  }
+
   // Step 4: Options
   const candidateKeys = listOptions(understood.intent, { asOf });
 
@@ -95,6 +168,16 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     provenance: loaded.provenance,
     plantingOptions: simResults,
   });
+
+  // Attach NiMet onset benchmark evidence if available for this state & season
+  if (nimetRow && decision.keyNumbers.plantingDate) {
+    const benchmarkItem = formatNiMetBenchmarkEvidence(
+      nimetRow,
+      String(decision.keyNumbers.plantingDate),
+      nimetQuerySql
+    );
+    decision.evidence.push(benchmarkItem);
+  }
 
   // Step 7: Explain
   const text = templatePlanting(decision, lang);

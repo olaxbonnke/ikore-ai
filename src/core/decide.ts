@@ -78,7 +78,7 @@ export function decide(
       if (isWait7And14) {
         chosenOpt = optA === "wait_7" ? best : second;
         runnerUpOpt = optA === "wait_7" ? second : best;
-        closeCallNote = `Close call: wait_7 and wait_14 scores are within ${(scoreGapPct * 100).toFixed(1)}% with identical ${(chosenOpt.outcome.riskMetric * 100).toFixed(1)}% replant risk. Tie-break rule selects earlier window (wait_7) to preserve growing season length.`;
+        closeCallNote = `Close call: wait_7 and wait_14 have equal ${(chosenOpt.outcome.riskMetric * 100).toFixed(1)}% replant risk, so the earlier date is chosen to keep more of the season.`;
       } else {
         chosenOpt = best;
         runnerUpOpt = second;
@@ -173,8 +173,8 @@ export function decide(
       id: "ev_sivakumar_threshold",
       kind: "assumption",
       label: "False-start seedling dry spell threshold",
-      source: "Sivakumar (1988) West Africa agroclimatology",
-      statistic: "Run of > 7 consecutive dry days (< 1 mm) within days 1 to 21 triggers replanting",
+      source: "Adapted from Sivakumar (1988) West Africa agroclimatology",
+      statistic: "More than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
       value: 7,
       unit: "days",
     },
@@ -184,8 +184,8 @@ export function decide(
   const assumptions: string[] = [
     "Base yield for smallholder maize: 2,000 kg/ha",
     "Seed cost: ₦25,000/ha; Replant labour: ₦20,000/ha",
-    "Dry day threshold: < 1 mm rain; Critical dry spell: > 7 consecutive dry days in seedling stage (D+1 to D+21)",
-    "Season water requirement: 500 mm (Sivakumar-style onset criterion)",
+    "Dry-spell rule: more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
+    "Internal scoring assumption: 2.0 ha × 2,000 kg/ha yield × ₦350/kg expected price = ₦1,400,000 baseline (used internally for risk-adjusted option ranking, not shown as a farmer guarantee)",
     "200 mm daily rainfall spike guard applied to satellite climate data",
     ...(params.assumptions || []),
   ];

@@ -270,29 +270,9 @@ export function simulatePlanting(
   const historicalR21Values = initialCandidates.map((c) => c.r21);
   const { weights: rawWeights, sigma, mean } = analogYearWeights(historicalR21Values, currentR21);
 
-  // 4. Check upcoming 2026 forecast dry gap (days 4 to 16 in forecast)
-  let dryGapForecast: PlantingEvidence["dryGapForecast"] | undefined;
-  const forecastRainDays: Array<{ date: string; rain: number | null }> = [];
-  for (let f = 0; f < 16; f++) {
-    const d = addDays(asOf, f);
-    const rain = extractRainMm(dateMap.get(d));
-    forecastRainDays.push({ date: d, rain });
-  }
-
-  const { longestDrySpellDays: forecastGapDays } = longestDrySpell(
-    forecastRainDays.slice(3).map((f) => f.rain),
-    0,
-    12,
-    DRY_DAY_THRESHOLD_MM
-  );
-
-  if (forecastGapDays >= CRITICAL_DRY_SPELL_DAYS) {
-    dryGapForecast = {
-      found: true,
-      lengthDays: forecastGapDays,
-      note: `Forecast shows a dry gap of ${forecastGapDays} consecutive days in the upcoming 16-day window`,
-    };
-  }
+  // Note: No post-asOf data is used. Simulation relies strictly on pre-asOf data
+  // (current 2026 pre-season days up to asOf-1 and historical analog years 1991-2025).
+  const dryGapForecast: PlantingEvidence["dryGapForecast"] = undefined;
 
   const results: PlantingOption[] = [];
 
@@ -420,10 +400,6 @@ export function simulatePlanting(
       notes.push("Moderate replanting risk (15-35%); watch early moisture");
     } else {
       notes.push("High false-start risk (>35%); high replanting risk with seedling mortality likely if dry spell hits");
-    }
-
-    if (dryGapForecast?.found) {
-      notes.push(dryGapForecast.note || "Dry gap detected in upcoming forecast");
     }
 
     if (lowConfidence) {

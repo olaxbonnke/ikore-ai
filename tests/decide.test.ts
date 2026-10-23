@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decide } from "../src/core/decide.ts";
-import { handle } from "../src/core/orchestrator.ts";
+import { formatNiMetBenchmarkEvidence, handle } from "../src/core/orchestrator.ts";
 import type { OptionResult } from "../src/core/types.ts";
 
 describe("decide (src/core/decide.ts)", () => {
@@ -158,5 +158,58 @@ describe("Orchestrator plant_timing end-to-end (snapshot mode)", () => {
     // Reply text contains advice
     expect(reply.text.toLowerCase()).toContain("wait 7 days");
     expect(reply.memoryIdsUsed.length).toBeGreaterThan(0);
+
+    // NiMet benchmark evidence item
+    const nimetEv = d.evidence.find((e) => e.id === "ev_nimet_benchmark");
+    expect(nimetEv).toBeDefined();
+    expect(nimetEv?.value).toBe("inside");
+    expect(nimetEv?.statistic).toBe(
+      "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 17 April, falls inside that window."
+    );
+  });
+
+  it("formats NiMet benchmark evidence when suggested date is inside window", () => {
+    const row = {
+      state: "Oyo",
+      season: 2026,
+      onset_start: "2026-04-15",
+      onset_end: "2026-04-30",
+      source_name: "NiMet 2026 SCP",
+    };
+    const ev = formatNiMetBenchmarkEvidence(row, "2026-04-17");
+    expect(ev.value).toBe("inside");
+    expect(ev.statistic).toBe(
+      "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 17 April, falls inside that window."
+    );
+  });
+
+  it("formats NiMet benchmark evidence when suggested date is outside window", () => {
+    const row = {
+      state: "Oyo",
+      season: 2026,
+      onset_start: "2026-04-15",
+      onset_end: "2026-04-30",
+      source_name: "NiMet 2026 SCP",
+    };
+    const ev = formatNiMetBenchmarkEvidence(row, "2026-04-10");
+    expect(ev.value).toBe("outside");
+    expect(ev.statistic).toBe(
+      "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 10 April, falls outside that window."
+    );
+  });
+
+  it("skips NiMet benchmark evidence silently if no benchmark row exists for farm state or season", async () => {
+    process.env.DATA_MODE = "snapshot";
+    // Using a season with no NiMet onset row, e.g. 2025
+    process.env.OKO_DEMO_DATE = "2025-04-10";
+
+    const reply = await handle({
+      farmId: "farm_bisi_ogbomoso",
+      text: "when should I plant maize?",
+    });
+
+    expect(reply.decision).toBeDefined();
+    const nimetEv = reply.decision!.evidence.find((e) => e.id === "ev_nimet_benchmark");
+    expect(nimetEv).toBeUndefined();
   });
 });

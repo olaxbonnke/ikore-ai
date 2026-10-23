@@ -1,0 +1,21 @@
+{
+  "source": "snapshot",
+  "sourceUrl": "https://korrectnews.com.ng/nimet-warns-oyo-farmers-against-deceptive-early-rains-advises-waiting-until-mid-april-for-planting/",
+  "fetchedAt": "2026-10-23T21:30:00.000Z",
+  "params": {
+    "file": "nimet_onset_2026.csv"
+  },
+  "rows": [
+    {
+      "state": "Oyo",
+      "season": 2026,
+      "onset_start": "2026-04-15",
+      "onset_end": "2026-04-30",
+      "wait_after_onset_days_min": 10,
+      "wait_after_onset_days_max": 15,
+      "source_name": "NiMet (Oyo State Meteorological Manager Emmanuel Udoh, Ibadan, March 2026)",
+      "source_url": "https://korrectnews.com.ng/nimet-warns-oyo-farmers-against-deceptive-early-rains-advises-waiting-until-mid-april-for-planting/",
+      "note": "NiMet defines onset as soil moisture reaching 50%. NIHORT summary of NiMet downscaled Oyo forecast notes wider onset mid-April to early May with advice to wait 10 to 15 days after confirmed onset before planting (https://nihort.gov.ng/wp-content/uploads/2026/07/Seasonal-Climate-Prediction-2026.pdf)."
+    }
+  ]
+}
