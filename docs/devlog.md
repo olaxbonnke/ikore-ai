@@ -220,3 +220,26 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
     - Environment variables: `OKO_PG_HOST`, `OKO_PG_PORT`, `OKO_PG_DB`, `OKO_PG_USER`, `OKO_PG_PASSWORD`, `OKO_DEMO_DATE`, `OKO_TZ`, `OKO_STATE_DIR`.
     - File system and memory paths: `.oko/`, `data/farms_seed.csv`, `zetaris/sql/01_register_oko.sql`.
     - Meterless HTTP header: `meterless-app: oko`.
+
+### 3.8 Day 3: Planting Decision End-to-End
+- **Options & Candidate Generation (`src/core/options.ts`)**:
+  - Implemented `listOptions(intent)` and `getOptionDefinitions(intent, context)`.
+  - For `plant_timing`: returns `["plant_now", "wait_7", "wait_14"]` (or `["wait_until_window"]` if outside season window).
+- **Decide Engine & Risk-Adjusted Scoring (`src/core/decide.ts`)**:
+  - Pure deterministic scoring: `score = expectedValue - lambda * downside` with lambda calibrated by farm risk aversion (low: 0.25, normal: 0.5, high: 1.0).
+  - Evaluates close calls: If top two options are within 5% of each other, recommends the safer option (lower replanting risk).
+  - **Tie-Break Rule**: When scores are within 5% (0.49% difference) and replanting risks are identical (0.7% vs 0.7%), the engine breaks the tie in favor of the earlier window (`wait_7` over `wait_14`) to maximize growing season length and prevent late-season terminal drought.
+  - Automatically builds `Decision.keyNumbers` (replant risk %, rain p10/p50/p90, adequacy, n analog years, asOf) and `Decision.evidence` (Zetaris SQL on `oko_pg.rain_daily`, provenance, and 200 mm spike guard).
+- **8-Step Agent Loop (`src/core/orchestrator.ts`)**:
+  - Implemented end-to-end `handle(message)`:
+    1. Understand: Rule-based intent and language classification for English/local terms.
+    2. Recall: Retrieves past decisions from Meterless H-MEM.
+    3. Observe: Loads daily rainfall via `DataGateway` (live Zetaris or snapshot fallback).
+    4. Options: Generates candidate windows.
+    5. Simulate: Pure physics simulation against 35 analog years (1991–2025).
+    6. Decide: Computes verdict (`wait_7`), runner-up (`wait_14`), risk badge (`green`), and confidence (`high`).
+    7. Explain: Grounded localized explanation from `src/i18n/templates.ts`.
+    8. Remember: Writes advice event and audit trail to farm H-MEM ledger.
+- **CLI (`scripts/ask.ts`)**:
+  - `npx tsx scripts/ask.ts farm_bisi_ogbomoso "when should I plant?"` tested and verified in both live Zetaris mode (provenance: `Zetaris (local)`) and snapshot mode (provenance: NASA POWER + Open-Meteo URLs). Both return identical verdicts (`wait_7`) and identical replant risk reduction (14.1% down to 0.7%).
+- **Verification**: `npx tsc --noEmit` clean (0 errors); all 47 vitest tests passed across 6 test suites.
