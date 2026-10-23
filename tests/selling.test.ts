@@ -42,11 +42,14 @@ describe("simulateSelling (src/core/simulate/selling.ts)", () => {
       bags: 20,
     });
 
-    // Mutate prices for dates >= asOf (e.g. inject extreme future values in 2026-09 to 2026-12)
+    // Mutate prices for dates >= asOf (e.g. inject extreme future values across horizons up to 2027)
     const mutatedPrices: MonthlyPriceRecord[] = [
       ...prices,
-      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2026-09", price_ngn_per_kg: 9999 },
-      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2026-10", price_ngn_per_kg: 8888 },
+      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2026-08", price_ngn_per_kg: 99999 },
+      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2026-09", price_ngn_per_kg: 99999 },
+      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2026-10", price_ngn_per_kg: 88888 },
+      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2027-02", price_ngn_per_kg: 77777 },
+      { state: "Oyo", market: "Ibadan", commodity: "Maize (white)", ym: "2027-08", price_ngn_per_kg: 66666 },
     ];
 
     const mutatedSim = simulateSelling({
@@ -61,7 +64,15 @@ describe("simulateSelling (src/core/simulate/selling.ts)", () => {
       expect(mutatedSim[i].outcome.riskMetric).toBe(baseSim[i].outcome.riskMetric);
       expect(mutatedSim[i].outcome.p50).toBe(baseSim[i].outcome.p50);
       expect(mutatedSim[i].score).toBe(baseSim[i].score);
+      expect(mutatedSim[i].outcome.n).toBe(baseSim[i].outcome.n);
     }
+
+    // CMA window boundary strictly respects asOf:
+    // With asOf = "2021-08-01", February 2021's 6-month forward CMA window reaches 2021-08 (>= asOf).
+    // Therefore 2020's August-to-February cross-year ratio cannot have a valid CMA window before asOf and must be excluded.
+    const res2021 = computeSeasonalRatios(prices, 8, 6, "2021-08-01", "Maize (white)");
+    expect(res2021.years).not.toContain(2020);
+    expect(res2021.years).not.toContain(2021);
   });
 
   it("verdict invariant to price level: ₦30,000 vs ₦60,000 per bag produces the same verdict when there is no cash need", () => {

@@ -335,6 +335,11 @@ export function decide(
     if (params.currentPricePerBag) {
       assumptions.push(`Today's price: you told me ₦${params.currentPricePerBag.toLocaleString()} per bag.`);
     }
+    if (params.sellingOptions?.some((s) => s.option === "store_24w")) {
+      assumptions.push(
+        "6-month storage (store_24w) estimates are in today's money, after allowing for general price rises (CMA-detrended)"
+      );
+    }
   } else {
     assumptions.push(
       "Base yield for smallholder maize: 2,000 kg/ha",

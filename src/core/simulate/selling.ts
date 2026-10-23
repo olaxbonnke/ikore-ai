@@ -238,32 +238,30 @@ export function computeSeasonalIndex(
 
 /**
  * Computes 12-month centred moving average (2x12 CMA) to detrend time series across year boundaries.
+ * Strictly respects asOf: only computes CMA for months where the entire 12-month centred window
+ * (up to t + 6 months) falls strictly before asOf. No forward padding or boundary extrapolation that
+ * would leak future data.
  */
 export function computeCenteredMovingAverage(
-  byYm: Map<string, number>
+  byYm: Map<string, number>,
+  asOfYearMonth?: string
 ): Map<string, number> {
-  const sortedYm = Array.from(byYm.keys()).sort();
+  const sortedYm = Array.from(byYm.keys())
+    .filter((ym) => !asOfYearMonth || ym < asOfYearMonth)
+    .sort();
   const cma = new Map<string, number>();
 
-  for (let i = 0; i < sortedYm.length; i++) {
-    if (i >= 6 && i + 6 < sortedYm.length) {
-      // Standard 2x12 centered moving average (13 points with half weights at endpoints)
-      let sum = 0;
-      for (let j = -6; j <= 6; j++) {
-        const weight = j === -6 || j === 6 ? 0.5 : 1.0;
-        sum += byYm.get(sortedYm[i + j])! * weight;
-      }
-      cma.set(sortedYm[i], sum / 12);
-    } else {
-      // Boundary window average
-      const start = Math.max(0, i - 6);
-      const end = Math.min(sortedYm.length, i + 7);
-      let sum = 0;
-      for (let j = start; j < end; j++) {
-        sum += byYm.get(sortedYm[j])!;
-      }
-      cma.set(sortedYm[i], sum / (end - start));
+  for (let i = 6; i + 6 < sortedYm.length; i++) {
+    const ymForward = sortedYm[i + 6];
+    if (asOfYearMonth && ymForward >= asOfYearMonth) break;
+
+    // Standard 2x12 centered moving average (13 points with half weights at endpoints)
+    let sum = 0;
+    for (let j = -6; j <= 6; j++) {
+      const weight = j === -6 || j === 6 ? 0.5 : 1.0;
+      sum += byYm.get(sortedYm[i + j])! * weight;
     }
+    cma.set(sortedYm[i], sum / 12);
   }
 
   return cma;
@@ -303,7 +301,7 @@ export function computeSeasonalRatios(
 
   const targetMonth = startMonth + horizonMonths;
   const isCrossYear = targetMonth > 12;
-  const cma = isCrossYear ? computeCenteredMovingAverage(byYm) : undefined;
+  const cma = isCrossYear ? computeCenteredMovingAverage(byYm, asOfYearMonth) : undefined;
 
   for (let y = minYear; y <= maxYear; y++) {
     const startYm = `${y}-${startMonth < 10 ? "0" + startMonth : startMonth}`;
@@ -323,6 +321,7 @@ export function computeSeasonalRatios(
         if (isCrossYear && cma) {
           const cmaStart = cma.get(startYm);
           const cmaTarget = cma.get(targetYm);
+          // Only include if both start and target months have a full 12-month centered window before asOf
           if (cmaStart && cmaTarget && cmaStart > 0 && cmaTarget > 0) {
             const detrendedStart = startPrice / cmaStart;
             const detrendedTarget = targetPrice / cmaTarget;
@@ -332,6 +331,9 @@ export function computeSeasonalRatios(
             if (ratio < 1.0) {
               cheaperPriceCount++;
             }
+            continue;
+          } else {
+            // Whole CMA window does not fall strictly before asOf; exclude this year to guarantee zero look-ahead
             continue;
           }
         }
@@ -444,12 +446,20 @@ export function simulateSelling(input: SellingSimulationInput): SellingOptionRes
 
   const results: SellingOptionResult[] = [sellNowResult];
 
-  // Storage horizons: 4 weeks (1 mo), 8 weeks (2 mos), 12 weeks (3 mos), 24 weeks (6 mos)
+  // Storage horizons:
+  // - 4w, 8w, 12w (1, 2, 3 months): Stay within the same post-harvest calendar year (Aug -> Nov).
+  //   Within-year nominal ratios are used directly because general inflation over 1-3 months
+  //   within a single calendar year is minimal, and within-year calendar means would cancel out.
+  // - 24w (6 months): Crosses the calendar year boundary (Aug -> Feb next year).
+  //   In Nigeria's inflationary macroeconomic environment (15-30% p.a.), raw cross-year comparisons
+  //   would mistake general currency inflation for grain storage upside. We therefore detrend
+  //   cross-year ratios using a 12-month centred moving average (2x12 CMA) strictly before asOf,
+  //   expressing returns in today's money, after allowing for general price rises.
   const candidateHorizons = [
     { key: "store_4w" as const, label: "Store 4 weeks", k: 1, weeks: 4 },
     { key: "store_8w" as const, label: "Store 8 weeks", k: 2, weeks: 8 },
     { key: "store_12w" as const, label: "Store 12 weeks", k: 3, weeks: 12 },
-    { key: "store_24w" as const, label: "Store 24 weeks (6 months)", k: 6, weeks: 24 },
+    { key: "store_24w" as const, label: "Store 24 weeks (6 months, in today's money)", k: 6, weeks: 24 },
   ];
 
   for (const h of candidateHorizons) {
@@ -489,6 +499,9 @@ export function simulateSelling(input: SellingSimulationInput): SellingOptionRes
     const score = Math.round(meanVal - 0.5 * downside);
 
     const notes: string[] = [];
+    if (h.key === "store_24w") {
+      notes.push("Values in today's money, after allowing for general price rises.");
+    }
     if (riskMetric >= 0.5) {
       notes.push(
         `High risk: in ${countLess} of ${years.length} past years, holding grain earned less than selling immediately.`

@@ -275,3 +275,10 @@ Known limitations: Codespaces on a free GitHub account have a monthly usage limi
   - Wired in `src/core/orchestrator.ts` to query NiMet onset for the farm's state and season, and add neutral benchmark evidence to `Decision.evidence` comparing recommended planting date (e.g. 17 April) against NiMet's window (omitted silently if no benchmark row exists for state/season).
   - Added comprehensive unit tests in `tests/decide.test.ts` covering inside-window, outside-window, and missing benchmark rows.
 - **Verification**: `npx tsc --noEmit` clean (0 errors); all 51 vitest tests passed across 6 test suites; live query via `scripts/ask.ts` verified with Zetaris.
+
+## Day 4: Sat 24 Oct 2026
+
+### 4.1 Sell-or-Store Decision & Seasonality Model
+- **WFP Wholesale Seasonality**: Switched to WFP Ibadan "Maize (white)", unit 100 KG, Wholesale (2010 to 2023, 14 years), with yellow wholesale fallback for missing months.
+- **Detrending Method Difference**: Within-year storage horizons (4w, 8w, 12w) use empirical within-year ratios because general inflation over 1–3 months within the same calendar year is negligible and within-year calendar means cancel out. The 24-week horizon (`store_24w`, August to February) crosses the calendar year boundary; in Nigeria's inflationary macroeconomic environment (15–30% p.a.), raw cross-year comparisons would mistake general currency inflation for grain storage upside. It is therefore detrended with a 12-month centred moving average (2x12 CMA) strictly before `asOf` (requiring full windows up to $t+6$ months before `asOf`), expressing returns in today's money, after allowing for general price rises.
+- **Count-Based Honest Explanations**: Avoided small-sample percentages (e.g. 100%) in farmer-facing text, communicating exact historical counts ("In 8 of the 9 past years with data, Ibadan wholesale maize was cheaper a month after August than in August").

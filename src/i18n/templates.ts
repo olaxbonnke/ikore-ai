@@ -84,6 +84,7 @@ export function templateSelling(decision: Decision, _lang: Lang = "en"): string 
   const p90 = Number(k.valueP90Ngn || 0).toLocaleString();
   const n = Number(k.nYears || 10);
   const higher = n - Number(k.cheaperCount ?? 0);
+  const inflationClause = chosen === "store_24w" ? " in today's money, after allowing for general price rises" : "";
 
-  return `Store your maize for ${weeks} weeks. In ${higher} of the ${n} past years with data, wholesale prices rose enough to cover storage weight loss (assumed ${lossPct}% per month in ${storageLabel}), with expected return around ₦${p50} across past years (typically between ₦${p10} and ₦${p90}).`;
+  return `Store your maize for ${weeks} weeks. In ${higher} of the ${n} past years with data, wholesale prices rose enough to cover storage weight loss (assumed ${lossPct}% per month in ${storageLabel}), with expected return around ₦${p50} across past years${inflationClause} (typically between ₦${p10} and ₦${p90}).`;
 }
