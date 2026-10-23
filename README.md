@@ -1,62 +1,60 @@
-# Agentathon Starter: The Research Notebook Agent
+# Ikore AI
 
-A CLI agent whose memory is real H-MEM: it mines what you tell it, ranks what it recalls, explains where every answer came from, and remembers across runs. Zero API keys. Your hackathon project starts by replacing the CLI with your own surface and keeping the memory spine.
+Ìkórè means harvest in Yoruba.
 
-<img src="images/notebook-loop.svg" alt="Animated: notebook commands run in a terminal while each one maps to a named H-MEM service: remember to MemoryMiningService, ask to MemoryRetrievalService, audit to TrustLedgerService, sleep to SleepCycleService" width="820" />
+Ikore AI is a farm decision agent designed to empower Nigerian smallholder farmers with data-grounded agronomic and economic intelligence. It addresses two critical inflection points that determine a farmer's seasonal livelihood:
+1. **When to plant**: Minimising false-start replanting risk and ensuring adequate seasonal rainfall through historical analog-year analysis and forecast integration.
+2. **Whether to sell or store**: Comparing immediate harvest prices against storage costs, post-harvest loss curves, and seasonal market price appreciation.
 
-## Two minutes to first recall
+> **Current Implementation & Scope**: Maize in Oyo State (e.g. Ogbomoso and Iseyin) is the first supported crop and geography. The crop parameters, agronomic thresholds, and data adapters are designed to extend cleanly to other crops (e.g. sorghum, cassava) and states, but currently only **maize in Oyo State** is fully implemented and validated against real satellite and historical records.
 
+---
+
+## Architecture & Core Tech
+
+Ikore AI combines deterministic agronomic modeling with modern agent infrastructure:
+
+- **Data Layer (Zetaris)**: Federated, read-only data access over 35+ years of daily climate history (NASA POWER PRECTOTCORR), 16-day weather forecasts (Open-Meteo), WFP monthly market prices, and crop calendars via `DataGateway` (`ZetarisGateway` in live mode, `SnapshotGateway` for offline reproducible evaluation).
+- **Farm Memory & Ledger (Meterless H-MEM)**: Multi-session, auditable memory per farm using real Meterless H-MEM services (`MemoryMiningService`, `MemoryRetrievalService`, `TrustLedgerService`, `SleepCycleService`).
+- **Explanation Layer (NVIDIA Nemotron)**: Explains decisions in plain, local language (English, Nigerian Pidgin, Yoruba, and Hausa). Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
+- **Pure Simulation Engine**: 100% deterministic, pure functions taking explicit `asOf` dates (Africa/Lagos timezone) with zero unseeded randomness or ungrounded heuristics.
+
+---
+
+## Quickstart
+
+### Prerequisites
+- Node.js 20+
+- npm
+
+### Installation
 ```bash
-npx degit meterless/meterless/templates/agentathon-starter my-agent
-cd my-agent
+git clone https://github.com/olaxbonnke/oko-farm-agent.git
+cd oko-farm-agent
 npm install
-npm run setup        # REQUIRED: vendors the H-MEM reference into vendor/ (gitignored)
-
-npx tsx notebook.ts seed
-npx tsx notebook.ts ask "what did we decide about storage"
+npm run setup        # Vendors Meterless H-MEM reference into vendor/
 ```
 
-Step 4 is not skippable: `vendor/` is gitignored, so a fresh clone has no engine until setup runs. The startup line always names which engine source loaded.
-
-Quit the terminal, come back tomorrow, ask again: it still remembers. That persistence (`.notebook/`, also gitignored) is the demo.
-
-## Commands
-
+### Verification & Testing
 ```bash
-npx tsx notebook.ts remember "We always deploy on green CI"
-npx tsx notebook.ts ask "when do we deploy"
-npx tsx notebook.ts audit mem-1        # the memory's append-only ledger history
-npx tsx notebook.ts sleep --preview    # consolidation plan, nothing applied
+npm test             # Runs all Vitest test suites (pure simulations, memory, gateway)
+npx tsc --noEmit     # Validates TypeScript types strictly
+npm run zetaris:verify # Verifies live Zetaris connectivity or fallback
 ```
 
-## Where the engine is used (judges look here)
-
-The rubric weights "Meterless engine usage" at 25%. Every command routes through a named H-MEM service; nothing is faked:
-
-| Command | Engine service | Spec section |
-|---|---|---|
-| `remember` | MemoryMiningService (model-free path) + MemoryStoreService | AGENTS.md 4, 3 |
-| `ask` | MemoryRetrievalService (hybrid formula, reinjection, trace) | AGENTS.md 6 |
-| `audit` | TrustLedgerService (append-only history) | AGENTS.md 9 |
-| `sleep` | SleepCycleService (preview-first, guardrails, backup) | AGENTS.md 8 |
-| answer quality over time | feedback deltas are one call away: `hmem.feedback(id, "helpful")` | AGENTS.md 9.2 |
-
-## Add a real model (optional)
-
-The default answer mode is retrieval-only and fully offline. With a key:
-
+### Running the App
 ```bash
-npm install @anthropic-ai/sdk
-ANTHROPIC_API_KEY=... npx tsx notebook.ts ask "what did we decide about storage"
+npm run dev          # Next.js development server at http://localhost:3000
+npm run demo         # Runs snapshot-backed demo with seeded farm memories
 ```
 
-The reinjected memory block goes into the prompt; the answer cites memory ids. Both modes are labeled in the output.
+---
 
-## Extension ideas by track
+## Key Commands
 
-- **Memory agents**: extend mining with your own event types; wire `feedback` to thumbs up/down; build the dream review UI.
-- **Desktop agents**: pair the notebook with Relay-style execution; memories become preconditions for actions.
-- **Creative swarms**: when the swarm orchestration engine drops, fan out variants and remember which ones the user kept.
-- **Enterprise workflow**: point `remember` at your CRM export; `ask` becomes account context on demand.
-
-Rubric and tracks: [docs/community/hackathon-guide.md](../../docs/community/hackathon-guide.md). Engine spec: [engines/hmem/AGENTS.md](../../engines/hmem/AGENTS.md).
+- `npm test`: Run full Vitest test suite.
+- `npm run setup`: Vendor Meterless H-MEM reference into `vendor/hmem`.
+- `npm run seed`: Seed demo farm profiles into H-MEM memory.
+- `npm run zetaris:verify`: Test connectivity to live Zetaris or offline fallback.
+- `npm run zetaris:load`: Ingest tables into PostgreSQL container and register JDBC datasource in Zetaris.
+- `npm run snapshots:fetch`: Fetch live NASA POWER and Open-Meteo climate data with sanity bounds.

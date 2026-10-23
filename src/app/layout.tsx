@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Oko — farm advisor",
+  title: "Ikore AI — farm advisor",
   description: "Plant and sell decisions for Nigerian smallholder maize farmers.",
 };
 

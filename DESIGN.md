@@ -1,6 +1,6 @@
-# DESIGN.md: Oko technical and product design
+# DESIGN.md: Ikore AI technical and product design
 
-Read PROJECT.md first. This file is the source of truth for **how** Oko is built. If code and this file disagree, update this file in the same change.
+Read PROJECT.md first. This file is the source of truth for **how** Ikore AI is built. If code and this file disagree, update this file in the same change.
 
 ---
 
@@ -404,7 +404,7 @@ Examples: (include 8 examples: 2 per language, covering both intents)
 
 ### 8.3 Prompt: explain (`prompts/explain.md`)
 ```
-You are Oko, a friendly farm advisor. Write the reply to the farmer in {lang}.
+You are Ikore, a friendly farm advisor. Write the reply to the farmer in {lang}.
 You receive a Decision JSON. Rules:
 1. First line: the verdict, max 12 words. (e.g. Pidgin: "Wait small. Plant around 2 November.")
 2. Then 1–2 short sentences with the main reason, using at most 3 numbers.
@@ -439,7 +439,7 @@ Numbers: always format naira as `₦118,000` in every language. Dates: "2 Nov" /
 
 ## 9. Meterless integration (aim for depth; the Meterless rubric weights engine use at 25%)
 
-| Oko feature | Meterless service (from the agentathon starter / H-MEM spec) |
+| Ikore feature | Meterless service (from the agentathon starter / H-MEM spec) |
 |---|---|
 | Save farm facts, advice and outcomes | `remember` → **MemoryMiningService** + **MemoryStoreService** |
 | Recall farm context before deciding | `ask` → **MemoryRetrievalService** (hybrid retrieval, reinjection, trace) |
@@ -460,9 +460,9 @@ Numbers: always format naira as `₦118,000` in every language. Dates: "2 Nov" /
 ### 10.1 Layout (desktop and mobile)
 - **Left (or a top drawer on mobile):** farm switcher (Mama Bisi, Ogbomoso · Musa, Kaduna · Demo farm 3), language toggle (EN / Pidgin / Yorùbá / Hausa), data mode chip (Live via Zetaris / Offline snapshot).
 - **Centre:** chat, styled like WhatsApp.
-  - Incoming (farmer) bubbles on the right, light green. Oko bubbles on the left, white.
-  - Oko's verdict bubble: **bold headline**, reason text, a risk badge (green/amber/red pill), a large naira figure when relevant, and a "See why" button.
-  - Quick-reply chips under Oko's messages: "Why?", "Show numbers", "I don plant", "I don sell".
+  - Incoming (farmer) bubbles on the right, light green. Ikore bubbles on the left, white.
+  - Ikore's verdict bubble: **bold headline**, reason text, a risk badge (green/amber/red pill), a large naira figure when relevant, and a "See why" button.
+  - Quick-reply chips under Ikore's messages: "Why?", "Show numbers", "I don plant", "I don sell".
 - **Right panel (or a bottom sheet on mobile): Evidence**
   - Option comparison table: option, expected ₦ (p50), range (p10 to p90), risk %.
   - Chart 1 (planting): 16-day forecast bars plus a shaded dry gap; a strip of analog years showing replant events.

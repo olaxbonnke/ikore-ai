@@ -1,6 +1,6 @@
-# AGENTS.md: rules for coding agents working on Oko
+# AGENTS.md: rules for coding agents working on Ikore AI
 
-You are working on **Oko**, a farm decision agent for the Open Agent Hackathon 2026.
+You are working on **Ikore AI**, a farm decision agent for the Open Agent Hackathon 2026.
 Read these first, in this order: **PROJECT.md**, then **DESIGN.md**, then **DATA.md**, then **INSTRUCTIONS.md**.
 DESIGN.md is the source of truth for architecture. If you change behaviour, update DESIGN.md in the same change.
 

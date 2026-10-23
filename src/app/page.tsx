@@ -4,11 +4,11 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 p-6">
       <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-oko-green">Oko · ọkọ̀</p>
+        <p className="text-sm font-medium uppercase tracking-wide text-oko-green">Ikore AI · Ìkórè</p>
         <h1 className="mt-2 text-3xl font-semibold text-oko-green">Farm decision advisor</h1>
         <p className="mt-3 text-base leading-relaxed text-oko-soil/90">
-          Chat, evidence panel, and morning briefings for maize farmers in Oyo State. Core
-          agent loop and data layers are stubbed — Day 1 scaffold.
+          Chat, evidence panel, and morning briefings for maize farmers in Oyo State. Powered by
+          meterless memory and live federated climate & market data.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -16,7 +16,7 @@ export default function HomePage() {
           Meterless H-MEM
         </span>
         <span className="rounded-full bg-oko-maize/30 px-3 py-1 text-sm text-oko-green">
-          Zetaris (next)
+          Zetaris Live Data
         </span>
       </div>
       <Link

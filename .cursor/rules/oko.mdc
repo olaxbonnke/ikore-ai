@@ -1,5 +1,5 @@
 ---
-description: Oko project rules (always on)
+description: Ikore AI project rules (always on)
 alwaysApply: true
 ---
 Before any change, read AGENTS.md (rules), DESIGN.md (architecture, source of truth), DATA.md (sources) and the current day's section of INSTRUCTIONS.md.

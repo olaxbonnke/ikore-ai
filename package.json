@@ -1,7 +1,7 @@
 {
-  "name": "oko-farm-agent",
+  "name": "ikore-ai",
   "version": "0.1.0",
-  "description": "Oko — farm decision agent (Open Agent Hackathon 2026). Meterless H-MEM + Zetaris.",
+  "description": "Ikore AI — farm decision agent (Open Agent Hackathon 2026). Meterless H-MEM + Zetaris.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",

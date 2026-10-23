@@ -1,6 +1,6 @@
-# PROJECT.md: Oko, a Farm Decision Agent
+# PROJECT.md: Ikore AI, a Farm Decision Agent
 
-> **Oko** means "farm" in Yoruba.
+> **Ìkórè** means "harvest" in Yoruba.
 > Entry for the **Open Agent Hackathon 2026** (GenAI Works), **Track 3: Reasoning Architecture**.
 > Also going for the **Best use of NVIDIA Nemotron** prize (NVIDIA DGX Spark, $4,699).
 > Builder: Bonnke Temiloluwa Olaitan (solo). Built in **Cursor**. Integrates **Zetaris** and **Meterless**, both required.
@@ -9,7 +9,7 @@
 
 ## 1. One-sentence pitch
 
-Oko is an AI farm advisor for Nigerian smallholder farmers. It works out two decisions that decide a season's income: **when to plant** and **when to sell**. It runs simulations against decades of real weather and market data, remembers every farm across seasons, and explains its verdict, the risk and the naira at stake in **English, Pidgin, Yoruba or Hausa**.
+Ikore AI is an AI farm advisor for Nigerian smallholder farmers. It works out two decisions that decide a season's income: **when to plant** and **when to sell**. It runs simulations against decades of real weather and market data, remembers every farm across seasons, and explains its verdict, the risk and the naira at stake in **English, Pidgin, Yoruba or Hausa**.
 
 ## 2. The problem (use this wording in the deck)
 
@@ -31,7 +31,7 @@ A chat-first agent (with a web interface that looks like WhatsApp) that:
 
 ## 4. Who it's for
 
-| Persona | Description | What they need from Oko |
+| Persona | Description | What they need from Ikore |
 |---|---|---|
 | **Mama Bisi** (main demo persona) | 45, grows 2 hectares of maize near Ogbomoso, Oyo State. Has a basic Android phone. Speaks Yoruba and Pidgin. Stores grain in sacks at home. | "Should I plant now?" "Should I sell now or wait?" A plain answer with a reason she trusts. |
 | **Musa** (second persona) | Maize and sorghum farmer in Kaduna State. Speaks Hausa. | Same decisions, in Hausa. Used to show it works in other languages and places. |
@@ -81,7 +81,7 @@ A chat-first agent (with a web interface that looks like WhatsApp) that:
 
 ## 7. How each scoring criterion is met
 
-| Criterion (weight) | How Oko scores |
+| Criterion (weight) | How Ikore scores |
 |---|---|
 | **Impact (30)** | Food security plus farmer income. Every verdict shows naira saved or earned and replanting risk avoided. Opening line: "One false start costs a 2-hectare farmer about ₦X in seed and labour" (compute X from real seed prices, cite the source). |
 | **Technical (20)** | A real decision loop with weather analog simulations (40 years of NASA POWER data), price seasonality from WFP data, risk-adjusted scoring, a read-only federated data layer, persistent auditable memory, and an overnight replanner. Numbers come from code, not the language model. |
@@ -95,13 +95,13 @@ A chat-first agent (with a web interface that looks like WhatsApp) that:
 | Time | Scene | What's on screen | Voiceover (short) |
 |---|---|---|---|
 | 0:00 to 0:20 | Hook | Photo or illustration of a Nigerian maize field. Text: "One wrong planting date. One season lost." | "Millions of Nigerian farmers bet their season on one decision: when to plant." |
-| 0:20 to 0:40 | Problem | Three logos or stats: scattered rainfall data, soil maps, market prices | "The data exists, but it's scattered. Oko puts it together." |
-| 0:40 to 1:30 | Decision 1: plant | Chat: Mama Bisi types in Pidgin "Rain don start for Ogbomoso. Make I plant maize now?" Oko answers: **"Wait. Plant around 2 Nov."** Evidence cards: 16-day forecast shows a dry gap; in 31 of 40 past years a similar start was followed by a dry spell over 7 days; replanting risk 42% now vs 11% in 10 days. | "Oko compares planting today with waiting, using 40 years of rainfall and the latest forecast. Every number comes from real data through Zetaris." |
-| 1:30 to 2:10 | Decision 2: sell | "I get 20 bags. Price na ₦52,000 per bag. Make I sell?" Oko answers: **"Store 8 weeks in PICS bags. Likely +₦118,000 after losses."** Chart: seasonal price curve, downside band, storage loss. | "It weighs the usual pre-lean-season price rise against storage losses and her cash needs." |
-| 2:10 to 2:35 | Memory and why | Next day: "Why you talk say make I wait?" Oko shows the audit trail: memory IDs, data rows, the decision trace. | "Oko remembers every farm, and every claim can be traced. That's Meterless H-MEM." |
-| 2:35 to 2:55 | Overnight | Morning briefing card: "Ẹ káàárọ̀ Mama Bisi. Rain go steady from Thursday. Plant Friday." Plus Hausa for Musa. | "Every night, Oko re-runs the scenarios for every farm, on local compute." |
+| 0:20 to 0:40 | Problem | Three logos or stats: scattered rainfall data, soil maps, market prices | "The data exists, but it's scattered. Ikore puts it together." |
+| 0:40 to 1:30 | Decision 1: plant | Chat: Mama Bisi types in Pidgin "Rain don start for Ogbomoso. Make I plant maize now?" Ikore answers: **"Wait. Plant around 2 Nov."** Evidence cards: 16-day forecast shows a dry gap; in 31 of 40 past years a similar start was followed by a dry spell over 7 days; replanting risk 42% now vs 11% in 10 days. | "Ikore compares planting today with waiting, using 40 years of rainfall and the latest forecast. Every number comes from real data through Zetaris." |
+| 1:30 to 2:10 | Decision 2: sell | "I get 20 bags. Price na ₦52,000 per bag. Make I sell?" Ikore answers: **"Store 8 weeks in PICS bags. Likely +₦118,000 after losses."** Chart: seasonal price curve, downside band, storage loss. | "It weighs the usual pre-lean-season price rise against storage losses and her cash needs." |
+| 2:10 to 2:35 | Memory and why | Next day: "Why you talk say make I wait?" Ikore shows the audit trail: memory IDs, data rows, the decision trace. | "Ikore remembers every farm, and every claim can be traced. That's Meterless H-MEM." |
+| 2:35 to 2:55 | Overnight | Morning briefing card: "Ẹ káàárọ̀ Mama Bisi. Rain go steady from Thursday. Plant Friday." Plus Hausa for Musa. | "Every night, Ikore re-runs the scenarios for every farm, on local compute." |
 | 2:55 to 3:20 | Architecture | Architecture diagram: Zetaris, Meterless, Nemotron, Cursor | "Zetaris for data, Meterless for memory and overnight runs, Nemotron for reasoning and language, built in Cursor." |
-| 3:20 to 3:40 | Close | "Oko: the right decision, in your language." Repo URL. | |
+| 3:20 to 3:40 | Close | "Ikore AI: the right decision, in your language." Repo URL. | |
 
 **Demo date:** late October is outside Oyo's main maize planting window, so the planting scene runs with `OKO_DEMO_DATE` set inside the main season (e.g. 10 Apr 2026). Show the date chip on screen and say it in the voiceover (see DESIGN.md section 12).
 
@@ -119,5 +119,5 @@ A chat-first agent (with a web interface that looks like WhatsApp) that:
 ## 10. Repository and naming
 
 - Repo: `github.com/<bonnke>/oko-farm-agent` (public, MIT licence; Meterless parts are Apache 2.0 and that is declared).
-- App name: **Oko**. Tagline: **"The right decision, in your language."**
+- App name: **Ikore AI**. Tagline: **"The right decision, in your language."**
 - Pre-existing code to declare: the Meterless `agentathon-starter` template and the vendored H-MEM reference (Apache 2.0). Zetaris getting-started helper scripts if copied. Nothing else.

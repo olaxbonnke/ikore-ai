@@ -1,4 +1,4 @@
-/** Shared Oko types (DESIGN.md section 5). */
+/** Shared Ikore AI types (DESIGN.md section 5). */
 
 export type Lang = "en" | "pcm" | "yo" | "ha";
 

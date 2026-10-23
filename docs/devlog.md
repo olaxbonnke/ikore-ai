@@ -208,3 +208,15 @@ How Oko was built: tools, prompts, and what passed. Updated daily.
     - 1995: 1,943.53 mm
     - Year 2000: **1,235.90 mm** (exact match to snapshot).
 - **Verification**: `npx tsc --noEmit` passed with 0 errors; all 43 vitest tests passed across 5 test suites.
+
+### 3.7 Product Renamed to Ikore AI
+- **Naming Context**:
+  - The product is renamed from "Oko" to **"Ikore AI"** (Ìkórè is Yoruba for harvest).
+  - All user-facing surfaces (UI text, page titles, layout metadata, README, prompts, i18n fallback templates, package name and description) now refer to the agent as "Ikore AI" or "Ikore".
+- **Infrastructure Preserved on Purpose**:
+  - The internal 'oko' identifiers were kept intentionally to avoid breaking existing data layers, Docker compose setups, or cached assets:
+    - Zetaris datasource: `oko_pg` (and table references e.g. `oko_pg.rain_daily`, `oko_pg.farms`).
+    - PostgreSQL container and volume: `oko-postgres`, `oko_postgres_data`.
+    - Environment variables: `OKO_PG_HOST`, `OKO_PG_PORT`, `OKO_PG_DB`, `OKO_PG_USER`, `OKO_PG_PASSWORD`, `OKO_DEMO_DATE`, `OKO_TZ`, `OKO_STATE_DIR`.
+    - File system and memory paths: `.oko/`, `data/farms_seed.csv`, `zetaris/sql/01_register_oko.sql`.
+    - Meterless HTTP header: `meterless-app: oko`.

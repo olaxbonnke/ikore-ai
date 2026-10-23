@@ -1,6 +1,6 @@
 # Farm Records (Synthetic Demo Data)
 
-The historical season records in `data/farm_records.csv` are **synthetic demo farm histories** created for hackathon simulation, seeding, and offline testing of the Oko farm decision agent.
+The historical season records in `data/farm_records.csv` are **synthetic demo farm histories** created for hackathon simulation, seeding, and offline testing of the Ikore AI farm decision agent.
 
 They do **not** represent real farmer records or actual confidential farm operations.
 
