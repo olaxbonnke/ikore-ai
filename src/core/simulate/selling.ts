@@ -237,7 +237,43 @@ export function computeSeasonalIndex(
 }
 
 /**
+ * Computes 12-month centred moving average (2x12 CMA) to detrend time series across year boundaries.
+ */
+export function computeCenteredMovingAverage(
+  byYm: Map<string, number>
+): Map<string, number> {
+  const sortedYm = Array.from(byYm.keys()).sort();
+  const cma = new Map<string, number>();
+
+  for (let i = 0; i < sortedYm.length; i++) {
+    if (i >= 6 && i + 6 < sortedYm.length) {
+      // Standard 2x12 centered moving average (13 points with half weights at endpoints)
+      let sum = 0;
+      for (let j = -6; j <= 6; j++) {
+        const weight = j === -6 || j === 6 ? 0.5 : 1.0;
+        sum += byYm.get(sortedYm[i + j])! * weight;
+      }
+      cma.set(sortedYm[i], sum / 12);
+    } else {
+      // Boundary window average
+      const start = Math.max(0, i - 6);
+      const end = Math.min(sortedYm.length, i + 7);
+      let sum = 0;
+      for (let j = start; j < end; j++) {
+        sum += byYm.get(sortedYm[j])!;
+      }
+      cma.set(sortedYm[i], sum / (end - start));
+    }
+  }
+
+  return cma;
+}
+
+/**
  * Computes empirical price ratios r(m -> m+k) across historical years strictly before asOf.
+ * For horizons crossing the year boundary (targetMonth > 12), detrends using a 12-month
+ * centred moving average (DESIGN.md section 6.2) to prevent macroeconomic inflation jumps
+ * from distorting seasonal comparisons.
  */
 export function computeSeasonalRatios(
   prices: MonthlyPriceRecord[],
@@ -266,6 +302,8 @@ export function computeSeasonalRatios(
   let cheaperPriceCount = 0;
 
   const targetMonth = startMonth + horizonMonths;
+  const isCrossYear = targetMonth > 12;
+  const cma = isCrossYear ? computeCenteredMovingAverage(byYm) : undefined;
 
   for (let y = minYear; y <= maxYear; y++) {
     const startYm = `${y}-${startMonth < 10 ? "0" + startMonth : startMonth}`;
@@ -282,6 +320,22 @@ export function computeSeasonalRatios(
       const startPrice = byYm.get(startYm)!;
       const targetPrice = byYm.get(targetYm)!;
       if (startPrice > 0 && targetPrice > 0) {
+        if (isCrossYear && cma) {
+          const cmaStart = cma.get(startYm);
+          const cmaTarget = cma.get(targetYm);
+          if (cmaStart && cmaTarget && cmaStart > 0 && cmaTarget > 0) {
+            const detrendedStart = startPrice / cmaStart;
+            const detrendedTarget = targetPrice / cmaTarget;
+            const ratio = detrendedTarget / detrendedStart;
+            ratios.push(ratio);
+            validYears.push(y);
+            if (ratio < 1.0) {
+              cheaperPriceCount++;
+            }
+            continue;
+          }
+        }
+
         ratios.push(targetPrice / startPrice);
         validYears.push(y);
         if (targetPrice < startPrice) {

@@ -5,6 +5,7 @@ import { decide } from "../src/core/decide.ts";
 import { handle } from "../src/core/orchestrator.ts";
 import {
   computeSeasonalIndex,
+  computeSeasonalRatios,
   simulateSelling,
   type MonthlyPriceRecord,
 } from "../src/core/simulate/selling.ts";
@@ -199,6 +200,48 @@ describe("simulateSelling (src/core/simulate/selling.ts)", () => {
     expect(store8w.dropReason).toContain("leaving ₦0 cash");
     expect(store12w.dropped).toBe(true);
     expect(store24w.dropped).toBe(true);
+  });
+
+  it("cross-year ratio isn't distorted by year-on-year inflation jumps (12m CMA detrending)", () => {
+    // Synthetic data: flat seasonal pattern (every month identical) with 30% annual inflation
+    const syntheticPrices: MonthlyPriceRecord[] = [];
+    const annualInflation = 1.30;
+    const monthlyFactor = Math.pow(annualInflation, 1 / 12);
+
+    let t = 0;
+    for (let y = 2018; y <= 2023; y++) {
+      for (let m = 1; m <= 12; m++) {
+        const ym = `${y}-${m < 10 ? "0" + m : m}`;
+        const price = 100 * Math.pow(monthlyFactor, t);
+        syntheticPrices.push({
+          state: "Oyo",
+          market: "Ibadan",
+          commodity: "Maize (white)",
+          unit: "100 KG",
+          pricetype: "Wholesale",
+          ym,
+          price_ngn_per_kg: price,
+        });
+        t++;
+      }
+    }
+
+    // August to February cross-year horizon (k = 6 months)
+    const { ratios } = computeSeasonalRatios(
+      syntheticPrices,
+      8, // August
+      6, // February next year
+      "2023-01-01",
+      "Maize (white)"
+    );
+
+    expect(ratios.length).toBeGreaterThanOrEqual(3);
+    for (const r of ratios) {
+      // Despite 30% annual inflation (which would produce ~1.14 nominal raw ratio over 6 months),
+      // the 12-month CMA detrending isolates true flat seasonality (ratio ~ 1.0)
+      expect(r).toBeGreaterThan(0.98);
+      expect(r).toBeLessThan(1.02);
+    }
   });
 });
 
