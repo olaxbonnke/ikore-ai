@@ -21,7 +21,7 @@ import { decide } from "./decide.ts";
 import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
 import { listOptions } from "./options.ts";
-import { simulatePlanting } from "./simulate/planting.ts";
+import { DEFAULT_PLANTING_ECONOMICS, simulatePlanting } from "./simulate/planting.ts";
 import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult } from "./types.ts";
 import { understand } from "./understand.ts";
 
@@ -148,10 +148,10 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       candidateOffsetsDays: [0, 7, 14],
       economics: {
         hectares: farm.hectares,
-        baseYieldKgPerHa: 2000,
-        expectedPricePerKg: 350,
-        seedCostPerHa: 25000,
-        replantLabourPerHa: 20000,
+        baseYieldKgPerHa: DEFAULT_PLANTING_ECONOMICS.baseYieldKgPerHa,
+        expectedPricePerKg: DEFAULT_PLANTING_ECONOMICS.expectedPricePerKg,
+        seedCostPerHa: DEFAULT_PLANTING_ECONOMICS.seedCostPerHa,
+        replantLabourPerHa: DEFAULT_PLANTING_ECONOMICS.replantLabourPerHa,
         riskAversionLambda: lambda,
       },
     },

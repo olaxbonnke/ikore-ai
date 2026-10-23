@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { decide } from "../src/core/decide.ts";
 import { formatNiMetBenchmarkEvidence, handle } from "../src/core/orchestrator.ts";
+import { simulatePlanting } from "../src/core/simulate/planting.ts";
 import type { OptionResult } from "../src/core/types.ts";
+import { SnapshotGateway } from "../src/data/snapshot.ts";
 
 describe("decide (src/core/decide.ts)", () => {
   const dummyOptions: OptionResult[] = [
@@ -198,18 +202,78 @@ describe("Orchestrator plant_timing end-to-end (snapshot mode)", () => {
     );
   });
 
+  it("verdict (wait_7) and replant risks remain invariant across different illustrative prices (350, 700) and yields (1500, 2500)", () => {
+    const snapshotPath = path.resolve(
+      process.cwd(),
+      "data",
+      "snapshots",
+      "rain_daily__farm_bisi_ogbomoso.json"
+    );
+    const parsedSnapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf-8"));
+    const asOf = "2026-04-10";
+
+    const prices = [350, 700];
+    const yields = [1500, 2500];
+
+    for (const expectedPricePerKg of prices) {
+      for (const baseYieldKgPerHa of yields) {
+        const sim = simulatePlanting({
+          series: parsedSnapshot.rows,
+          asOf,
+          options: {
+            candidateOffsetsDays: [0, 7, 14],
+            economics: {
+              hectares: 2.0,
+              baseYieldKgPerHa,
+              expectedPricePerKg,
+              seedCostPerHa: 25000,
+              replantLabourPerHa: 20000,
+              riskAversionLambda: 0.5,
+            },
+          },
+        });
+
+        const decision = decide(sim as unknown as OptionResult[], {
+          farmId: "farm_bisi_ogbomoso",
+          intent: "plant_timing",
+          asOf,
+          dataMode: "snapshot",
+          riskAversion: "normal",
+          plantingOptions: sim,
+        });
+
+        expect(decision.chosen).toBe("wait_7");
+        expect(decision.runnerUp).toBe("wait_14");
+        expect(decision.keyNumbers.replantRisk).toBe("0.7%");
+        expect(decision.keyNumbers.replantRiskNow).toBe("14.1%");
+      }
+    }
+  });
+
   it("skips NiMet benchmark evidence silently if no benchmark row exists for farm state or season", async () => {
     process.env.DATA_MODE = "snapshot";
-    // Using a season with no NiMet onset row, e.g. 2025
-    process.env.OKO_DEMO_DATE = "2025-04-10";
+    process.env.OKO_DEMO_DATE = "2026-04-10";
 
-    const reply = await handle({
-      farmId: "farm_bisi_ogbomoso",
-      text: "when should I plant maize?",
+    const originalQuery = SnapshotGateway.prototype.query;
+    const spy = vi.spyOn(SnapshotGateway.prototype, "query").mockImplementation(async function(this: any, sql: any, params: any) {
+      if (typeof sql === "string" && sql.toLowerCase().includes("nimet")) {
+        return { rows: [], source: "snapshot", fetchedAt: new Date().toISOString(), provenance: "none" };
+      }
+      return originalQuery.call(this, sql, params);
     });
 
-    expect(reply.decision).toBeDefined();
-    const nimetEv = reply.decision!.evidence.find((e) => e.id === "ev_nimet_benchmark");
-    expect(nimetEv).toBeUndefined();
+    try {
+      const reply = await handle({
+        farmId: "farm_bisi_ogbomoso",
+        text: "when should I plant maize?",
+      });
+
+      expect(reply.decision).toBeDefined();
+      const nimetEv = reply.decision!.evidence.find((e) => e.id === "ev_nimet_benchmark");
+      expect(nimetEv).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+      process.env.OKO_DEMO_DATE = "2026-04-10";
+    }
   });
 });

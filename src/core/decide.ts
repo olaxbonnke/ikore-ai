@@ -185,7 +185,7 @@ export function decide(
     "Base yield for smallholder maize: 2,000 kg/ha",
     "Seed cost: ₦25,000/ha; Replant labour: ₦20,000/ha",
     "Dry-spell rule: more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
-    "Internal scoring assumption: 2.0 ha × 2,000 kg/ha yield × ₦350/kg expected price = ₦1,400,000 baseline (used internally for risk-adjusted option ranking, not shown as a farmer guarantee)",
+    "2.0 ha from farms_seed.csv; 2,000 kg/ha is an uncited illustrative yield; ₦350/kg is an illustrative price matching the Aug 2022 Ibadan row in oko_pg.prices, not a 2026 forecast. Used only to scale scores, never shown to the farmer.",
     "200 mm daily rainfall spike guard applied to satellite climate data",
     ...(params.assumptions || []),
   ];

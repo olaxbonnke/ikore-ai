@@ -75,6 +75,13 @@ export interface PlantingEconomicsInput {
   riskAversionLambda?: number;
 }
 
+export const DEFAULT_PLANTING_ECONOMICS = {
+  baseYieldKgPerHa: 2000,
+  expectedPricePerKg: 350,
+  seedCostPerHa: 25000,
+  replantLabourPerHa: 20000,
+} as const;
+
 export interface PlantingSimulationOptions {
   sourceUrls?: string[];
   candidateOffsetsDays?: number[]; // default: [0, 7, 14]
