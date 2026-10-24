@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decide } from "../src/core/decide.ts";
 import { handle } from "../src/core/orchestrator.ts";
 import {
@@ -257,10 +257,17 @@ describe("simulateSelling (src/core/simulate/selling.ts)", () => {
 });
 
 describe("Orchestrator sell_or_store end-to-end", () => {
-  it("missing price leads to a question, not a verdict", async () => {
-    process.env.DATA_MODE = "snapshot";
-    process.env.OKO_DEMO_DATE = "2026-08-20";
+  beforeEach(() => {
+    vi.stubEnv("SAMPLE_MODE", "true");
+    vi.stubEnv("DATA_MODE", "snapshot");
+    vi.stubEnv("OKO_DEMO_DATE", "2026-08-20");
+  });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("missing price leads to a question, not a verdict", async () => {
     const reply = await handle({
       farmId: "farm_bisi_ogbomoso",
       text: "Should I sell my 20 bags of maize now or keep them in storage?",
@@ -272,9 +279,6 @@ describe("Orchestrator sell_or_store end-to-end", () => {
   });
 
   it("runs end-to-end for Mama Bisi with stated price of ₦45,000/bag at asOf=2026-08-20", async () => {
-    process.env.DATA_MODE = "snapshot";
-    process.env.OKO_DEMO_DATE = "2026-08-20";
-
     const reply = await handle({
       farmId: "farm_bisi_ogbomoso",
       text: "I harvest 20 bags of 100 kg. Buyer dey offer 45,000 naira per bag. Make I sell now or keep am?",

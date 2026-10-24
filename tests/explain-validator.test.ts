@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   explain,
   explainRecall,
@@ -504,6 +504,10 @@ describe("Intent & Slot extraction (src/llm/understand.ts)", () => {
 });
 
 describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("validates language correctly for Yoruba, Pidgin, and English", () => {
     // English leak in Yoruba
     const badYo = validateRecallLanguage("On 10 April I told you to wait a week and plant around 17 April.", "yo");
@@ -523,7 +527,7 @@ describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
   });
 
   it("retries on language mismatch and falls back to templateRecallAdvice if retry still fails", async () => {
-    process.env.SAMPLE_MODE = "false";
+    vi.stubEnv("SAMPLE_MODE", "false");
 
     // Mock provider returning English when Yoruba was requested
     const englishLeakProvider = new MockLLMProvider({
@@ -546,7 +550,7 @@ describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
   });
 
   it("accepts valid Yoruba reply from provider", async () => {
-    process.env.SAMPLE_MODE = "false";
+    vi.stubEnv("SAMPLE_MODE", "false");
 
     const yorubaProvider = new MockLLMProvider({
       reply: "Ní Ọjọ́ Ẹtì, 10 April mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.",

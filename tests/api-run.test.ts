@@ -1,27 +1,27 @@
 import fs from "node:fs";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as healthGet } from "../src/app/api/health/route.ts";
 import { POST as runPost } from "../src/app/api/run/route.ts";
 
 describe("JSON API: /api/health and /api/run", () => {
-  const originalEnv = { ...process.env };
-
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.SAMPLE_MODE = "true";
+    vi.stubEnv("SAMPLE_MODE", "true");
+    vi.stubEnv("DATA_MODE", "snapshot");
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    vi.unstubAllEnvs();
   });
 
   describe("GET /api/health", () => {
     it("returns 200 with configuration booleans and zero secret values", async () => {
-      process.env.METERLESS_RUNTIME_TOKEN = "secret_rt_token_12345";
-      process.env.ZETARIS_API_KEY = "secret_zetaris_key_99999";
-      process.env.ZETARIS_REST_URL = "https://zetaris.example.com";
-      process.env.ZETARIS_ORG_ID = "org-123";
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("METERLESS_BASE_URL", "http://127.0.0.1:8088/v1");
+      vi.stubEnv("METERLESS_RUNTIME_TOKEN", "secret_rt_token_12345");
+      vi.stubEnv("ZETARIS_REST_URL", "https://zetaris.example.com");
+      vi.stubEnv("ZETARIS_API_KEY", "secret_zetaris_key_99999");
+      vi.stubEnv("ZETARIS_ORG_ID", "org-123");
 
       const res = await healthGet();
       expect(res.status).toBe(200);
@@ -45,9 +45,12 @@ describe("JSON API: /api/health and /api/run", () => {
     });
 
     it("correctly identifies unconfigured states", async () => {
-      delete process.env.METERLESS_RUNTIME_TOKEN;
-      delete process.env.ZETARIS_API_KEY;
-      process.env.SAMPLE_MODE = "false";
+      vi.stubEnv("SAMPLE_MODE", "false");
+      vi.stubEnv("METERLESS_BASE_URL", "");
+      vi.stubEnv("METERLESS_RUNTIME_TOKEN", "");
+      vi.stubEnv("ZETARIS_REST_URL", "");
+      vi.stubEnv("ZETARIS_API_KEY", "");
+      vi.stubEnv("ZETARIS_ORG_ID", "");
 
       const res = await healthGet();
       const json = await res.json();
@@ -215,11 +218,11 @@ describe("JSON API: /api/health and /api/run", () => {
     });
 
     it("returns HTTP 503 JSON with trace when Zetaris is unreachable in live mode", async () => {
-      process.env.SAMPLE_MODE = "false";
-      process.env.DATA_MODE = "live";
-      process.env.ZETARIS_REST_URL = "http://127.0.0.1:54321";
-      process.env.ZETARIS_API_KEY = "dummy_key";
-      process.env.ZETARIS_ORG_ID = "dummy_org";
+      vi.stubEnv("SAMPLE_MODE", "false");
+      vi.stubEnv("DATA_MODE", "live");
+      vi.stubEnv("ZETARIS_REST_URL", "http://127.0.0.1:54321");
+      vi.stubEnv("ZETARIS_API_KEY", "dummy_key");
+      vi.stubEnv("ZETARIS_ORG_ID", "dummy_org");
 
       const req = new Request("http://localhost:3000/api/run", {
         method: "POST",
@@ -272,8 +275,8 @@ describe("JSON API: /api/health and /api/run", () => {
     });
 
     it("stores different memory IDs across two distinct runs for the same farm", async () => {
-      process.env.SAMPLE_MODE = "true";
-      process.env.DATA_MODE = "snapshot";
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
 
       const req1 = new Request("http://localhost:3000/api/run", {
         method: "POST",
@@ -308,8 +311,8 @@ describe("JSON API: /api/health and /api/run", () => {
     });
 
     it("answers recall_previous ('remind me') from memory without any Zetaris queries", async () => {
-      process.env.SAMPLE_MODE = "true";
-      process.env.DATA_MODE = "snapshot";
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
 
       // 1. Ensure at least one planting advice is on record for farm_bisi_ogbomoso
       const reqSeed = new Request("http://localhost:3000/api/run", {
@@ -360,8 +363,8 @@ describe("JSON API: /api/health and /api/run", () => {
     });
 
     it("handles recall_previous in Nigerian Pidgin and Yoruba", async () => {
-      process.env.SAMPLE_MODE = "true";
-      process.env.DATA_MODE = "snapshot";
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
 
       // Pidgin
       const reqPcm = new Request("http://localhost:3000/api/run", {
@@ -415,8 +418,8 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(resNFD.language).toBe("yo");
 
       // End-to-end via /api/run
-      process.env.SAMPLE_MODE = "true";
-      process.env.DATA_MODE = "snapshot";
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
       const req = new Request("http://localhost:3000/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

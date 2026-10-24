@@ -32,17 +32,16 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
   };
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.METERLESS_BASE_URL = "http://127.0.0.1:8088/v1";
-    process.env.METERLESS_RUNTIME_TOKEN = "rt_test_secret_token";
-    process.env.METERLESS_APP = "ikore-ai";
-    process.env.METERLESS_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
+    vi.stubEnv("METERLESS_BASE_URL", "http://127.0.0.1:8088/v1");
+    vi.stubEnv("METERLESS_RUNTIME_TOKEN", "rt_test_secret_token");
+    vi.stubEnv("METERLESS_APP", "ikore-ai");
+    vi.stubEnv("METERLESS_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b");
     delete process.env.METERLESS_SCOPE;
-    process.env.SAMPLE_MODE = "false";
+    vi.stubEnv("SAMPLE_MODE", "false");
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -80,7 +79,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
   });
 
   it("sends meterless-scope header only when METERLESS_SCOPE is set", async () => {
-    process.env.METERLESS_SCOPE = "user";
+    vi.stubEnv("METERLESS_SCOPE", "user");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -112,7 +111,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     // 1. With Nemotron model
-    process.env.METERLESS_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
+    vi.stubEnv("METERLESS_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b");
     await completeChat({
       system: "Sys",
       messages: [{ role: "user", content: "Hi" }],
@@ -123,7 +122,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
     fetchMock.mockClear();
 
     // 2. With non-Nemotron model (e.g. llama or meterless/auto)
-    process.env.METERLESS_MODEL = "meta/llama-3.1-70b-instruct";
+    vi.stubEnv("METERLESS_MODEL", "meta/llama-3.1-70b-instruct");
     await completeChat({
       system: "Sys",
       messages: [{ role: "user", content: "Hi" }],
@@ -221,7 +220,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
   });
 
   it("SAMPLE_MODE=true makes NO network call and uses safe template", async () => {
-    process.env.SAMPLE_MODE = "true";
+    vi.stubEnv("SAMPLE_MODE", "true");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -245,7 +244,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
   });
 
   it("logs warning when METERLESS_MODEL is unset or meterless/auto", async () => {
-    process.env.METERLESS_MODEL = "meterless/auto";
+    vi.stubEnv("METERLESS_MODEL", "meterless/auto");
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const fetchMock = vi.fn().mockResolvedValue({

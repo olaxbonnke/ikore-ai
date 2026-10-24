@@ -251,8 +251,9 @@ describe("Orchestrator plant_timing end-to-end (snapshot mode)", () => {
   });
 
   it("skips NiMet benchmark evidence silently if no benchmark row exists for farm state or season", async () => {
-    process.env.DATA_MODE = "snapshot";
-    process.env.OKO_DEMO_DATE = "2026-04-10";
+    vi.stubEnv("SAMPLE_MODE", "true");
+    vi.stubEnv("DATA_MODE", "snapshot");
+    vi.stubEnv("OKO_DEMO_DATE", "2026-04-10");
 
     const originalQuery = SnapshotGateway.prototype.query;
     const spy = vi.spyOn(SnapshotGateway.prototype, "query").mockImplementation(async function(this: any, sql: any, params: any) {
@@ -273,7 +274,7 @@ describe("Orchestrator plant_timing end-to-end (snapshot mode)", () => {
       expect(nimetEv).toBeUndefined();
     } finally {
       spy.mockRestore();
-      process.env.OKO_DEMO_DATE = "2026-04-10";
+      vi.unstubAllEnvs();
     }
   });
 });
