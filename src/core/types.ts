@@ -75,20 +75,24 @@ export interface Decision {
 export interface AgentReply {
   text: string;
   lang: Lang;
-  decision?: Decision;
+  decision?: Decision | null;
   intent?: string;
   askedQuestion?: boolean;
   memoryIdsUsed: string[];
-  path?: "llm" | "template";
+  path?: "llm" | "template" | "model";
   fallbackReason?: string;
   latencyMs?: number;
   model?: string;
+  requestedModel?: string;
+  respondedModel?: string;
+  guidance_type?: "general" | "decision";
   runId?: string;
   traceFile?: string;
   queriesRun?: string[];
   rowCounts?: Record<string, number>;
   recalledMemories?: string[];
   storedMemoryId?: string;
+  memory?: { recalled: string[]; stored?: string };
 }
 
 /** User message into the orchestrator (DESIGN.md section 4). */

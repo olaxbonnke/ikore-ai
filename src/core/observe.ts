@@ -1,5 +1,5 @@
 import type { DataGateway } from "../data/gateway.ts";
-import { rainDaily } from "../data/queries.ts";
+import { rainDaily, recentRainDaily } from "../data/queries.ts";
 import type { DailyRainRecord } from "./simulate/planting.ts";
 import type { Farm, Observation } from "./types.ts";
 
@@ -8,6 +8,60 @@ export interface LoadedRainDaily {
   provenance: string;
   source: string;
   fetchedAt: string;
+}
+
+export interface LoadedRecentRain {
+  records: Array<{ date: string; rain_mm: number }>;
+  totalRainMm: number;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  provenance: string;
+  querySql: string;
+}
+
+/**
+ * Loads recent daily rainfall time series for a farm through DataGateway (for agronomy/irrigation/harvest).
+ */
+export async function loadRecentRain(
+  gateway: DataGateway,
+  farmId: string,
+  asOf: string,
+  days = 14
+): Promise<LoadedRecentRain> {
+  const query = recentRainDaily(farmId, asOf, days);
+  const result = await gateway.query<{ date: string; rain_mm?: number | string | null }>(
+    query.sql,
+    { farmId, limit: days }
+  );
+
+  const validRows = result.rows
+    .filter((r) => typeof r.date === "string" && r.date <= asOf && r.rain_mm != null)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, days);
+
+  validRows.sort((a, b) => a.date.localeCompare(b.date));
+
+  const records = validRows.map((r) => ({
+    date: r.date.slice(0, 10),
+    rain_mm: typeof r.rain_mm === "number" ? r.rain_mm : parseFloat(String(r.rain_mm)),
+  }));
+
+  const totalRainMm = parseFloat(
+    records.reduce((sum, r) => sum + r.rain_mm, 0).toFixed(1)
+  );
+  const startDate = records[0]?.date || asOf;
+  const endDate = records[records.length - 1]?.date || asOf;
+
+  return {
+    records,
+    totalRainMm,
+    startDate,
+    endDate,
+    daysCount: records.length,
+    provenance: result.provenance,
+    querySql: query.sql,
+  };
 }
 
 /**

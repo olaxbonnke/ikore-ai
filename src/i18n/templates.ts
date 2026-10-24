@@ -18,15 +18,101 @@ export function templateUnavailable(_intent: "plant_timing" | "sell_or_store", l
 /** Honest localized reply for out-of-scope or unsupported agricultural questions. */
 export function templateOutOfScope(lang: Lang = "en"): string {
   if (lang === "yo") {
-    return "Mo lè gbani nímọ̀ràn nípa ìgbà gbígbin àgbàdo, títà tàbí títọ́jú rẹ̀ lẹ́yìn ìkórè, àti rírántí ìmọ̀ràn tí a ti sọ tẹ́lẹ̀ nìkan. N kò lè gbani nímọ̀ràn nípa ìgbà ìkórè, ajílẹ̀, kòkòrò, tàbí àwọn ohun ọ̀gbìn mìíràn.";
+    return "Mo lè gbani nímọ̀ràn lórí gbogbo iṣẹ́ oko àgbàdo nìkan (ìgbà gbígbin, àbójútó oko, ìkórè, títà tàbí títọ́jú). N kò lè gbani nímọ̀ràn lórí àwọn ohun ọ̀gbìn mìíràn bíi gbágùúdá tàbí iṣu.";
   }
   if (lang === "pcm") {
-    return "I only fit give advice on when to plant corn, whether to sell or store after harvest, and remind you of our previous advice. I no fit advise on harvest time, fertilizer, pests, or other crops.";
+    return "I fit only advise on maize farming work (planting time, farm care, harvest, storage, and selling). I no fit advise on other crops like cassava or yam.";
   }
   if (lang === "ha") {
-    return "Zan iya ba da shawara ne kawai kan lokacin shuka masara, sayarwa ko ajiya bayan girbi, da kuma tunatar da shawarwarin da suka gabata. Ba zan iya ba da shawara kan lokacin girbi, taki, ko kwari ba.";
+    return "Zan iya ba da shawara ne kawai kan aikin noman masara (lokacin shuka, kula da gona, girbi, ajiya, da sayarwa). Ba zan iya ba da shawara kan sauran amfanin gona kamar rogo ko doya ba.";
   }
-  return "I can only advise on maize planting timing, post-harvest selling vs storage, and recalling our earlier advice. I cannot advise on harvest timing, fertilizer, pests, or other crops.";
+  return "I can only advise on maize farming operations (planting timing, field care, harvest, storage, and selling decisions). I cannot advise on other crops like cassava or yam.";
+}
+
+/** Honest localized fallback when agronomy guidance is rejected or fails. */
+export function templateAgronomyFallback(lang: Lang = "en"): string {
+  if (lang === "yo") {
+    return "Fún àbójútó oko àgbàdo rẹ tó dára àti èyí tó wà ní ààbò, jọ̀wọ́ kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP extension officer) tó wà lábúlé rẹ tàbí ilé-iṣẹ́ ajílẹ̀ tó ní àṣẹ fún ìtọ́sọ́nà tó tọ́ àti ìwọ̀n lílò tó dájú.";
+  }
+  if (lang === "pcm") {
+    return "For correct advice and safe way to handle your maize farm, make you visit your local Agricultural Development Programme (ADP) extension officer or licensed agro-dealer for correct rates.";
+  }
+  if (lang === "ha") {
+    return "Don samun ingantacciyar shawarwari kan kula da gonar masara, tuntuɓi jami'in Agricultural Development Programme (ADP) na yankinku ko shagon magunguna da aka amince da shi.";
+  }
+  return "For safe and effective maize field management, please consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for approved recommendations and label application rates.";
+}
+
+/** Pre-written grounded explanation for rain adequacy questions leading with establishment rain. */
+export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "en"): string {
+  const chosen = decision.chosen;
+  const k = decision.keyNumbers;
+  const chosenOpt = decision.options?.find((o) => o.option === chosen) as
+    | (OptionResult & { offsetDays?: number; plantingDate?: string })
+    | undefined;
+  const offsetDays =
+    typeof chosenOpt?.offsetDays === "number"
+      ? chosenOpt.offsetDays
+      : chosen === "plant_now"
+      ? 0
+      : chosen === "wait_7"
+      ? 7
+      : chosen === "wait_14"
+      ? 14
+      : 0;
+
+  const rawDate = String(chosenOpt?.plantingDate || k.plantingDate || decision.createdAt.slice(0, 10));
+  const formattedDate = formatGroundedDate(rawDate, lang);
+  const nYears = Number(k.seasonsCount || k.nAnalogYears || 35);
+
+  const rainP50 = Math.round(Number(k.plantNow_rainP50Mm ?? k.rainP50Mm ?? 95));
+  const rainP10 = Math.round(Number(k.plantNow_rainP10Mm ?? k.rainP10Mm ?? 45));
+  const rainP90 = Math.round(Number(k.plantNow_rainP90Mm ?? k.rainP90Mm ?? 160));
+
+  const isAdequateNow = rainP50 >= 100;
+
+  // Check if NiMet benchmark evidence is attached
+  const nimetEv = decision.evidence?.find((e) => e.id === "ev_nimet_benchmark");
+  const nimetNoteEn = nimetEv ? ` ${nimetEv.statistic}.` : "";
+
+  if (lang === "yo") {
+    if (offsetDays === 0 && isAdequateNow) {
+      return `Bẹ́ẹ̀ni, òjò tí a gbàsílẹ̀ nínú àwọn àsìkò sẹ́yìn tó fún ìgbìn àgbàdo báyìí.\n\nNínú àsìkò ${nYears} sẹ́yìn, ìwọ̀n òjò ìbẹ̀rẹ̀ jẹ́ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm). Gbìn báyìí ní nǹkan bí ${formattedDate}.`;
+    }
+    const waitPhrase =
+      offsetDays === 7
+        ? "Dúró fún ọ̀sẹ̀ kan"
+        : offsetDays === 14
+        ? "Dúró fún ọ̀sẹ̀ méjì"
+        : `Dúró fún ọjọ́ ${offsetDays}`;
+    return `Rárá, òjò kò tíì tó báyìí fún ìgbìn àgbàdo tí kò ní ewu.\n\nNínú àsìkò ${nYears} sẹ́yìn, ìwọ̀n òjò ìbẹ̀rẹ̀ tí a gbàsílẹ̀ fún gbígbin báyìí jẹ́ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm). ${waitPhrase} kí o gbìn ní nǹkan bí ${formattedDate}.`;
+  }
+
+  if (lang === "pcm") {
+    if (offsetDays === 0 && isAdequateNow) {
+      return `Yes, past records show say rain reach to plant corn now.\n\nAcross ${nYears} past seasons, establishment rain recorded median of ${rainP50} mm (between ${rainP10} and ${rainP90} mm). Plant now around ${formattedDate}.`;
+    }
+    const waitPhrase =
+      offsetDays === 7
+        ? "Wait one week"
+        : offsetDays === 14
+        ? "Wait two weeks"
+        : `Wait ${offsetDays} days`;
+    return `No, the rain never reach properly to plant corn without risk now.\n\nAcross ${nYears} past seasons, planting now recorded median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm). ${waitPhrase}. Plant around ${formattedDate}.`;
+  }
+
+  // Default English
+  if (offsetDays === 0 && isAdequateNow) {
+    return `Yes, establishment rain has been sufficient in past analog seasons.\n\nAcross ${nYears} past analog seasons, planting now recorded a median establishment rainfall of ${rainP50} mm (range ${rainP10} to ${rainP90} mm). Plant now around ${formattedDate}.${nimetNoteEn}`;
+  }
+  const waitPhrase =
+    offsetDays === 7
+      ? "Wait a week"
+      : offsetDays === 14
+      ? "Wait two weeks"
+      : `Wait ${offsetDays} days`;
+
+  return `No, establishment rain has not been adequate for planting right now.\n\nAcross ${nYears} past analog seasons, planting now recorded a median establishment rainfall of ${rainP50} mm (range ${rainP10} to ${rainP90} mm), which carries seedling moisture stress. ${waitPhrase}. Plant around ${formattedDate}.${nimetNoteEn}`;
 }
 
 /** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7 & Day 4.2 Polish). */

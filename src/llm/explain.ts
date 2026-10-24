@@ -3,7 +3,7 @@ import * as path from "path";
 import { z } from "zod";
 import type { AgentReply, Decision, Lang } from "../core/types.ts";
 import { formatGroundedDate } from "../i18n/glossary.ts";
-import { templatePlanting, templateSelling, templateRecallAdvice, templateNoPreviousAdvice } from "../i18n/templates.ts";
+import { templatePlanting, templateSelling, templateRecallAdvice, templateNoPreviousAdvice, templatePlantingRainAdequacy } from "../i18n/templates.ts";
 import { formatPlainChance } from "../core/decide.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
@@ -379,7 +379,10 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
  * - No ISO dates (e.g. 2026-04-17)
  * - No technical jargon (analog years, median, mm)
  */
-export function validateOutputStructure(output: ExplainOutput): { valid: boolean; reason?: string } {
+export function validateOutputStructure(
+  output: ExplainOutput,
+  focus?: string
+): { valid: boolean; reason?: string } {
   const headlineWords = countWords(output.headline);
   if (headlineWords > 12) {
     return { valid: false, reason: `Headline has ${headlineWords} words (max 12 allowed)` };
@@ -391,14 +394,17 @@ export function validateOutputStructure(output: ExplainOutput): { valid: boolean
   }
 
   const reasonNumbers = findNumericTokens(output.reason);
-  if (reasonNumbers.length > 4) {
+  if (reasonNumbers.length > 5) {
     return { valid: false, reason: `Reason has ${reasonNumbers.length} numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
   }
-  if (reasonNumbers.length === 4) {
-    // If 4 numbers are present, only allow if one of them is an option horizon/duration (e.g. 7, 14, 4, 8, 12, 24) or 1
-    const hasHorizonOrUnit = reasonNumbers.some((n) => ["1", "7", "14", "4", "8", "12", "24"].includes(n));
-    if (!hasHorizonOrUnit) {
-      return { valid: false, reason: `Reason has 4 numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
+  if (reasonNumbers.length === 4 || reasonNumbers.length === 5) {
+    // If 4 or 5 numbers are present, only allow if they include horizons/units or rain mm figures
+    const hasAllowedExtra = reasonNumbers.some((n) =>
+      ["1", "7", "14", "4", "8", "12", "24"].includes(n) ||
+      focus === "rain_adequacy"
+    );
+    if (!hasAllowedExtra) {
+      return { valid: false, reason: `Reason has too many numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
     }
   }
 
@@ -407,10 +413,20 @@ export function validateOutputStructure(output: ExplainOutput): { valid: boolean
     return { valid: false, reason: "Contains ISO date format; use localized dates like '17 April'" };
   }
 
-  // No technical jargon in headline or reason
-  const jargonRegex = /\b(analog\s*years?|median|\bmm\b)\b/i;
-  if (jargonRegex.test(output.headline) || jargonRegex.test(output.reason)) {
-    return { valid: false, reason: "Contains technical jargon (analog years, median, mm)" };
+  // Jargon check: in rain_adequacy queries, mm and median are allowed; in others, forbidden
+  if (focus === "rain_adequacy") {
+    const forecastRegex = /\b(?:forecast|will\s+rain|this\s+month\s+will|rain\s+will\s+be|it\s+will\s+rain)\b/i;
+    if (forecastRegex.test(output.headline) || forecastRegex.test(output.reason)) {
+      return { valid: false, reason: "Contains forecast wording in rain adequacy reply; must refer to historical analog records" };
+    }
+    if (/\banalog\s*years?\b/i.test(output.headline) || /\banalog\s*years?\b/i.test(output.reason)) {
+      return { valid: false, reason: "Contains technical jargon (analog years)" };
+    }
+  } else {
+    const jargonRegex = /\b(analog\s*years?|median|\bmm\b)\b/i;
+    if (jargonRegex.test(output.headline) || jargonRegex.test(output.reason)) {
+      return { valid: false, reason: "Contains technical jargon (analog years, median, mm)" };
+    }
   }
 
   return { valid: true };
@@ -516,6 +532,9 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
     return {
       plant_now: {
         replantChance: plantNowChance,
+        establishmentRainMmMedian: Math.round(Number(k.plantNow_rainP50Mm ?? k.rainP50Mm ?? 95)),
+        establishmentRainMmRangeMin: Math.round(Number(k.plantNow_rainP10Mm ?? k.rainP10Mm ?? 45)),
+        establishmentRainMmRangeMax: Math.round(Number(k.plantNow_rainP90Mm ?? k.rainP90Mm ?? 160)),
       },
       wait_7: {
         plantingDate: wait7Date,
@@ -562,7 +581,8 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
 export async function explain(
   decision: Decision,
   lang: Lang = "en",
-  provider?: LLMProvider
+  provider?: LLMProvider,
+  focus?: string
 ): Promise<AgentReply> {
   const t0 = Date.now();
   const config = getNightshiftConfig();
@@ -584,6 +604,8 @@ export async function explain(
     const fallbackText =
       decision.intent === "sell_or_store"
         ? templateSelling(decision, lang)
+        : focus === "rain_adequacy"
+        ? templatePlantingRainAdequacy(decision, lang)
         : templatePlanting(decision, lang);
 
     decision.evidence.push({
@@ -614,6 +636,8 @@ export async function explain(
     const fallbackText =
       decision.intent === "sell_or_store"
         ? templateSelling(decision, lang)
+        : focus === "rain_adequacy"
+        ? templatePlantingRainAdequacy(decision, lang)
         : templatePlanting(decision, lang);
 
     decision.evidence.push({
@@ -654,6 +678,7 @@ export async function explain(
         intent: decision.intent,
         chosen: decision.chosen,
         confidence: decision.confidence,
+        focus: focus || undefined,
         factsByOption,
       },
       null,
@@ -706,7 +731,7 @@ export async function explain(
     }
 
     // 2. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon)
-    const structureCheck = validateOutputStructure(response);
+    const structureCheck = validateOutputStructure(response, focus);
     if (!structureCheck.valid) {
       console.warn(`[Explain] Structure check rejected LLM reply: ${structureCheck.reason}. Falling back to template.`);
       throw new Error(`Structure check failed: ${structureCheck.reason}`);
@@ -776,6 +801,8 @@ export async function explain(
     const fallbackText =
       decision.intent === "sell_or_store"
         ? templateSelling(decision, lang)
+        : focus === "rain_adequacy"
+        ? templatePlantingRainAdequacy(decision, lang)
         : templatePlanting(decision, lang);
 
     decision.evidence.push({

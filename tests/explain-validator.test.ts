@@ -704,32 +704,32 @@ describe("replantProbability 0.101 figure and validation", () => {
   });
 });
 
-describe("out-of-scope question classification", () => {
-  it("classifies harvest questions as out_of_scope", () => {
+describe("maize_agronomy and out-of-scope question classification", () => {
+  it("classifies harvest questions as maize_agronomy", () => {
     const q1 = extractRules("when should i harvest my maize");
-    expect(q1.intent).toBe("out_of_scope");
+    expect(q1.intent).toBe("maize_agronomy");
 
     const q2 = extractRules("ìgbà wo ni màá kórè àgbàdo mi?");
-    expect(q2.intent).toBe("out_of_scope");
+    expect(q2.intent).toBe("maize_agronomy");
   });
 
-  it("classifies fertilizer questions as out_of_scope", () => {
+  it("classifies fertilizer questions as maize_agronomy", () => {
     const q1 = extractRules("Which fertilizer should I use for my maize?");
-    expect(q1.intent).toBe("out_of_scope");
+    expect(q1.intent).toBe("maize_agronomy");
 
     const q2 = extractRules("Ṣé kí n lo ajílẹ̀ urea báyìí?");
-    expect(q2.intent).toBe("out_of_scope");
+    expect(q2.intent).toBe("maize_agronomy");
   });
 
-  it("classifies pest and weeding questions as out_of_scope", () => {
+  it("classifies pest and weeding questions as maize_agronomy", () => {
     const q1 = extractRules("How do I control armyworm pests on my farm?");
-    expect(q1.intent).toBe("out_of_scope");
+    expect(q1.intent).toBe("maize_agronomy");
 
     const q2 = extractRules("Báwo ni mo ṣe lè pa àwọn kòkòrò?");
-    expect(q2.intent).toBe("out_of_scope");
+    expect(q2.intent).toBe("maize_agronomy");
   });
 
-  it("classifies other crops as out_of_scope", () => {
+  it("classifies other non-maize crops as out_of_scope", () => {
     const q1 = extractRules("When should I plant cassava?");
     expect(q1.intent).toBe("out_of_scope");
 

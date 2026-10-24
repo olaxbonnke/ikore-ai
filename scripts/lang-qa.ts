@@ -13,7 +13,7 @@ interface QARun {
   prompt: string;
   replyText?: string;
   source?: "LLM" | "template";
-  path?: "llm" | "template";
+  path?: "llm" | "template" | "model";
   fallbackReason?: string | null;
   latencyMs?: number;
 }

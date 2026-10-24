@@ -38,6 +38,18 @@ export function rainHistory(_lat: number, _lon: number, _fromYear = 1985): Built
   throw new Error("rainHistory query not implemented yet");
 }
 
+export function recentRainDaily(farmId: string, asOf: string, days = 14): BuiltQuery {
+  rejectBadId(farmId, "farmId");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+    throw new Error(`Invalid asOf date: ${asOf}`);
+  }
+  rejectBadNumber(days, "days");
+  return {
+    name: "recentRainDaily",
+    sql: `SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = '${farmId}' AND date <= '${asOf}' ORDER BY date DESC LIMIT ${Math.round(days)}`,
+  };
+}
+
 export function recentRain(_lat: number, _lon: number, _days = 21): BuiltQuery {
   rejectBadNumber(_lat, "lat");
   rejectBadNumber(_lon, "lon");

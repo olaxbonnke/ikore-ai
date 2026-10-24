@@ -53,6 +53,7 @@ export interface FormattedOption {
 
 export interface FormattedEvidenceView {
   hasDecision: boolean;
+  guidanceType?: "general" | "decision";
   options: FormattedOption[];
   seasonsEvaluated?: number;
   queriesRun: string[];
@@ -121,6 +122,7 @@ export function formatEvidenceView(data: any): FormattedEvidenceView {
 
   return {
     hasDecision: Boolean(decision),
+    guidanceType: data?.guidance_type || (data?.decision ? "decision" : "general"),
     options,
     seasonsEvaluated,
     queriesRun: Array.isArray(data?.zetaris?.queries_run) ? data.zetaris.queries_run : [],

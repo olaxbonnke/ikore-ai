@@ -22,13 +22,14 @@ import { ZetarisError, LLMError } from "./errors.ts";
 import { explain } from "./explain.ts";
 import { explainRecall } from "../llm/explain.ts";
 import { getFarmProfile } from "./farm-profile.ts";
-import { loadRainDaily } from "./observe.ts";
+import { loadRainDaily, loadRecentRain } from "./observe.ts";
 import { listOptions } from "./options.ts";
 import { DEFAULT_PLANTING_ECONOMICS, simulatePlanting } from "./simulate/planting.ts";
 import { simulateSelling, type CashNeed, type MonthlyPriceRecord } from "./simulate/selling.ts";
 import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult } from "./types.ts";
 import { RunTracer } from "./tracer.ts";
 import { understand } from "./understand.ts";
+import { isWateringOrHarvestQuery, explainAgronomy } from "../llm/agronomy.ts";
 
 export function formatNiMetBenchmarkEvidence(
   row: {
@@ -334,6 +335,134 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     });
   }
 
+  // Handle maize_agronomy intent (general guidance for all maize operations)
+  if (understood.intent === "maize_agronomy") {
+    let recentRain: any = null;
+    const needsRain = isWateringOrHarvestQuery(message.text);
+    if (needsRain) {
+      const tObserve = performance.now();
+      try {
+        const gateway = getGateway();
+        recentRain = await loadRecentRain(gateway, farmId, asOf, 14);
+        queriesRun.push(recentRain.querySql);
+        rowCounts["recent_rain"] = recentRain.records.length;
+        tracer.log({
+          step: "observe",
+          component: "zetaris",
+          input_summary: `farm_id=${farmId} days=14 asOf=${asOf}`,
+          output_summary: `rows=${recentRain.records.length} total_rain_mm=${recentRain.totalRainMm.toFixed(1)} sql="${recentRain.querySql}"`,
+          latency_ms: Math.round(performance.now() - tObserve),
+          status: "ok",
+        });
+      } catch (err: any) {
+        tracer.log({
+          step: "observe",
+          component: "zetaris",
+          input_summary: `farm_id=${farmId} days=14 asOf=${asOf}`,
+          output_summary: `skipped: ${err.message}`,
+          latency_ms: Math.round(performance.now() - tObserve),
+          status: "skipped",
+        });
+      }
+    }
+
+    const tExplain = performance.now();
+    const agronomyRes = await explainAgronomy({
+      question: message.text,
+      farm,
+      lang,
+      asOf,
+      recentRain,
+      recalledMemories,
+      runId,
+    });
+
+    tracer.log({
+      step: "explain",
+      component: agronomyRes.path === "model" ? "nightshift" : "orchestrator",
+      input_summary: `intent=maize_agronomy farm_id=${farmId} lang=${lang}`,
+      output_summary: `path=${agronomyRes.path} model=${agronomyRes.model} words=${agronomyRes.text.split(/\s+/).length}`,
+      latency_ms: Math.round(performance.now() - tExplain),
+      requested_model: agronomyRes.requestedModel,
+      responded_model: agronomyRes.respondedModel,
+      status: "ok",
+    });
+
+    tracer.log({
+      step: "validate",
+      component: "validator",
+      input_summary: `text_length=${agronomyRes.text.length}`,
+      output_summary: agronomyRes.fallbackReason ? `status=fallback reason="${agronomyRes.fallbackReason}"` : "status=valid",
+      latency_ms: 1,
+      status: "ok",
+    });
+
+    // Step 8: Remember Q&A in H-MEM
+    let storedMemoryId: string | undefined;
+    try {
+      const tRemember = performance.now();
+      const hmem = await getFarmHMEM(farmId);
+      const dedupKey = `run:${runId}`;
+      const existing = [...hmem.store.records.values()].find((r: any) =>
+        r.tags && r.tags.includes(`dedup:${dedupKey}`)
+      );
+      if (existing) {
+        storedMemoryId = existing.id;
+      } else {
+        const memText = `Question: "${message.text}"\nGuidance: "${agronomyRes.text}"`;
+        storedMemoryId = await remember(farmId, {
+          type: "agronomy_advice",
+          intent: "maize_agronomy",
+          runId,
+          content: memText,
+          tags: ["type:agronomy_advice", "intent:maize_agronomy", `run_id:${runId}`, `dedup:${dedupKey}`, `asOf:${asOf}`],
+        });
+      }
+      tracer.log({
+        step: "remember",
+        component: "hmem",
+        input_summary: `farm_id=${farmId} dedup_key=${dedupKey}`,
+        output_summary: `stored_id=${storedMemoryId}`,
+        latency_ms: Math.round(performance.now() - tRemember),
+        status: "ok",
+      });
+    } catch (err: any) {
+      tracer.log({
+        step: "remember",
+        component: "hmem",
+        input_summary: `farm_id=${farmId}`,
+        output_summary: `error: ${err.message}`,
+        latency_ms: 1,
+        status: "skipped",
+      });
+    }
+
+    return {
+      text: agronomyRes.text,
+      lang,
+      intent: "maize_agronomy",
+      decision: null as any,
+      guidance_type: "general",
+      askedQuestion: Boolean(agronomyRes.followUp),
+      memoryIdsUsed,
+      recalledMemories,
+      memory: {
+        recalled: memoryIdsUsed,
+        stored: storedMemoryId,
+      },
+      path: agronomyRes.path,
+      model: agronomyRes.model,
+      fallbackReason: agronomyRes.fallbackReason,
+      latencyMs: agronomyRes.latencyMs,
+      requestedModel: agronomyRes.requestedModel,
+      respondedModel: agronomyRes.respondedModel,
+      runId,
+      traceFile,
+      queriesRun,
+      rowCounts,
+    };
+  }
+
   // Handle sell_or_store intent
   if (understood.intent === "sell_or_store") {
     // Honesty Rule: Price comes ONLY from the farmer (slots or H-MEM recall)
@@ -543,6 +672,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       text,
       lang,
       decision,
+      guidance_type: "decision",
       askedQuestion: false,
       memoryIdsUsed,
       path: explanation.path,
@@ -697,7 +827,12 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
 
   // Step 7: Explain
   const tExplain = performance.now();
-  const explanation = await explain(decision, lang);
+  const explanation = await explain(
+    decision,
+    lang,
+    undefined,
+    understood.slots?.focus as string | undefined
+  );
   const text = explanation.text;
   const reqModelPlant = isSample ? "none" : (process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
   const respModelPlant = isSample ? "template" : (explanation.model || "none");
@@ -760,6 +895,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     text,
     lang,
     decision,
+    guidance_type: "decision",
     askedQuestion: false,
     memoryIdsUsed,
     path: explanation.path,

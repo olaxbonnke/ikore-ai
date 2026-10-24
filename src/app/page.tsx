@@ -37,6 +37,11 @@ export default function HomePage() {
       text: "Remind me, when did you say I should plant?",
       farmId: "farm_bisi_ogbomoso",
     },
+    {
+      label: "Watering maize? (EN)",
+      text: "When should I water my maize this month?",
+      farmId: "farm_ade_iseyin",
+    },
   ];
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -113,9 +118,10 @@ export default function HomePage() {
           Farm Decision Advisor
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-oko-soil/90 sm:text-base">
-          Maize planting-timing, selling, and memory recall advisor for smallholder farmers in Oyo State.
+          Maize planting-timing, selling, agronomy, and memory recall advisor for smallholder farmers in Oyo State.
           Evaluates false-start replanting risks and price seasonality using federated Zetaris climate
-          and market data, preserves farmer context in Meterless H-MEM, and explains decisions in
+          and market data, provides grounded guidance across all maize operations (watering, fertilizer, weeding, pests, harvesting, storage),
+          preserves farmer context in Meterless H-MEM, and explains decisions in
           English, Yoruba, or Pidgin via NVIDIA Nemotron through Meterless Nightshift.
         </p>
       </header>
@@ -266,6 +272,11 @@ export default function HomePage() {
                   <span className="rounded-full bg-oko-cream px-2.5 py-0.5 text-xs font-semibold text-oko-green border border-oko-green/20">
                     Intent: {response.intent}
                   </span>
+                  {(!response.decision || response.guidance_type === "general") && (
+                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-900 border border-blue-300">
+                      General guidance — not a data-checked decision
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-oko-soil/70 font-mono">
                   {response.run_id}
@@ -302,7 +313,7 @@ export default function HomePage() {
                 {evidenceOpen && (
                   <div className="divide-y divide-oko-soil/10 p-5 space-y-5 text-sm text-oko-soil">
                     {/* 1. Candidate Options Compared */}
-                    {evidenceView.options.length > 0 && (
+                    {evidenceView.hasDecision && evidenceView.options.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="font-bold text-xs uppercase tracking-wider text-oko-green">

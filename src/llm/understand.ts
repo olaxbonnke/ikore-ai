@@ -10,6 +10,7 @@ export const UnderstandSchema = z.object({
   intent: z.enum([
     "plant_timing",
     "sell_or_store",
+    "maize_agronomy",
     "why",
     "briefing",
     "profile_update",
@@ -107,13 +108,10 @@ export function isRecallQuery(text: string): boolean {
 }
 
 /**
- * Detects questions outside the agent's supported capabilities:
- * - Harvest timing / harvesting
- * - Fertilizer, chemicals, manure
- * - Pests, insects, weeds, spraying, disease
- * - Other non-maize crops (cassava, yam, rice, etc.)
+ * Detects questions about non-maize crops (cassava, yam, rice, cowpea, cocoa, etc.).
+ * Ikore AI is strictly focused on maize; queries about other crops are out of scope.
  */
-export function isOutOfScopeQuery(text: string): boolean {
+export function isNonMaizeCropQuery(text: string): boolean {
   if (!text) return false;
   const nfc = text.normalize("NFC").toLowerCase();
   const stripped = text
@@ -121,46 +119,170 @@ export function isOutOfScopeQuery(text: string): boolean {
     .replace(/\p{M}/gu, "")
     .toLowerCase();
 
-  // If the query is explicitly asking to sell or store (e.g. "after harvest should I sell or store?"),
-  // it is in-scope for sell_or_store.
-  const hasSellOrStore =
-    /\b(?:sell|store|selling|storage|market|price|t[aàá]|t[oọ̀ó]j[uú]|sayar|ajiye|per\s+bag|buhu|àpò)\b/iu.test(nfc);
-
-  // 1. Harvest timing / operations (when not a sell/store decision)
-  if (!hasSellOrStore) {
-    if (
-      /\b(?:harvest|harvesting|k[oóọ̀]r[eéè]|ikore|ìkórè|girbi|girbe)\b/iu.test(nfc) ||
-      /\b(?:harvest|harvesting|kore|ikore|girbi|girbe)\b/iu.test(stripped)
-    ) {
-      return true;
-    }
-  }
-
-  // 2. Fertilizers & soil chemicals
-  if (
-    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|aj[ií]l[eẹ̀é]|taki)\b/iu.test(nfc) ||
-    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|ajile|taki)\b/iu.test(stripped)
-  ) {
-    return true;
-  }
-
-  // 3. Pests, insects, weeds, diseases, spraying
-  if (
-    /\b(?:pests?|armyworms?|stem\s*borers?|caterpillars?|insects?|weeds?|weeding|fungicides?|herbicides?|pesticides?|k[oòó]k[oòó]r[oòó]|kwari)\b/iu.test(nfc) ||
-    /\b(?:pests?|armyworms?|stem\s*borers?|caterpillars?|insects?|weeds?|weeding|fungicides?|herbicides?|pesticides?|kokoro|kwari)\b/iu.test(stripped)
-  ) {
-    return true;
-  }
-
-  // 4. Other non-maize crops (cassava, yam, rice, cowpea, cocoa, etc.)
-  if (
+  return (
     /\b(?:cassava|yams?|rice|sorghum|millet|cowpeas?|cocoa|soybeans?|tomatoes?|peppers?|gb[aá]g[uú]d[aá]|gbaguda|[eẹ́ẹ̀]g[eẹ́ẹ̀]|ege|[ií]s[uú]|isu|[ií]r[eẹ́ẹ̀]s[ií]|iresi|rogo|doya|shinkafa|wake)\b/iu.test(nfc) ||
     /\b(?:cassava|yams?|rice|sorghum|millet|cowpeas?|cocoa|soybeans?|tomatoes?|peppers?|gbaguda|ege|isu|iresi|rogo|doya|shinkafa|wake)\b/iu.test(stripped)
-  ) {
-    return true;
-  }
+  );
+}
 
+/**
+ * Detects questions about rainfall adequacy / establishment rain:
+ * "Will this month's rain be enough for planting maize this season?",
+ * "Is the rain enough to plant now?", "Has the rain started properly?"
+ * These route to plant_timing with slots.focus = "rain_adequacy".
+ */
+export function isRainAdequacyQuery(text: string): boolean {
+  if (!text) return false;
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+
+  const enPatterns = [
+    /rain\s+(?:be\s+)?enough/iu,
+    /enough\s+rain/iu,
+    /is\s+(?:the\s+)?rain\s+enough/iu,
+    /is\s+there\s+enough\s+rain/iu,
+    /rain\s+started\s+(?:properly|well)/iu,
+    /has\s+(?:the\s+)?rain\s+started/iu,
+    /rain\s+reach\s+(?:to\s+)?plant/iu,
+    /rain\s+adequa/iu,
+    /sufficient\s+rain/iu,
+  ];
+
+  const yoPatterns = [
+    /ṣ[eé]\s+[oòó]j[oòó]\s+(?:náà\s+)?t[oó]/iu,
+    /[oòó]j[oòó]\s+ha\s+t[oó]/iu,
+    /[oòó]j[oòó]\s+t[oó]\s+l[aá]ti/iu,
+    /[oòó]j[oòó]\s+ti\s+b[eẹ́ẹ̀]r[eẹ́ẹ̀]\s+d[aá][aá]d[aá][aá]/iu,
+    /ṣ[eé]\s+[oòó]j[oòó]\s+t[oó]/iu,
+    /[oòó]j[oòó]\s+oṣ[uùú]\s+y[iíì]/iu,
+  ];
+
+  const yoStripped = [
+    /se\s+ojo\s+(?:naa\s+)?to/iu,
+    /ojo\s+ha\s+to/iu,
+    /ojo\s+to\s+lati/iu,
+    /ojo\s+ti\s+bere\s+daadaa/iu,
+    /se\s+ojo\s+to/iu,
+    /ojo\s+osu\s+yii/iu,
+  ];
+
+  const pcmPatterns = [
+    /rain\s+don\s+reach/iu,
+    /rain\s+reach\s+to\s+plant/iu,
+    /water\s+reach\s+to\s+plant/iu,
+    /rain\s+don\s+start\s+well/iu,
+    /rain\s+start\s+well\s+well/iu,
+    /rain\s+go\s+reach/iu,
+  ];
+
+  for (const pat of [...enPatterns, ...yoPatterns, ...pcmPatterns]) {
+    if (pat.test(nfc)) return true;
+  }
+  for (const pat of yoStripped) {
+    if (pat.test(stripped)) return true;
+  }
   return false;
+}
+
+/**
+ * Detects maize agronomy questions:
+ * - watering / irrigation
+ * - land preparation (clearing, plowing, harrowing, ridging, tilling)
+ * - seed choice and spacing
+ * - fertiliser timing and application
+ * - weeding & weed control
+ * - pests and diseases (fall armyworm, stem borers, caterpillars, blight)
+ * - harvest timing and signs of maturity
+ * - drying & shelling
+ * - storage handling (protecting stored maize, weevil control)
+ */
+export function isMaizeAgronomyQuery(text: string): boolean {
+  if (!text) return false;
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+
+  // Watering / irrigation
+  const waterMatch =
+    /\b(?:water|watering|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa)\b/iu.test(nfc) ||
+    /\b(?:water|watering|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa)\b/iu.test(stripped);
+
+  // Land prep
+  const landPrepMatch =
+    /\b(?:land\s*prep(?:aration)?|plow|plowing|plough|ploughing|ridge|ridging|till|tilling|harrow|harrowing|clearing|tu\s*il[eẹ́ẹ̀]|roko|pal[eẹ́ẹ̀]\s*m[oọ́]|gyaran\s*gona)\b/iu.test(nfc) ||
+    /\b(?:land\s*prep(?:aration)?|plow|plowing|plough|ploughing|ridge|ridging|till|tilling|harrow|harrowing|clearing|tu\s*ile|roko|pale\s*mo|gyaran\s*gona)\b/iu.test(stripped);
+
+  // Seed choice, spacing, depth
+  const seedSpacingMatch =
+    /\b(?:spacing|seed\s*variety|variety|hybrid|open\s*pollinated|how\s*deep|how\s*far|distance|seeds?\s*per\s*hole|irugbin|aaye|[aàá]y[eèé]|nisa)\b/iu.test(nfc) ||
+    /\b(?:spacing|seed\s*variety|variety|hybrid|open\s*pollinated|how\s*deep|how\s*far|distance|seeds?\s*per\s*hole|irugbin|aaye|aye|nisa)\b/iu.test(stripped);
+
+  // Fertilizer & soil
+  const fertilizerMatch =
+    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|aj[ií]l[eẹ̀é]|taki)\b/iu.test(nfc) ||
+    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|ajile|taki)\b/iu.test(stripped);
+
+  // Weeds & weeding
+  const weedingMatch =
+    /\b(?:weeds?|weeding|herbicide|koriko|k[oọ]r[oọ]k[oọ]|ciyawa|yanko)\b/iu.test(nfc) ||
+    /\b(?:weeds?|weeding|herbicide|koriko|koroko|ciyawa|yanko)\b/iu.test(stripped);
+
+  // Pests & diseases
+  const pestMatch =
+    /\b(?:pests?|armyworms?|worms?|stem\s*borers?|caterpillars?|insects?|fungicides?|pesticides?|blight|diseases?|k[oòó]k[oòó]r[oòó]|kwari)\b/iu.test(nfc) ||
+    /\b(?:pests?|armyworms?|worms?|stem\s*borers?|caterpillars?|insects?|fungicides?|pesticides?|blight|diseases?|kokoro|kwari)\b/iu.test(stripped);
+
+  // Harvest, maturity, drying, shelling
+  const harvestMatch =
+    /\b(?:harvest|harvesting|mature|maturity|signs\s+of\s+maturity|drying|sun\s+dry|dry|moisture|shelling|shell|threshing|thresh|k[oóọ̀]r[eéè]|ikore|ìkórè|s[aá]\s+[aàá]gb[aàá]do|r[eẹ́ẹ̀]\s+[aàá]gb[aàá]do|girbi|girbe|bushewa)\b/iu.test(nfc) ||
+    /\b(?:harvest|harvesting|mature|maturity|signs\s+of\s+maturity|drying|sun\s+dry|dry|moisture|shelling|shell|threshing|thresh|kore|ikore|sa\s+agbado|re\s+agbado|girbi|girbe|bushewa)\b/iu.test(stripped);
+
+  // Storage handling (e.g. weevils or how to store safely) when NOT a commercial bags+price trade decision
+  const storageHandlingMatch =
+    /\b(?:weevils?|protect\s+maize|how\s+to\s+store|safe\s+storage|storage\s+loss)\b/iu.test(nfc);
+
+  return (
+    waterMatch ||
+    landPrepMatch ||
+    seedSpacingMatch ||
+    fertilizerMatch ||
+    weedingMatch ||
+    pestMatch ||
+    harvestMatch ||
+    storageHandlingMatch
+  );
+}
+
+/**
+ * Detects questions completely outside Ikore AI's domain (non-maize crops, non-farming topics).
+ */
+export function isOutOfScopeQuery(text: string): boolean {
+  if (!text) return false;
+  return isNonMaizeCropQuery(text);
+}
+
+function isDirectPlantingQuery(text: string): boolean {
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+  // Don't treat spacing, depth, fertilizer, weed, pest, harvest as plant_timing
+  if (
+    /\b(?:spacing|distance|how\s+deep|seeds?\s+per\s+hole|fertiliz|aj[ií]l[eẹ̀é]|k[oóọ̀]r[eéè]|ikore|ìkórè|harvest|weeds?|pests?|water|watering)\b/iu.test(nfc) ||
+    /\b(?:spacing|distance|how\s+deep|seeds?\s+per\s+hole|fertiliz|ajile|kore|ikore|harvest|weeds?|pests?|water|watering)\b/iu.test(stripped)
+  ) {
+    return false;
+  }
+  return (
+    /\b(?:when\s+(?:should|can|to|do)\s+(?:i\s+)?plant|plant\s+now\s+or\s+wait|should\s+i\s+plant|time\s+to\s+plant|planting\s+date|start\s+planting|gbìn\s+b[aá]y[iíì]|ìgb[aàá]\s+wo\s+ni.*gbìn|ṣ[eé]\s+k[ií]\s+n\s+gbìn|shuka\s+yanzu)\b/iu.test(nfc) ||
+    /\b(?:when\s+(?:should|can|to|do)\s+(?:i\s+)?plant|plant\s+now\s+or\s+wait|should\s+i\s+plant|time\s+to\s+plant|planting\s+date|start\s+planting|gbin\s+bayii|igba\s+wo\s+ni.*gbin|se\s+ki\s+n\s+gbin|shuka\s+yanzu)\b/iu.test(stripped)
+  );
 }
 
 /**
@@ -177,8 +299,8 @@ export function extractRules(text: string): UnderstandResult {
   // 1. Language detection
   let language: Lang = "en";
   if (
-    /(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà|rántí|ranti|ìmọ̀ràn|imoran|kí lo|kí ni|sọ fún|ṣé o|nípa|màá)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:gbin|agbado|ojo|igba|eni|ki n|bayii|se|mo ni|boya|owo|fun|kookan|duro|die|ta|toju|apo|fe|ra|ranti|imoran|ki lo|ki ni|so fun|se o|nipa|maa)(?=\P{L}|$)/iu.test(stripped)
+    /(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà|rántí|ranti|ìmọ̀ràn|imoran|kí lo|kí ni|sọ fún|ṣé o|nípa|màá|kórè|ìkórè|ajílẹ̀|kòkòrò|omi|ilẹ̀)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:gbin|agbado|ojo|igba|eni|ki n|bayii|se|mo ni|boya|owo|fun|kookan|duro|die|ta|toju|apo|fe|ra|ranti|imoran|ki lo|ki ni|so fun|se o|nipa|maa|kore|ikore|ajile|kokoro|omi|ile)(?=\P{L}|$)/iu.test(stripped)
   ) {
     language = "yo";
   } else if (
@@ -186,41 +308,12 @@ export function extractRules(text: string): UnderstandResult {
   ) {
     language = "pcm";
   } else if (
-    /(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye|tuna)(?=\P{L}|$)/iu.test(nfc)
+    /(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye|tuna|ruwa|taki|girbi|kwari)(?=\P{L}|$)/iu.test(nfc)
   ) {
     language = "ha";
   }
 
-  // 2. Intent detection
-  let intent: UnderstandResult["intent"] = "unknown";
-  if (isRecallQuery(text)) {
-    intent = "recall_previous";
-  } else if (isOutOfScopeQuery(text)) {
-    intent = "out_of_scope";
-  } else if (
-    /(?<=^|\P{L})(?:why|wetin make|kilode|kílódé|me ya sa)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(stripped)
-  ) {
-    intent = "why";
-  } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(nfc)) {
-    intent = "briefing";
-  } else if (
-    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|ta|toju|sayar|ajiye|apo|ra)(?=\P{L}|$)/iu.test(stripped)
-  ) {
-    intent = "sell_or_store";
-  } else if (
-    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbìn|shuka)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbin|shuka)(?=\P{L}|$)/iu.test(stripped)
-  ) {
-    intent = "plant_timing";
-  } else if (/(?<=^|\P{L})(?:hi|hello|good morning|kedu|bawo)(?=\P{L}|$)/iu.test(nfc)) {
-    intent = "smalltalk";
-  } else {
-    intent = "plant_timing";
-  }
-
-  // 3. Slot extraction
+  // 2. Slot extraction (early so intent detection can check bags/price)
   const slots: Record<string, unknown> = {};
 
   // Bags count extraction (e.g. "20 bags", "àpò 20", "20 àpò", "buhu 20")
@@ -283,6 +376,47 @@ export function extractRules(text: string): UnderstandResult {
     slots.storageMethod = "silo";
   }
 
+  // 3. Intent detection
+  let intent: UnderstandResult["intent"] = "unknown";
+  if (isRecallQuery(text)) {
+    intent = "recall_previous";
+  } else if (isNonMaizeCropQuery(text)) {
+    intent = "out_of_scope";
+  } else if (isRainAdequacyQuery(text)) {
+    intent = "plant_timing";
+    slots.focus = "rain_adequacy";
+  } else if (
+    Boolean(slots.bags || slots.pricePerBagNgn) &&
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc)
+  ) {
+    intent = "sell_or_store";
+  } else if (isDirectPlantingQuery(text)) {
+    intent = "plant_timing";
+  } else if (isMaizeAgronomyQuery(text)) {
+    intent = "maize_agronomy";
+  } else if (
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|ta|toju|sayar|ajiye|apo|ra)(?=\P{L}|$)/iu.test(stripped)
+  ) {
+    intent = "sell_or_store";
+  } else if (
+    /(?<=^|\P{L})(?:why|wetin make|kilode|kílódé|me ya sa)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(stripped)
+  ) {
+    intent = "why";
+  } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(nfc)) {
+    intent = "briefing";
+  } else if (
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbìn|shuka)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbin|shuka)(?=\P{L}|$)/iu.test(stripped)
+  ) {
+    intent = "plant_timing";
+  } else if (/(?<=^|\P{L})(?:hi|hello|good morning|kedu|bawo)(?=\P{L}|$)/iu.test(nfc)) {
+    intent = "smalltalk";
+  } else {
+    intent = "plant_timing";
+  }
+
   // 4. Missing slots calculation
   const missing: string[] = [];
   if (intent === "sell_or_store") {
@@ -338,10 +472,27 @@ export async function understand(
     };
   }
 
-  // Detect out-of-scope queries (harvest, fertilizer, pests, other crops) early
+  // Detect out-of-scope queries (non-maize crops) early
   if (isOutOfScopeQuery(text)) {
     const rules = extractRules(text);
     rules.intent = "out_of_scope";
+    return {
+      ...rules,
+      meta: {
+        usedLlm: false,
+        provider: "rules",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
+  }
+
+  // Detect rain-adequacy queries early (route to plant_timing with slots.focus = "rain_adequacy")
+  if (isRainAdequacyQuery(text)) {
+    const rules = extractRules(text);
+    rules.intent = "plant_timing";
+    rules.slots.focus = "rain_adequacy";
     return {
       ...rules,
       meta: {

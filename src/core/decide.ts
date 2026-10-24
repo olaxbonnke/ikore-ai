@@ -338,6 +338,12 @@ export function decide(
       keyNumbers.replantProbabilityNow = plantNowPlanting.replantProbability;
       keyNumbers.replantRisk_plantNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
       keyNumbers.replantIn100_plantNow = Math.round(plantNowPlanting.replantProbability * 100);
+      keyNumbers.plantNow_rainP10Mm = plantNowPlanting.establishmentRainMm.p10;
+      keyNumbers.plantNow_rainP50Mm = plantNowPlanting.establishmentRainMm.p50;
+      keyNumbers.plantNow_rainP90Mm = plantNowPlanting.establishmentRainMm.p90;
+      keyNumbers.plantNow_adequacyP10 = `${(plantNowPlanting.rainfallAdequacy.p10 * 100).toFixed(1)}%`;
+      keyNumbers.plantNow_adequacyP50 = `${(plantNowPlanting.rainfallAdequacy.p50 * 100).toFixed(1)}%`;
+      keyNumbers.plantNow_adequacyP90 = `${(plantNowPlanting.rainfallAdequacy.p90 * 100).toFixed(1)}%`;
 
       const plainPlantNow = formatPlainChance(plantNowPlanting.replantProbability);
       keyNumbers.plainChance_plantNow_en = plainPlantNow.en;

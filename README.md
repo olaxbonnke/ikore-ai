@@ -2,7 +2,7 @@
 
 **Ìkórè** means *harvest* in Yoruba.
 
-Ikore AI is an agronomic decision agent designed to empower Nigerian smallholder farmers in Oyo State (calibrated for Ogbomoso and Iseyin) with data-grounded guidance on maize planting dates and harvest selling-versus-storage timing. The agent provides plain-language explanations in English, Nigerian Pidgin, and Yoruba, strictly computing all probabilities and economic figures in deterministic code so that language models never calculate or alter figures shown to farmers.
+Ikore AI is an agronomic decision agent designed to empower Nigerian smallholder farmers in Oyo State (calibrated for Ogbomoso and Iseyin) with data-grounded guidance on maize planting dates, harvest selling-versus-storage timing, and general agronomic operations across the maize lifecycle. The agent provides plain-language explanations in English, Nigerian Pidgin, and Yoruba, strictly computing all probabilities and economic figures in deterministic code so that language models never calculate or alter figures shown to farmers.
 
 - **Hackathon Track**: Track 3: Reasoning Architecture
 - **Team**: ARAZAKA (Solo: Bonnke Olaitan)
@@ -17,16 +17,24 @@ Ikore AI enforces a strict separation between perception, memory retrieval, fede
 
 ### The 8-Step Decision Pipeline
 
-1. **Understand**: Parses user message into intent (`plant_timing`, `sell_or_store`, `recall_previous`), slots (bags, offer price), and language using deterministic rules and NVIDIA Nemotron via Meterless Nightshift.
+1. **Understand**: Parses user message into intent (`plant_timing`, `sell_or_store`, `maize_agronomy`, `recall_previous`), slots (bags, offer price, `focus: "rain_adequacy"`), and language using deterministic rules and NVIDIA Nemotron via Meterless Nightshift. Questions about non-maize crops (cassava, yam, rice) are identified as `out_of_scope`.
 2. **Recall (H-MEM)**: Queries per-farm long-term memory in Meterless H-MEM for past farm profile facts, historical records, and previous advice.
-3. **Observe (Zetaris)**: Executes federated, read-only SQL queries via Zetaris `DataGateway` across 35+ years of daily climate history (`rain_daily`), seasonal agro-meteorological onset benchmarks (`nimet_onset`), and wholesale market prices.
+3. **Observe (Zetaris)**: Executes federated, read-only SQL queries via Zetaris `DataGateway` across 35+ years of daily climate history (`rain_daily`), seasonal agro-meteorological onset benchmarks (`nimet_onset`), and wholesale market prices. For watering/irrigation and harvest/drying agronomy questions, queries recent 14-day rainfall.
 4. **Simulate**: Pure deterministic agronomic simulations:
    - *Planting*: Analog-year rainfall weighting and false-start seedling mortality simulation (`simulatePlanting`).
    - *Selling*: Post-harvest storage loss curves and detrended WFP market price seasonality (`simulateSelling`).
-5. **Decide**: Evaluates candidate options (`plant_now`, `wait_7`, `wait_14` or `sell_now`, `store_4w`, `store_12w`), scoring each option and expressing risks as farmer-friendly plain chance phrases (e.g., "almost never", "about 1 in 7 seasons") and bag counts.
-6. **Explain**: Generates a natural language explanation in the requested language using NVIDIA Nemotron through Meterless Nightshift (or verified deterministic templates).
-7. **Validate**: Multi-gate validator enforces output structure (≤12-word headline, ≤2-sentence reason, ≤3 numbers total, zero percentages, no ISO dates, no technical jargon), validates that every single number quoted exists in the deterministic `keyNumbers`, verifies that numbers are attached only to the option they describe, and checks Yoruba tone marks or Pidgin phrasing.
+5. **Decide**: Evaluates candidate options (`plant_now`, `wait_7`, `wait_14` or `sell_now`, `store_4w`, `store_12w`), scoring each option and expressing risks as farmer-friendly plain chance phrases (e.g., "almost never", "about 1 in 7 seasons") and bag counts. (For `maize_agronomy`, `decision` is `null` with `guidance_type: "general"`).
+6. **Explain**: Generates a natural language explanation in the requested language using NVIDIA Nemotron through Meterless Nightshift (or verified deterministic templates). For rain adequacy queries, leads directly with establishment rainfall adequacy based on historical analog seasons (median and range in mm) before stating the recommended planting date.
+7. **Validate**: Multi-gate validator enforces output structure (≤12-word headline, ≤2-sentence reason, zero percentages, no ISO dates), validates that numbers exist in context, checks that numbers are attached only to the option they describe, rejects prohibited chemical product names or dosage patterns, and checks Yoruba tone marks or Pidgin phrasing.
 8. **Remember (H-MEM)**: Persists the question, recommendation, and key numbers into the farm's H-MEM memory store with run-level deduplication.
+
+### The `maize_agronomy` General Guidance Path
+
+Covers all operational maize queries outside planting timing and commercial sell/store trade decisions: watering/irrigation, land preparation, seed spacing and planting depth, fertiliser timing, weeding, pests and diseases (fall armyworm, stem borers), harvest signs of maturity, drying, and storage handling.
+- Recalls farm profile & past advice from H-MEM.
+- For watering or harvest queries, runs a real Zetaris SQL query on `oko_pg.rain_daily` for the past 14 days of rainfall.
+- Explains via Nemotron under strict smallholder safety constraints: context numbers only, zero chemical dosage formulas or brand names (strictly refers farmers to local ADP extension officers), labeled with `"General guidance — not a data-checked decision"`.
+- Records Q&A in H-MEM with run-level deduplication.
 
 ### The `recall_previous` Shortcut
 
