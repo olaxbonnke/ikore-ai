@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getFarmProfile } from "../core/farm-profile.ts";
 import { loadHMEM } from "../engine.ts";
 
 export interface FarmEvent {
@@ -61,6 +62,66 @@ export interface SleepReportRecord {
 const farmHmemCache = new Map<string, any>();
 const memoryToFarmMap = new Map<string, string>();
 
+export function clearHMEMCache(): void {
+  farmHmemCache.clear();
+  memoryToFarmMap.clear();
+}
+
+function autoSeedFarm(farmId: string, hmem: any): void {
+  try {
+    const farm = getFarmProfile(farmId);
+    const profileText = `Farm profile: ${farm.ownerName} (${farmId}) operates ${farm.hectares} hectares of maize in ${farm.lga}, ${farm.state} State (${farm.zone}). Storage method: ${farm.storage}. Preferred language: ${farm.preferredLang}. Risk profile: ${farm.riskAversion}.`;
+    const storageFact = `Storage method for ${farm.ownerName} (${farmId}) is ${farm.storage}.`;
+    const scaleFact = `${farm.ownerName} farms ${farm.hectares} hectares in ${farm.lga}, ${farm.state} State.`;
+
+    const facts = [
+      { content: profileText, tags: [`farm:${farmId}`, "profile", "farm_info", "maize", farm.storage, "type:farm_profile"], type: "factual", layer: "long_term" },
+      { content: storageFact, tags: [`farm:${farmId}`, "storage", "storage_method", farm.storage, "type:farm_fact"], type: "factual", layer: "long_term" },
+      { content: scaleFact, tags: [`farm:${farmId}`, "hectares", "location", "field_size", "type:farm_fact"], type: "factual", layer: "long_term" },
+    ];
+
+    for (const f of facts) {
+      hmem.store.add({
+        content: f.content,
+        type: f.type,
+        layer: f.layer,
+        tags: f.tags,
+        confidence: 0.95,
+        source: `farm:${farmId}:profile_seed`,
+        provenance: { origin: "system_seed", learnedAt: Date.now(), label: `Default farm seed for ${farmId}` },
+      });
+    }
+
+    // Also check data/farm_records.csv if available
+    const recordsCsv = path.resolve(process.cwd(), "data", "farm_records.csv");
+    if (fs.existsSync(recordsCsv)) {
+      const lines = fs.readFileSync(recordsCsv, "utf-8").split(/\r?\n/).filter((l) => l.trim().length > 0 && !l.startsWith("#"));
+      if (lines.length > 1) {
+        const headers = lines[0].split(",").map((h) => h.trim());
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].split(",").map((p) => p.trim());
+          const row: Record<string, string> = {};
+          headers.forEach((h, idx) => { row[h] = parts[idx] ?? ""; });
+          if (row.farm_id === farmId) {
+            const seasonText = `Past season ${row.season_year} for ${row.farm_id}: planting date was ${row.planting_date}, germination was ${row.germination_ok}, harvested ${row.yield_bags} bags of maize, sold in ${row.sale_month} at ₦${row.sale_price_per_bag} per bag.`;
+            hmem.store.add({
+              content: seasonText,
+              type: "factual",
+              layer: "long_term",
+              tags: [`farm:${farmId}`, "past_season", "harvest", `year:${row.season_year}`, "records", "demo_seed", "type:farm_season_record"],
+              confidence: 0.9,
+              source: `farm:${farmId}:records_seed`,
+              provenance: { origin: "demo_seed", learnedAt: Date.now(), label: "Historical records seed" },
+            });
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[HMEM] autoSeedFarm error for ${farmId}: ${err.message}`);
+  }
+}
+
 /**
  * Returns namespaced HMEM instance for a farm.
  * Persists to .oko/hmem/<farmId> (state.json + ledger.jsonl).
@@ -77,6 +138,11 @@ export async function getFarmHMEM(farmId: string): Promise<any> {
       actor: `oko:${farmId}`,
     });
     farmHmemCache.set(farmId, inst);
+
+    // If memory store has no records for this farm, auto-seed default profile facts
+    if (inst.store.records.size === 0) {
+      autoSeedFarm(farmId, inst);
+    }
   }
   return inst;
 }
@@ -128,6 +194,22 @@ export async function remember(
     if ("confidence" in event && typeof event.confidence === "number") {
       confidence = event.confidence;
     }
+  }
+
+  // Duplicate-save prevention: check if identical content or same decisionId already exists
+  const existing = [...hmem.store.records.values()].find((r: any) => {
+    if (r.content === content) return true;
+    if (typeof event === "object" && event !== null && "decisionId" in event && event.decisionId) {
+      if (Array.isArray(r.tags) && r.tags.includes(`decision:${event.decisionId}`)) return true;
+    }
+    return false;
+  });
+  if (existing) {
+    return existing.id;
+  }
+
+  if (typeof event === "object" && event !== null && "decisionId" in event && event.decisionId) {
+    tags.push(`decision:${event.decisionId}`);
   }
 
   let provenanceRecord: any = {

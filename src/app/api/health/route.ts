@@ -16,10 +16,17 @@ export async function GET() {
     process.env.ZETARIS_ORG_ID
   );
 
-  return NextResponse.json({
-    ok: true,
-    sample_mode,
-    nightshift_configured,
-    zetaris_configured,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      sample_mode,
+      nightshift_configured,
+      zetaris_configured,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
+    }
+  );
 }

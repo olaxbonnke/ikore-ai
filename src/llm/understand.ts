@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
+import { LLMError } from "../core/errors.ts";
 import type { Lang } from "../core/types.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
@@ -20,7 +21,15 @@ export const UnderstandSchema = z.object({
   missing: z.array(z.string()),
 });
 
-export type UnderstandResult = z.infer<typeof UnderstandSchema>;
+export type UnderstandResult = z.infer<typeof UnderstandSchema> & {
+  meta?: {
+    usedLlm: boolean;
+    provider: string;
+    requestedModel?: string;
+    respondedModel?: string;
+    latencyMs?: number;
+  };
+};
 
 /**
  * Deterministic rule-based extractor (fast, offline, zero-network fallback).
@@ -171,27 +180,66 @@ export async function understand(
       status: "ok",
       fallbackUsed: true,
     });
-    return extractRules(text);
+    const fallback = extractRules(text);
+    return {
+      ...fallback,
+      meta: {
+        usedLlm: false,
+        provider: "sample",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
   }
 
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
   // In test mode without an explicit provider, use fast rules
   if (isTest && !provider) {
-    return extractRules(text);
+    const fallback = extractRules(text);
+    return {
+      ...fallback,
+      meta: {
+        usedLlm: false,
+        provider: "rules",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
   }
 
   const activeProvider = provider || new NightshiftProvider();
 
   try {
     const system = loadUnderstandPrompt();
-    const result = await activeProvider.complete<UnderstandResult>({
-      system,
-      messages: [{ role: "user", content: text }],
-      json: UnderstandSchema,
-      temperature: 0.1,
-      stepName: "understand",
-    });
+    let compResult: any;
+
+    if ("completeWithMeta" in activeProvider && typeof (activeProvider as any).completeWithMeta === "function") {
+      compResult = await (activeProvider as any).completeWithMeta({
+        system,
+        messages: [{ role: "user", content: text }],
+        json: UnderstandSchema,
+        temperature: 0.1,
+        stepName: "understand",
+      });
+    } else {
+      const res = await activeProvider.complete({
+        system,
+        messages: [{ role: "user", content: text }],
+        json: UnderstandSchema,
+        temperature: 0.1,
+        stepName: "understand",
+      });
+      compResult = {
+        content: res,
+        model: (activeProvider as any).lastRespondedModel || config.model,
+        latencyMs: 0,
+      };
+    }
+
+    const result = compResult.content as UnderstandResult;
 
     // Mirror slot alias for backward compatibility (pricePerBagNgn <-> pricePerBag)
     if (result.slots.pricePerBagNgn && !result.slots.pricePerBag) {
@@ -200,9 +248,31 @@ export async function understand(
       result.slots.pricePerBagNgn = result.slots.pricePerBag;
     }
 
+    result.meta = {
+      usedLlm: true,
+      provider: "nightshift",
+      requestedModel: config.model,
+      respondedModel: compResult.model,
+      latencyMs: compResult.latencyMs,
+    };
+
     return result;
   } catch (err: any) {
+    // If in live mode and network/connection to Nightshift failed, throw LLMError
+    if (!config.sampleMode && !isTest && /fetch failed|ECONNREFUSED|ETIMEDOUT|502|503/i.test(err.message)) {
+      throw new LLMError(`Nightshift unreachable: ${err.message}`, { cause: err });
+    }
     console.warn(`[Understand] LLM parse failed (${err.message}), falling back to deterministic extraction.`);
-    return extractRules(text);
+    const fallback = extractRules(text);
+    return {
+      ...fallback,
+      meta: {
+        usedLlm: false,
+        provider: "rules",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
   }
 }

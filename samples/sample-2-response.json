@@ -1,5 +1,5 @@
 {
-  "run_id": "run_1792843104495_e3d4x",
+  "run_id": "run_1792848019592_mgcyk",
   "mode": "sample",
   "intent": "sell_or_store",
   "decision": {
@@ -311,11 +311,12 @@
     "hmem_used": true,
     "recalled": [
       "Past season 2025 for farm_ade_iseyin: planting date was 2025-04-20, germination was yes, harvested 34 bags of maize, sold in 2025-10 at ₦50000 per bag.",
+      "Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
+      "Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
       "Past season 2024 for farm_ade_iseyin: planting date was 2024-04-05, germination was no, harvested 22 bags of maize, sold in 2024-08 at ₦44000 per bag.",
-      "Farm profile: Baba Ade (farm_ade_iseyin) operates 1.5 hectares of maize in Iseyin, Oyo State (derived_savanna). Storage method: pics. Preferred language: yo. Risk profile: low.",
-      "Baba Ade farms 1.5 hectares in Iseyin, Oyo State.",
-      "Storage method for Baba Ade (farm_ade_iseyin) is pics."
-    ]
+      "Farm profile: Baba Ade (farm_ade_iseyin) operates 1.5 hectares of maize in Iseyin, Oyo State (derived_savanna). Storage method: pics. Preferred language: yo. Risk profile: low."
+    ],
+    "stored": "mem-8"
   },
-  "trace_file": "logs/trace-run_1792843104495_e3d4x.jsonl"
+  "trace_file": "logs/trace-run_1792848019592_mgcyk.jsonl"
 }

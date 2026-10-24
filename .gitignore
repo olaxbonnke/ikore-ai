@@ -5,7 +5,7 @@ out/
 .env.local
 .oko/
 .notebook/
-vendor/hmem/
+vendor/hmem/node_modules/
 *.log
 *.tsbuildinfo
 .DS_Store

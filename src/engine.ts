@@ -8,10 +8,6 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const CANDIDATES = [
-  { label: "vendor/hmem", entry: path.join(here, "..", "vendor", "hmem", "src", "index.ts") },
-  { label: "monorepo sibling", entry: path.join(here, "..", "..", "..", "engines", "hmem", "reference", "src", "index.ts") },
-];
 
 export interface LoadedEngine {
   HMEM: new (opts: { clock?: () => number; persistDir?: string; actor?: string; minerFn?: (prompt: string) => Promise<string> }) => any;
@@ -19,13 +15,41 @@ export interface LoadedEngine {
 }
 
 export async function loadHMEM(): Promise<LoadedEngine> {
-  for (const c of CANDIDATES) {
-    if (fs.existsSync(c.entry)) {
-      const mod = await import(pathToFileURL(c.entry).href);
-      return { HMEM: mod.HMEM, source: c.label };
+  const distEntry = path.join(here, "..", "vendor", "hmem", "dist", "index.js");
+  const srcEntry = path.join(here, "..", "vendor", "hmem", "src", "index.ts");
+  const monorepoEntry = path.join(here, "..", "..", "..", "engines", "hmem", "reference", "src", "index.ts");
+
+  // Ensure compiled dist/index.js exists if src/index.ts is present
+  if (!fs.existsSync(distEntry) && fs.existsSync(srcEntry)) {
+    try {
+      const { execSync } = await import("node:child_process");
+      execSync("npx esbuild vendor/hmem/src/index.ts --bundle --platform=node --format=esm --outfile=vendor/hmem/dist/index.js", {
+        cwd: path.join(here, ".."),
+        stdio: "ignore",
+      });
+    } catch {
+      // Continue to try direct candidates if build fails
     }
   }
-  console.error("H-MEM engine not found. Run the setup step first:\n\n  npm run setup\n");
-  console.error("(It vendors the reference implementation into vendor/hmem via degit.)");
-  process.exit(1);
+
+  const CANDIDATES = [
+    { label: "vendor/hmem dist", entry: distEntry },
+    { label: "vendor/hmem", entry: srcEntry },
+    { label: "monorepo sibling", entry: monorepoEntry },
+  ];
+
+  for (const c of CANDIDATES) {
+    if (fs.existsSync(c.entry)) {
+      try {
+        const mod = await import(pathToFileURL(c.entry).href);
+        if (mod && mod.HMEM) {
+          return { HMEM: mod.HMEM, source: c.label };
+        }
+      } catch {
+        // Try next candidate if loader fails (e.g. Node typescript strip error)
+      }
+    }
+  }
+
+  throw new Error("H-MEM engine not found. Run `npm run build:hmem` or `npm run setup`.");
 }

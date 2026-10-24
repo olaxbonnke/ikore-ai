@@ -6,7 +6,8 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "setup": "npx --yes degit meterless/meterless/engines/hmem/reference vendor/hmem && cd vendor/hmem && npm install --no-audit --no-fund",
+    "setup": "npx --yes degit meterless/meterless/engines/hmem/reference vendor/hmem && cd vendor/hmem && npm install --no-audit --no-fund && cd ../.. && npm run build:hmem",
+    "build:hmem": "esbuild vendor/hmem/src/index.ts --bundle --platform=node --format=esm --outfile=vendor/hmem/dist/index.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

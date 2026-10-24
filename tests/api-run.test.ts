@@ -25,6 +25,7 @@ describe("JSON API: /api/health and /api/run", () => {
 
       const res = await healthGet();
       expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("charset=utf-8");
 
       const json = await res.json();
       expect(json).toEqual({
@@ -110,8 +111,11 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(json.zetaris.row_counts.rain_daily).toBeGreaterThan(0);
 
       // Check Memory
-      expect(typeof json.memory.hmem_used).toBe("boolean");
+      expect(json.memory.hmem_used).toBe(true);
       expect(Array.isArray(json.memory.recalled)).toBe(true);
+      expect(json.memory.recalled.length).toBeGreaterThan(0);
+      expect(json.memory.stored).toMatch(/^mem-/);
+      expect(res.headers.get("content-type")).toContain("charset=utf-8");
 
       // Check Trace file
       expect(json.trace_file).toMatch(/^logs\/trace-.*\.jsonl$/);
@@ -159,6 +163,87 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(json.llm.responded_model).toBe("template");
       expect(json.llm.provider).toBe("sample");
       expect(json.zetaris.row_counts.prices).toBeGreaterThan(0);
+      expect(json.memory.hmem_used).toBe(true);
+      expect(json.memory.stored).toMatch(/^mem-/);
+    });
+
+    it("prevents duplicate saves for the same decision or content", async () => {
+      const { remember, getFarmHMEM } = await import("../src/memory/hmem.ts");
+      const farmId = "farm_ade_iseyin";
+      const hmem = await getFarmHMEM(farmId);
+      const initialCount = hmem.store.records.size;
+
+      const id1 = await remember(farmId, {
+        type: "advice",
+        decisionId: "dec_dedup_test_01",
+        content: "Unique dedup test content for 2026-04-10",
+      });
+
+      const id2 = await remember(farmId, {
+        type: "advice",
+        decisionId: "dec_dedup_test_01",
+        content: "Unique dedup test content for 2026-04-10",
+      });
+
+      expect(id1).toBe(id2);
+      expect(hmem.store.records.size).toBe(initialCount + 1);
+    });
+
+    it("returns HTTP 503 JSON with trace when Zetaris is unreachable in live mode", async () => {
+      process.env.SAMPLE_MODE = "false";
+      process.env.DATA_MODE = "live";
+      process.env.ZETARIS_REST_URL = "http://127.0.0.1:54321";
+      process.env.ZETARIS_API_KEY = "dummy_key";
+      process.env.ZETARIS_ORG_ID = "dummy_org";
+
+      const req = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "When should I plant maize?",
+          farm_id: "farm_bisi_ogbomoso",
+        }),
+      });
+
+      const res = await runPost(req);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("charset=utf-8");
+
+      const json = await res.json();
+      expect(json.error).toBeDefined();
+      expect(json.error.component).toBe("zetaris");
+      expect(json.run_id).toBeDefined();
+      expect(json.trace_file).toBeDefined();
+
+      // Ensure trace file exists on disk and reflects failure
+      const tracePath = path.resolve(process.cwd(), json.trace_file);
+      expect(fs.existsSync(tracePath)).toBe(true);
+      const traceText = fs.readFileSync(tracePath, "utf-8");
+      expect(traceText).toContain('"status":"failed"');
+    });
+
+    it("traces understand as nightshift with requested and responded model when LLM is active", async () => {
+      const { RunTracer } = await import("../src/core/tracer.ts");
+      const tracer = new RunTracer();
+
+      tracer.log({
+        step: "understand",
+        component: "nightshift",
+        input_summary: 'text="When to plant" farm_id=farm_bisi_ogbomoso',
+        output_summary: "intent=plant_timing lang=en slots={}",
+        latency_ms: 120,
+        requested_model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+        responded_model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+        status: "ok",
+      });
+
+      const tracePath = path.resolve(process.cwd(), tracer.traceFile);
+      const content = fs.readFileSync(tracePath, "utf-8");
+      const line = JSON.parse(content.trim().split(/\r?\n/).pop()!);
+      expect(line.step).toBe("understand");
+      expect(line.component).toBe("nightshift");
+      expect(line.requested_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
+      expect(line.responded_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
     });
   });
 });

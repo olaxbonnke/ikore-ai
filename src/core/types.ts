@@ -87,6 +87,7 @@ export interface AgentReply {
   queriesRun?: string[];
   rowCounts?: Record<string, number>;
   recalledMemories?: string[];
+  storedMemoryId?: string;
 }
 
 /** User message into the orchestrator (DESIGN.md section 4). */

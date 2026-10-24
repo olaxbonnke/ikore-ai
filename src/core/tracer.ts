@@ -12,6 +12,8 @@ export interface TraceStep {
   output_summary: string;
   latency_ms: number;
   status: "ok" | "failed" | "skipped";
+  requested_model?: string;
+  responded_model?: string;
 }
 
 /**
@@ -69,6 +71,8 @@ export class RunTracer {
     output_summary: string;
     latency_ms: number;
     status?: "ok" | "failed" | "skipped";
+    requested_model?: string;
+    responded_model?: string;
   }): void {
     const record: TraceStep = {
       ts: new Date().toISOString(),
@@ -80,6 +84,13 @@ export class RunTracer {
       latency_ms: Math.round(entry.latency_ms),
       status: entry.status || "ok",
     };
+
+    if (entry.requested_model) {
+      record.requested_model = entry.requested_model;
+    }
+    if (entry.responded_model) {
+      record.responded_model = entry.responded_model;
+    }
 
     const line = JSON.stringify(record) + "\n";
     try {

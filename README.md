@@ -32,8 +32,15 @@ Ikore AI combines deterministic agronomic modeling with modern agent infrastruct
 git clone https://github.com/olaxbonnke/oko-farm-agent.git
 cd oko-farm-agent
 npm install
-npm run setup        # Vendors Meterless H-MEM reference into vendor/
 ```
+
+> **H-MEM Engine (Clean-Clone & Bundling)**:
+> The Meterless H-MEM reference engine is vendored in `vendor/hmem` under its original Apache-2.0 license and committed with pre-built ESM distribution (`vendor/hmem/dist/index.js`). A fresh clone has full H-MEM memory capabilities out of the box with zero external downloads and no risk of degit rate limits.
+> If you ever need to re-vendor or refresh the upstream reference implementation from Meterless:
+> ```bash
+> npm run setup        # Clones upstream reference into vendor/hmem and builds vendor/hmem/dist/index.js
+> ```
+
 
 ### Verification & Testing
 ```bash

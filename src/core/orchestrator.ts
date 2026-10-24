@@ -18,6 +18,7 @@ import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
 import { templatePlanting, templateSelling, templateUnavailable } from "../i18n/templates.ts";
 import { ask, remember } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
+import { ZetarisError, LLMError } from "./errors.ts";
 import { explain } from "./explain.ts";
 import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
@@ -93,20 +94,39 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
   const recalledMemories: string[] = [];
 
   // Step 1: Understand
-  const tUnderstand = Date.now();
-  const understood = await understand(message.text, farmId);
+  const tUnderstand = performance.now();
+  let understood: any;
+  try {
+    understood = await understand(message.text, farmId);
+  } catch (err: any) {
+    tracer.log({
+      step: "understand",
+      component: "nightshift",
+      input_summary: `text="${message.text}" farm_id=${farmId}`,
+      output_summary: `error: ${err.message}`,
+      latency_ms: Math.round(performance.now() - tUnderstand),
+      status: "failed",
+    });
+    throw err;
+  }
+
   const farm = getFarmProfile(farmId);
   const lang = message.lang || understood.language || farm.preferredLang || "en";
+  const usedLlmInUnderstand = understood.meta?.usedLlm ?? false;
+
   tracer.log({
     step: "understand",
-    component: "orchestrator",
+    component: usedLlmInUnderstand ? "nightshift" : "orchestrator",
     input_summary: `text="${message.text}" farm_id=${farmId}`,
     output_summary: `intent=${understood.intent} lang=${lang} slots=${JSON.stringify(understood.slots)}`,
-    latency_ms: Date.now() - tUnderstand,
+    latency_ms: Math.round(performance.now() - tUnderstand),
+    requested_model: understood.meta?.requestedModel,
+    responded_model: understood.meta?.respondedModel,
+    status: "ok",
   });
 
   // Step 2: Recall
-  const tRecall = Date.now();
+  const tRecall = performance.now();
   const memoryIdsUsed: string[] = [];
   try {
     const queryTerm =
@@ -127,7 +147,8 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       component: "hmem",
       input_summary: `farm_id=${farmId} query="${queryTerm}"`,
       output_summary: `recalled_count=${memoryIdsUsed.length} ids=${memoryIdsUsed.join(",")}`,
-      latency_ms: Date.now() - tRecall,
+      latency_ms: Math.round(performance.now() - tRecall),
+      status: "ok",
     });
   } catch (err: any) {
     tracer.log({
@@ -135,7 +156,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       component: "hmem",
       input_summary: `farm_id=${farmId}`,
       output_summary: `skipped: ${err.message}`,
-      latency_ms: Date.now() - tRecall,
+      latency_ms: Math.round(performance.now() - tRecall),
       status: "skipped",
     });
   }
@@ -207,26 +228,41 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const cashNeed = understood.slots.cashNeed as CashNeed | undefined;
 
     // Step 3: Observe (query price seasonality via DataGateway)
-    const tObserve = Date.now();
-    const gateway = getGateway();
+    const tObserve = performance.now();
+    let prices: MonthlyPriceRecord[] = [];
+    let pRes: any;
     const pQuery = priceSeasonality(farm.state);
     queriesRun.push("priceSeasonality");
-    const pRes = await gateway.query<MonthlyPriceRecord>(pQuery.sql);
-    const prices = pRes.rows;
-    rowCounts["prices"] = prices.length;
-    tracer.log({
-      step: "observe",
-      component: "zetaris",
-      input_summary: `query=priceSeasonality state=${farm.state}`,
-      output_summary: `rows=${prices.length} provenance=${pRes.provenance}`,
-      latency_ms: Date.now() - tObserve,
-    });
+    try {
+      const gateway = getGateway();
+      pRes = await gateway.query<MonthlyPriceRecord>(pQuery.sql);
+      prices = pRes.rows;
+      rowCounts["prices"] = prices.length;
+      tracer.log({
+        step: "observe",
+        component: "zetaris",
+        input_summary: `query=priceSeasonality state=${farm.state}`,
+        output_summary: `rows=${prices.length} provenance=${pRes.provenance}`,
+        latency_ms: Math.round(performance.now() - tObserve),
+        status: "ok",
+      });
+    } catch (err: any) {
+      tracer.log({
+        step: "observe",
+        component: "zetaris",
+        input_summary: `query=priceSeasonality state=${farm.state}`,
+        output_summary: `error: ${err.message}`,
+        latency_ms: Math.round(performance.now() - tObserve),
+        status: "failed",
+      });
+      throw err;
+    }
 
     // Step 4: Options
     const candidateKeys = listOptions("sell_or_store", { asOf, cashNeedNgn: cashNeed?.amountNgn });
 
     // Step 5: Simulate
-    const tSimulate = Date.now();
+    const tSimulate = performance.now();
     const simResults = simulateSelling({
       prices,
       asOf,
@@ -241,11 +277,12 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       component: "orchestrator",
       input_summary: `bags=${bags} currentPrice=${currentPricePerBag} method=${storageMethod}`,
       output_summary: `options_simulated=${simResults.length}`,
-      latency_ms: Date.now() - tSimulate,
+      latency_ms: Math.round(performance.now() - tSimulate),
+      status: "ok",
     });
 
     // Step 6: Decide
-    const tDecide = Date.now();
+    const tDecide = performance.now();
     const decision = decide(simResults as unknown as OptionResult[], {
       farmId,
       intent: "sell_or_store",
@@ -264,19 +301,25 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       component: "orchestrator",
       input_summary: `options=${simResults.map((o) => o.option).join(",")}`,
       output_summary: `chosen=${decision.chosen} runnerUp=${decision.runnerUp} confidence=${decision.confidence}`,
-      latency_ms: Date.now() - tDecide,
+      latency_ms: Math.round(performance.now() - tDecide),
+      status: "ok",
     });
 
     // Step 7: Explain
-    const tExplain = Date.now();
+    const tExplain = performance.now();
     const explanation = await explain(decision, lang);
     const text = explanation.text;
+    const reqModel = isSample ? "none" : (process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
+    const respModel = isSample ? "template" : (explanation.model || "none");
     tracer.log({
       step: "explain",
       component: isSample ? "orchestrator" : (explanation.path === "llm" ? "nightshift" : "orchestrator"),
       input_summary: `decision_id=${decision.id} lang=${lang}`,
-      output_summary: `path=${explanation.path} model=${explanation.model || "none"} words=${explanation.text.split(/\s+/).length}`,
-      latency_ms: Date.now() - tExplain,
+      output_summary: `path=${explanation.path} model=${respModel} words=${explanation.text.split(/\s+/).length}`,
+      latency_ms: Math.round(performance.now() - tExplain),
+      requested_model: reqModel,
+      responded_model: respModel,
+      status: "ok",
     });
     tracer.log({
       step: "validate",
@@ -284,29 +327,32 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       input_summary: `text_length=${explanation.text.length}`,
       output_summary: `status=valid path=${explanation.path}`,
       latency_ms: 1,
+      status: "ok",
     });
 
     // Step 8: Remember
-    const tRemember = Date.now();
+    const tRemember = performance.now();
+    let storedMemoryId: string | undefined;
     try {
-      const memoryId = await remember(farmId, {
+      storedMemoryId = await remember(farmId, {
         type: "advice",
         intent: decision.intent,
         verdict: decision.chosen,
         decisionId: decision.id,
         keyNumbers: decision.keyNumbers,
-        content: `Sell or store advice for ${asOf}: ${decision.chosen}. Offered ₦${currentPricePerBag.toLocaleString()}/bag for ${bags} bags. Expected return ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
+        content: `Question: "${message.text}". Sell or store advice for ${asOf}: ${decision.chosen}. Offered ₦${currentPricePerBag.toLocaleString()}/bag for ${bags} bags. Expected return ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
         date: decision.createdAt,
       });
-      if (memoryId) {
-        memoryIdsUsed.push(memoryId);
+      if (storedMemoryId && !memoryIdsUsed.includes(storedMemoryId)) {
+        memoryIdsUsed.push(storedMemoryId);
       }
       tracer.log({
         step: "remember",
         component: "hmem",
-        input_summary: `verdict=${decision.chosen}`,
-        output_summary: `committed_memory=${memoryId || "none"}`,
-        latency_ms: Date.now() - tRemember,
+        input_summary: `question="${message.text}" verdict=${decision.chosen}`,
+        output_summary: `stored_id=${storedMemoryId || "none"}`,
+        latency_ms: Math.round(performance.now() - tRemember),
+        status: "ok",
       });
     } catch (err: any) {
       tracer.log({
@@ -314,7 +360,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         component: "hmem",
         input_summary: `verdict=${decision.chosen}`,
         output_summary: `skipped: ${err.message}`,
-        latency_ms: Date.now() - tRemember,
+        latency_ms: Math.round(performance.now() - tRemember),
         status: "skipped",
       });
     }
@@ -334,6 +380,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       queriesRun,
       rowCounts,
       recalledMemories,
+      storedMemoryId,
     };
   }
 
@@ -360,12 +407,26 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
   }
 
   // Step 3: Observe
-  const tObserve = Date.now();
+  const tObserve = performance.now();
+  let loaded: any;
   const gateway = getGateway();
-  const loaded = await loadRainDaily(gateway, farmId);
   const query = rainDaily(farmId);
   queriesRun.push(query.sql);
-  rowCounts["rain_daily"] = loaded.records.length;
+
+  try {
+    loaded = await loadRainDaily(gateway, farmId);
+    rowCounts["rain_daily"] = loaded.records.length;
+  } catch (err: any) {
+    tracer.log({
+      step: "observe",
+      component: "zetaris",
+      input_summary: `farm_id=${farmId} state=${farm.state}`,
+      output_summary: `error: ${err.message}`,
+      latency_ms: Math.round(performance.now() - tObserve),
+      status: "failed",
+    });
+    throw err;
+  }
 
   // Step 3b: NiMet Onset Benchmark (observed context, NOT input to simulation)
   let nimetRow: any = null;
@@ -395,14 +456,15 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     component: "zetaris",
     input_summary: `farm_id=${farmId} state=${farm.state}`,
     output_summary: `rain_rows=${loaded.records.length} nimet_matched=${Boolean(nimetRow)}`,
-    latency_ms: Date.now() - tObserve,
+    latency_ms: Math.round(performance.now() - tObserve),
+    status: "ok",
   });
 
   // Step 4: Options
   const candidateKeys = listOptions(understood.intent, { asOf });
 
   // Step 5: Simulate
-  const tSimulate = Date.now();
+  const tSimulate = performance.now();
   const lambda = farm.riskAversion === "low" ? 0.25 : farm.riskAversion === "high" ? 1.0 : 0.5;
   const simResults = simulatePlanting({
     series: loaded.records,
@@ -424,11 +486,12 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     component: "orchestrator",
     input_summary: `asOf=${asOf} offsets=0,7,14 series_len=${loaded.records.length}`,
     output_summary: `simulated_options=${simResults.length}`,
-    latency_ms: Date.now() - tSimulate,
+    latency_ms: Math.round(performance.now() - tSimulate),
+    status: "ok",
   });
 
   // Step 6: Decide
-  const tDecide = Date.now();
+  const tDecide = performance.now();
   const decision = decide(simResults as unknown as OptionResult[], {
     farmId,
     intent: "plant_timing",
@@ -454,19 +517,25 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     component: "orchestrator",
     input_summary: `options=${simResults.map((o) => o.option).join(",")}`,
     output_summary: `chosen=${decision.chosen} runnerUp=${decision.runnerUp} confidence=${decision.confidence}`,
-    latency_ms: Date.now() - tDecide,
+    latency_ms: Math.round(performance.now() - tDecide),
+    status: "ok",
   });
 
   // Step 7: Explain
-  const tExplain = Date.now();
+  const tExplain = performance.now();
   const explanation = await explain(decision, lang);
   const text = explanation.text;
+  const reqModelPlant = isSample ? "none" : (process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
+  const respModelPlant = isSample ? "template" : (explanation.model || "none");
   tracer.log({
     step: "explain",
     component: isSample ? "orchestrator" : (explanation.path === "llm" ? "nightshift" : "orchestrator"),
     input_summary: `decision_id=${decision.id} lang=${lang}`,
-    output_summary: `path=${explanation.path} model=${explanation.model || "none"} words=${explanation.text.split(/\s+/).length}`,
-    latency_ms: Date.now() - tExplain,
+    output_summary: `path=${explanation.path} model=${respModelPlant} words=${explanation.text.split(/\s+/).length}`,
+    latency_ms: Math.round(performance.now() - tExplain),
+    requested_model: reqModelPlant,
+    responded_model: respModelPlant,
+    status: "ok",
   });
   tracer.log({
     step: "validate",
@@ -474,29 +543,32 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     input_summary: `text_length=${explanation.text.length}`,
     output_summary: `status=valid path=${explanation.path}`,
     latency_ms: 1,
+    status: "ok",
   });
 
   // Step 8: Remember
-  const tRemember = Date.now();
+  const tRemember = performance.now();
+  let storedMemoryId: string | undefined;
   try {
-    const memoryId = await remember(farmId, {
+    storedMemoryId = await remember(farmId, {
       type: "advice",
       intent: decision.intent,
       verdict: decision.chosen,
       decisionId: decision.id,
       keyNumbers: decision.keyNumbers,
-      content: `Planting advice for ${asOf}: ${decision.chosen}. Replant risk ${decision.keyNumbers.replantRisk}, expected value ₦${decision.keyNumbers.expectedValueNgn}.`,
+      content: `Question: "${message.text}". Planting advice for ${asOf}: ${decision.chosen}. Planting date ${decision.keyNumbers.plantingDate}. Replant risk ${decision.keyNumbers.replantRisk}, expected value ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
       date: decision.createdAt,
     });
-    if (memoryId) {
-      memoryIdsUsed.push(memoryId);
+    if (storedMemoryId && !memoryIdsUsed.includes(storedMemoryId)) {
+      memoryIdsUsed.push(storedMemoryId);
     }
     tracer.log({
       step: "remember",
       component: "hmem",
-      input_summary: `verdict=${decision.chosen}`,
-      output_summary: `committed_memory=${memoryId || "none"}`,
-      latency_ms: Date.now() - tRemember,
+      input_summary: `question="${message.text}" verdict=${decision.chosen}`,
+      output_summary: `stored_id=${storedMemoryId || "none"}`,
+      latency_ms: Math.round(performance.now() - tRemember),
+      status: "ok",
     });
   } catch (err: any) {
     tracer.log({
@@ -504,7 +576,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       component: "hmem",
       input_summary: `verdict=${decision.chosen}`,
       output_summary: `skipped: ${err.message}`,
-      latency_ms: Date.now() - tRemember,
+      latency_ms: Math.round(performance.now() - tRemember),
       status: "skipped",
     });
   }
@@ -524,5 +596,6 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     queriesRun,
     rowCounts,
     recalledMemories,
+    storedMemoryId,
   };
 }
