@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getConfig } from "@/config";
-import { ZetarisError, LLMError } from "@/core/errors";
+import { ZetarisError, LLMError, classifyErrorComponent } from "@/core/errors";
 import { initEnv } from "@/core/env";
+import { getKnownFarmIds } from "@/core/farm-profile";
 import { handle } from "@/core/orchestrator";
+import { RunTracer } from "@/core/tracer";
 import type { AgentReply } from "@/core/types";
 
 export async function POST(req: Request) {
@@ -21,9 +22,46 @@ export async function POST(req: Request) {
     );
   }
 
-  const farmId = typeof body.farm_id === "string" && body.farm_id.trim() ? body.farm_id.trim() : "farm_bisi_ogbomoso";
-  const lang = body.lang as "en" | "yo" | "pcm" | undefined;
   const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const validFarmIds = getKnownFarmIds();
+
+  const rawFarmId =
+    typeof body.farm_id === "string"
+      ? body.farm_id.trim()
+      : body.farm_id !== undefined && body.farm_id !== null
+      ? String(body.farm_id).trim()
+      : undefined;
+
+  if (rawFarmId && !validFarmIds.includes(rawFarmId)) {
+    const tracer = new RunTracer(runId);
+    tracer.log({
+      step: "validate_input",
+      component: "validator",
+      input_summary: `farm_id="${rawFarmId}" question="${question}"`,
+      output_summary: `error: Unknown farm_id: ${rawFarmId}`,
+      latency_ms: 0,
+      status: "failed",
+    });
+
+    return NextResponse.json(
+      {
+        error: {
+          component: "input",
+          message: `Unknown farm_id: ${rawFarmId}`,
+          valid_farm_ids: validFarmIds,
+        },
+        run_id: runId,
+        trace_file: tracer.traceFile,
+      },
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      }
+    );
+  }
+
+  const farmId = rawFarmId || "farm_bisi_ogbomoso";
+  const lang = body.lang as "en" | "yo" | "pcm" | undefined;
 
   let reply: AgentReply;
   try {
@@ -34,11 +72,17 @@ export async function POST(req: Request) {
       runId,
     });
   } catch (err: any) {
-    const isZetaris =
-      err instanceof ZetarisError ||
-      /zetaris/i.test(err.name || "") ||
-      /zetaris|oko_pg|rain_daily|priceSeasonality|nimet_onset/i.test(err.message || "");
-    const component = isZetaris ? "zetaris" : "nightshift";
+    const component = classifyErrorComponent(err);
+
+    const tracer = new RunTracer(runId);
+    tracer.log({
+      step: "handle",
+      component: component === "internal" ? "orchestrator" : component,
+      input_summary: `farm_id="${farmId}" question="${question}"`,
+      output_summary: `error: ${err.message || "Failed"}`,
+      latency_ms: 0,
+      status: "failed",
+    });
 
     return NextResponse.json(
       {
@@ -47,7 +91,7 @@ export async function POST(req: Request) {
           message: err.message || "External service unreachable",
         },
         run_id: runId,
-        trace_file: `logs/trace-${runId}.jsonl`,
+        trace_file: tracer.traceFile,
       },
       {
         status: 503,

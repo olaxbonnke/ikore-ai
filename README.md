@@ -171,7 +171,10 @@ Executes the reasoning orchestrator end-to-end.
 
 **Request Body**:
 - `question` (string, required): Farmer's query.
-- `farm_id` (string, optional, default: `"farm_bisi_ogbomoso"`).
+- `farm_id` (string, optional, default: `"farm_bisi_ogbomoso"`). Known valid farm IDs from `data/farms_seed.csv`:
+  - `"farm_bisi_ogbomoso"`: Mama Bisi (2 ha in Ogbomoso North, Oyo; sack storage).
+  - `"farm_ade_iseyin"`: Baba Ade (1.5 ha in Iseyin, Oyo; PICS bags).
+  If an unknown `farm_id` is passed (e.g. `"F001"`), the endpoint returns HTTP 400 Bad Request with `component: "input"`, the list of `valid_farm_ids`, and writes an execution trace.
 - `lang` (`"en"` | `"yo"` | `"pcm"`, optional, detected from text if omitted).
 
 **cURL**:
@@ -203,6 +206,31 @@ Invoke-RestMethod -Uri "http://localhost:3000/api/run" -Method Post -Body $body 
 - `zetaris`: SQL queries executed and row counts returned.
 - `memory`: H-MEM usage flag (`hmem_used`), recalled memory snippets, and the stored memory ID.
 - `trace_file`: Path to the execution trace log (`logs/trace-<run_id>.jsonl`).
+
+**Error Responses**:
+- **HTTP 400 Bad Request** (input validation error, e.g. unknown `farm_id` or missing `question`):
+  ```json
+  {
+    "error": {
+      "component": "input",
+      "message": "Unknown farm_id: F001",
+      "valid_farm_ids": ["farm_bisi_ogbomoso", "farm_ade_iseyin"]
+    },
+    "run_id": "run_1792864382910_abc12",
+    "trace_file": "logs/trace-run_1792864382910_abc12.jsonl"
+  }
+  ```
+- **HTTP 503 Service Unavailable** (downstream provider outage, strictly attributed to `"zetaris"`, `"nightshift"`, `"hmem"`, or `"internal"`):
+  ```json
+  {
+    "error": {
+      "component": "zetaris",
+      "message": "connect ECONNREFUSED 127.0.0.1:54321"
+    },
+    "run_id": "run_1792864382910_def34",
+    "trace_file": "logs/trace-run_1792864382910_def34.jsonl"
+  }
+  ```
 
 ### Sample Runs
 Reference JSON judge request and response files are saved in `samples/`:

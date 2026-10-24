@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as healthGet } from "../src/app/api/health/route.ts";
 import { POST as runPost } from "../src/app/api/run/route.ts";
+import { classifyErrorComponent } from "../src/core/errors.ts";
 
 describe("JSON API: /api/health and /api/run", () => {
   beforeEach(() => {
@@ -73,6 +74,79 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBeDefined();
+    });
+
+    it("returns 400 with component 'input' and valid_farm_ids when farm_id is unknown", async () => {
+      const req = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "When should I plant maize?",
+          farm_id: "F001",
+        }),
+      });
+
+      const res = await runPost(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toEqual({
+        component: "input",
+        message: "Unknown farm_id: F001",
+        valid_farm_ids: ["farm_bisi_ogbomoso", "farm_ade_iseyin"],
+      });
+      expect(typeof json.run_id).toBe("string");
+      expect(typeof json.trace_file).toBe("string");
+      const tracePath = path.resolve(process.cwd(), json.trace_file);
+      expect(fs.existsSync(tracePath)).toBe(true);
+      const traceContent = fs.readFileSync(tracePath, "utf-8");
+      expect(traceContent).toContain("Unknown farm_id: F001");
+    });
+
+    it("runs end-to-end with valid alternative farm_id in SAMPLE_MODE", async () => {
+      const req = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "When should I plant maize?",
+          farm_id: "farm_ade_iseyin",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mode).toBe("sample");
+      expect(json.decision).toBeDefined();
+      expect(json.decision.farmId).toBe("farm_ade_iseyin");
+      expect(json.memory.hmem_used).toBe(true);
+    });
+
+    it("runs end-to-end when farm_id is omitted, defaulting to farm_bisi_ogbomoso", async () => {
+      const req = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "When should I plant maize?",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.decision.farmId).toBe("farm_bisi_ogbomoso");
+    });
+
+    it("classifyErrorComponent attributes errors strictly and uses internal for unclassified errors", () => {
+      expect(classifyErrorComponent(new Error("Zetaris connection failed"))).toBe("zetaris");
+      expect(classifyErrorComponent(new Error("Snapshot file not found: rain_daily.json"))).toBe("zetaris");
+      expect(classifyErrorComponent(new Error("Nightshift error (HTTP 502): gateway timeout"))).toBe("nightshift");
+      expect(classifyErrorComponent(new Error("meterless rate limit exceeded"))).toBe("nightshift");
+      expect(classifyErrorComponent(new Error("Cannot find farm associated with memoryId \"mem-123\""))).toBe("hmem");
+      expect(classifyErrorComponent(new Error("corrupt ledger.jsonl"))).toBe("hmem");
+      expect(classifyErrorComponent(new Error("Invalid farmId: F001"))).toBe("internal");
+      expect(classifyErrorComponent(new Error("Unexpected syntax error"))).toBe("internal");
     });
 
     it("runs plant_timing end-to-end in SAMPLE_MODE and generates valid trace", async () => {

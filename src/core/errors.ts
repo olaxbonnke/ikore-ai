@@ -62,3 +62,43 @@ export class SimulationError extends Error {
     this.n = options?.n;
   }
 }
+
+export type ErrorComponent = "zetaris" | "nightshift" | "hmem" | "internal";
+
+/**
+ * Classifies an error into its originating system component.
+ * Thrown errors are strictly attributed to zetaris, nightshift, or hmem
+ * only when they actually originate from those components, otherwise internal.
+ */
+export function classifyErrorComponent(err: unknown): ErrorComponent {
+  if (!err) return "internal";
+
+  const name = (err as any).name || "";
+  const msg = (err as any).message || "";
+  const str = `${name}: ${msg}`;
+
+  if (
+    err instanceof ZetarisError ||
+    /zetaris/i.test(name) ||
+    /zetaris|oko_pg|rain_daily|priceSeasonality|nimet_onset|Snapshot file not found/i.test(msg)
+  ) {
+    return "zetaris";
+  }
+
+  if (
+    err instanceof LLMError ||
+    /LLMError/i.test(name) ||
+    /nightshift|nemotron|meterless/i.test(str)
+  ) {
+    return "nightshift";
+  }
+
+  if (
+    /hmem/i.test(name) ||
+    /\bhmem\b|h-mem|ledger\.jsonl|store\.json|Cannot find farm associated with memoryId/i.test(msg)
+  ) {
+    return "hmem";
+  }
+
+  return "internal";
+}

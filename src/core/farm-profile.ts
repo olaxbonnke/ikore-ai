@@ -3,6 +3,40 @@ import path from "node:path";
 import type { Farm } from "./types.ts";
 
 /**
+ * Returns array of all known/seeded farm IDs.
+ */
+export function getKnownFarmIds(): string[] {
+  const csvPath = path.resolve(process.cwd(), "data", "farms_seed.csv");
+  if (fs.existsSync(csvPath)) {
+    const lines = fs
+      .readFileSync(csvPath, "utf-8")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith("#"));
+
+    if (lines.length > 1) {
+      const headers = lines[0].split(",").map((h) => h.trim());
+      const idIdx = headers.indexOf("id");
+      if (idIdx !== -1) {
+        return lines
+          .slice(1)
+          .map((line) => line.split(",")[idIdx]?.trim())
+          .filter((id): id is string => Boolean(id));
+      }
+    }
+  }
+
+  return ["farm_bisi_ogbomoso", "farm_ade_iseyin"];
+}
+
+/**
+ * Checks whether a farm ID is known.
+ */
+export function isKnownFarmId(farmId: string): boolean {
+  return getKnownFarmIds().includes(farmId);
+}
+
+/**
  * Loads farm profile by farmId from seeded CSV data.
  */
 export function getFarmProfile(farmId: string): Farm {
