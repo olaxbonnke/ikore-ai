@@ -1,4 +1,4 @@
-import type { Decision, Lang } from "../core/types.ts";
+import type { Decision, Lang, OptionResult } from "../core/types.ts";
 import { formatGroundedDate } from "./glossary.ts";
 
 /** Fallback message when service or intent is temporarily unavailable. */
@@ -15,40 +15,127 @@ export function templateUnavailable(_intent: "plant_timing" | "sell_or_store", l
   return "Ikore AI is still starting up. Please try again soon.";
 }
 
+/** Honest localized reply for out-of-scope or unsupported agricultural questions. */
+export function templateOutOfScope(lang: Lang = "en"): string {
+  if (lang === "yo") {
+    return "Mo lè gbani nímọ̀ràn nípa ìgbà gbígbin àgbàdo, títà tàbí títọ́jú rẹ̀ lẹ́yìn ìkórè, àti rírántí ìmọ̀ràn tí a ti sọ tẹ́lẹ̀ nìkan. N kò lè gbani nímọ̀ràn nípa ìgbà ìkórè, ajílẹ̀, kòkòrò, tàbí àwọn ohun ọ̀gbìn mìíràn.";
+  }
+  if (lang === "pcm") {
+    return "I only fit give advice on when to plant corn, whether to sell or store after harvest, and remind you of our previous advice. I no fit advise on harvest time, fertilizer, pests, or other crops.";
+  }
+  if (lang === "ha") {
+    return "Zan iya ba da shawara ne kawai kan lokacin shuka masara, sayarwa ko ajiya bayan girbi, da kuma tunatar da shawarwarin da suka gabata. Ba zan iya ba da shawara kan lokacin girbi, taki, ko kwari ba.";
+  }
+  return "I can only advise on maize planting timing, post-harvest selling vs storage, and recalling our earlier advice. I cannot advise on harvest timing, fertilizer, pests, or other crops.";
+}
+
 /** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7 & Day 4.2 Polish). */
 export function templatePlanting(decision: Decision, lang: Lang = "en"): string {
   const chosen = decision.chosen;
   const k = decision.keyNumbers;
-  const rawDate = String(k.plantingDate || decision.createdAt.slice(0, 10));
+  const chosenOpt = decision.options?.find((o) => o.option === chosen) as
+    | (OptionResult & { offsetDays?: number; plantingDate?: string })
+    | undefined;
+  const offsetDays =
+    typeof chosenOpt?.offsetDays === "number"
+      ? chosenOpt.offsetDays
+      : chosen === "plant_now"
+      ? 0
+      : chosen === "wait_7"
+      ? 7
+      : chosen === "wait_14"
+      ? 14
+      : 0;
+
+  const rawDate = String(chosenOpt?.plantingDate || k.plantingDate || decision.createdAt.slice(0, 10));
   const formattedDate = formatGroundedDate(rawDate, lang);
   const nYears = String(k.seasonsCount || k.nAnalogYears || "35");
 
+  const plantNowChance = String(
+    k[`plainChance_plantNow_${lang}`] || k.plainChance_plantNow_en || "about 1 in 7 seasons"
+  );
+  const waitChance = String(
+    k[`plainChance_chosen_${lang}`] || k.plainChance_chosen_en || "almost never"
+  );
+
   if (lang === "yo") {
-    if (chosen === "wait_7" || chosen === "wait_14") {
-      return `Dúró díẹ̀ kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò ${nYears} sẹ́yìn.`;
+    if (offsetDays === 0) {
+      return `Gbìn àgbàdo rẹ báyìí ní nǹkan bí ${formattedDate}.\n\nEwu láti tún gbìn fẹ́rẹ́ kò ṣẹlẹ̀ rárá pẹ̀lú òjò tó tó nínú àsìkò ${nYears} sẹ́yìn.`;
     }
-    return `Gbìn àgbàdo rẹ báyìí ní nǹkan bí ${formattedDate}.\n\nEwu láti tún gbìn fẹ́rẹ́ kò ṣẹlẹ̀ rárá pẹ̀lú òjò tó tó nínú àsìkò ${nYears} sẹ́yìn.`;
+    const waitHeadline =
+      offsetDays === 7
+        ? "Dúró fún ọ̀sẹ̀ kan"
+        : offsetDays === 14
+        ? "Dúró fún ọ̀sẹ̀ méjì"
+        : `Dúró fún ọjọ́ ${offsetDays}`;
+    const waitReason =
+      offsetDays === 7
+        ? "Tí o bá dúró fún ọ̀sẹ̀ kan"
+        : offsetDays === 14
+        ? "Tí o bá dúró fún ọ̀sẹ̀ méjì"
+        : `Tí o bá dúró fún ọjọ́ ${offsetDays}`;
+
+    return `${waitHeadline} kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${plantNowChance}. ${waitReason}, ${waitChance} nínú àsìkò ${nYears} sẹ́yìn.`;
   }
 
   if (lang === "pcm") {
-    if (chosen === "wait_7" || chosen === "wait_14") {
-      return `Wait small. Plant around ${formattedDate}.\n\nIf you plant now, about 1 for every 7 seasons, people don plant am again. If you wait one week, e no dey almost happen.`;
+    if (offsetDays === 0) {
+      return `Plant now around ${formattedDate}.\n\nGood rain dey ground across ${nYears} past seasons, e no dey almost need planting again.`;
     }
-    return `Plant now around ${formattedDate}.\n\nGood rain dey ground across ${nYears} past seasons, e no dey almost need planting again.`;
+    const waitHeadline =
+      offsetDays === 7
+        ? "Wait one week"
+        : offsetDays === 14
+        ? "Wait two weeks"
+        : `Wait ${offsetDays} days`;
+    const waitReason =
+      offsetDays === 7
+        ? "If you wait one week"
+        : offsetDays === 14
+        ? "If you wait two weeks"
+        : `If you wait ${offsetDays} days`;
+
+    return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance}, people don plant am again. ${waitReason}, e no dey almost happen.`;
   }
 
   if (lang === "ha") {
-    if (chosen === "wait_7" || chosen === "wait_14") {
-      return `Jira mako guda kafin ka shuka (kusan ${formattedDate}).\n\nIdan ka shuka yanzu, akwai haɗarin sake shuka. Idan ka jira mako guda, kusan ba ya taɓa faruwa ba.`;
+    if (offsetDays === 0) {
+      return `Shuka yanzu a kusan ${formattedDate}.\n\nHaɗarin sake shuka kusan ba ya taɓa faruwa ba.`;
     }
-    return `Shuka yanzu a kusan ${formattedDate}.\n\nHaɗarin sake shuka kusan ba ya taɓa faruwa ba.`;
+    const waitHeadline =
+      offsetDays === 7
+        ? "Jira mako guda"
+        : offsetDays === 14
+        ? "Jira makonni biyu"
+        : `Jira kwanaki ${offsetDays}`;
+    const waitReason =
+      offsetDays === 7
+        ? "Idan ka jira mako guda"
+        : offsetDays === 14
+        ? "Idan ka jira makonni biyu"
+        : `Idan ka jira kwanaki ${offsetDays}`;
+
+    return `${waitHeadline} kafin ka shuka (kusan ${formattedDate}).\n\nIdan ka shuka yanzu, akwai haɗarin sake shuka. ${waitReason}, kusan ba ya taɓa faruwa ba.`;
   }
 
   // Default English (no 'danger', uses chance / needed replanting)
-  if (chosen === "wait_7" || chosen === "wait_14") {
-    return `Wait a week. Plant around ${formattedDate}.\n\nIf you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in ${nYears} past seasons.`;
+  if (offsetDays === 0) {
+    return `Plant now around ${formattedDate}.\n\nReplanting ${waitChance} with enough rain across ${nYears} past seasons.`;
   }
-  return `Plant now around ${formattedDate}.\n\nReplanting almost never happened with enough rain across ${nYears} past seasons.`;
+  const waitHeadline =
+    offsetDays === 7
+      ? "Wait a week"
+      : offsetDays === 14
+      ? "Wait two weeks"
+      : `Wait ${offsetDays} days`;
+  const waitReason =
+    offsetDays === 7
+      ? "If you wait a week"
+      : offsetDays === 14
+      ? "If you wait two weeks"
+      : `If you wait ${offsetDays} days`;
+
+  return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance} needed replanting. ${waitReason}, it ${waitChance} in ${nYears} past seasons.`;
 }
 
 /** Pre-written grounded template explanations for sell-or-store decisions (DESIGN.md step 7 & Day 4.2 Polish). */

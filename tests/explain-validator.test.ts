@@ -567,3 +567,173 @@ describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
     expect(result.text).toBe("Ní Ọjọ́ Ẹtì, 10 April mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.");
   });
 });
+
+describe("wait_14 verdict and date wording (src/i18n/templates.ts)", () => {
+  const wait14Decision: Decision = {
+    id: "dec_wait14_test",
+    farmId: "farm_ade_iseyin",
+    intent: "plant_timing",
+    createdAt: "2026-04-10T08:00:00Z",
+    chosen: "wait_14",
+    runnerUp: "wait_7",
+    confidence: "medium",
+    riskBadge: "green",
+    dataMode: "live",
+    assumptions: [],
+    evidence: [],
+    options: [
+      {
+        option: "plant_now",
+        label: "Plant now (10 April)",
+        outcome: { p10: 100, p50: 200, p90: 300, mean: 200, riskMetric: 0.101, riskLabel: "replant risk", n: 35 },
+        score: 180,
+        notes: [],
+        offsetDays: 0,
+        plantingDate: "2026-04-10",
+        replantProbability: 0.101,
+      } as any,
+      {
+        option: "wait_7",
+        label: "Wait 7 days (17 April)",
+        outcome: { p10: 120, p50: 220, p90: 320, mean: 220, riskMetric: 0.007, riskLabel: "replant risk", n: 35 },
+        score: 218,
+        notes: [],
+        offsetDays: 7,
+        plantingDate: "2026-04-17",
+        replantProbability: 0.007,
+      } as any,
+      {
+        option: "wait_14",
+        label: "Wait 14 days (24 April)",
+        outcome: { p10: 130, p50: 230, p90: 330, mean: 230, riskMetric: 0.007, riskLabel: "replant risk", n: 35 },
+        score: 228,
+        notes: [],
+        offsetDays: 14,
+        plantingDate: "2026-04-24",
+        replantProbability: 0.007,
+      } as any,
+    ],
+    keyNumbers: {
+      asOf: "2026-04-10",
+      plantingDate: "2026-04-24",
+      replantRisk: "0.7%",
+      replantRiskNow: "10.1%",
+      plainChance_plantNow_en: "about 1 in 10 seasons",
+      plainChance_plantNow_yo: "ẹ̀ẹ̀kan nínú àsìkò mẹ́wàá",
+      plainChance_plantNow_pcm: "about 1 for every 10 seasons",
+      plainChance_chosen_en: "almost never",
+      plainChance_chosen_yo: "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+      plainChance_chosen_pcm: "e no dey almost happen",
+      seasonsCount: 35,
+    },
+  };
+
+  it("produces 'Wait two weeks' and matching plantingDate in English, never 'a week'", () => {
+    const textEn = templatePlanting(wait14Decision, "en");
+    expect(textEn).toContain("Wait two weeks. Plant around 24 April.");
+    expect(textEn).not.toContain("Wait a week");
+    expect(textEn).toContain("24 April");
+    expect(textEn).toContain("about 1 in 10 seasons");
+  });
+
+  it("produces 'Dúró fún ọ̀sẹ̀ méjì' and matching plantingDate in Yoruba, never 'ọ̀sẹ̀ kan'", () => {
+    const textYo = templatePlanting(wait14Decision, "yo");
+    expect(textYo).toContain("Dúró fún ọ̀sẹ̀ méjì");
+    expect(textYo).not.toContain("ọ̀sẹ̀ kan");
+    expect(textYo).toContain("24 April");
+    expect(textYo).toContain("ẹ̀ẹ̀kan nínú àsìkò mẹ́wàá");
+  });
+
+  it("produces 'Wait two weeks' and matching plantingDate in Pidgin, never 'one week'", () => {
+    const textPcm = templatePlanting(wait14Decision, "pcm");
+    expect(textPcm).toContain("Wait two weeks. Plant around 24 April.");
+    expect(textPcm).not.toContain("Wait one week");
+    expect(textPcm).toContain("24 April");
+    expect(textPcm).toContain("about 1 for every 10 seasons");
+  });
+});
+
+describe("replantProbability 0.101 figure and validation", () => {
+  const decWith0101: Decision = {
+    id: "dec_0101_test",
+    farmId: "farm_ade_iseyin",
+    intent: "plant_timing",
+    createdAt: "2026-04-10T08:00:00Z",
+    chosen: "wait_14",
+    runnerUp: "wait_7",
+    confidence: "medium",
+    riskBadge: "green",
+    dataMode: "live",
+    assumptions: [],
+    evidence: [],
+    options: [
+      {
+        option: "plant_now",
+        label: "Plant now",
+        outcome: { p10: 100, p50: 200, p90: 300, mean: 200, riskMetric: 0.101, riskLabel: "replant risk", n: 35 },
+        score: 180,
+        notes: [],
+        offsetDays: 0,
+        plantingDate: "2026-04-10",
+        replantProbability: 0.101,
+      } as any,
+    ],
+    keyNumbers: {
+      asOf: "2026-04-10",
+      plantingDate: "2026-04-24",
+      replantProbabilityNow: 0.101,
+      replantRisk_plantNow: "10.1%",
+      plainChance_plantNow_en: "about 1 in 10 seasons",
+      plainChance_chosen_en: "almost never",
+      plantNow_n: 10,
+      seasonsCount: 35,
+    },
+  };
+
+  it("rejects text stating 'about 1 in 7 seasons' when decision replantProbability is 0.101 (1 in 10)", () => {
+    const wrongText = "Wait two weeks. Plant around 24 April.\n\nIf you plant now, about 1 in 7 seasons needed replanting. If you wait two weeks, it almost never happened in 35 past seasons.";
+    const check = validateOptionAttribution(wrongText, decWith0101);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain('Replant chance "1 in 7" does not match decision expected "1 in 10"');
+  });
+
+  it("accepts text stating 'about 1 in 10 seasons' when decision replantProbability is 0.101", () => {
+    const correctText = "Wait two weeks. Plant around 24 April.\n\nIf you plant now, about 1 in 10 seasons needed replanting. If you wait two weeks, it almost never happened in 35 past seasons.";
+    const check = validateOptionAttribution(correctText, decWith0101);
+    expect(check.valid).toBe(true);
+  });
+});
+
+describe("out-of-scope question classification", () => {
+  it("classifies harvest questions as out_of_scope", () => {
+    const q1 = extractRules("when should i harvest my maize");
+    expect(q1.intent).toBe("out_of_scope");
+
+    const q2 = extractRules("ìgbà wo ni màá kórè àgbàdo mi?");
+    expect(q2.intent).toBe("out_of_scope");
+  });
+
+  it("classifies fertilizer questions as out_of_scope", () => {
+    const q1 = extractRules("Which fertilizer should I use for my maize?");
+    expect(q1.intent).toBe("out_of_scope");
+
+    const q2 = extractRules("Ṣé kí n lo ajílẹ̀ urea báyìí?");
+    expect(q2.intent).toBe("out_of_scope");
+  });
+
+  it("classifies pest and weeding questions as out_of_scope", () => {
+    const q1 = extractRules("How do I control armyworm pests on my farm?");
+    expect(q1.intent).toBe("out_of_scope");
+
+    const q2 = extractRules("Báwo ni mo ṣe lè pa àwọn kòkòrò?");
+    expect(q2.intent).toBe("out_of_scope");
+  });
+
+  it("classifies other crops as out_of_scope", () => {
+    const q1 = extractRules("When should I plant cassava?");
+    expect(q1.intent).toBe("out_of_scope");
+
+    const q2 = extractRules("Ìgbà wo ni màá gbìn isu?");
+    expect(q2.intent).toBe("out_of_scope");
+  });
+});

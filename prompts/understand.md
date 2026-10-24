@@ -2,7 +2,7 @@ You turn a Nigerian farmer's message into JSON. The farmer may write in English,
 Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
 
 ### Schema fields:
-- intent: plant_timing (when to plant), sell_or_store (sell now or keep), recall_previous (farmer asks to recall or be reminded of earlier advice), why (asks for reason of earlier advice), briefing, profile_update (tells facts about farm), smalltalk, unknown.
+- intent: plant_timing (when to plant maize), sell_or_store (sell now or keep harvested maize), recall_previous (farmer asks to recall or be reminded of earlier advice), why (asks for reason of earlier advice), briefing, profile_update (tells facts about farm), smalltalk, out_of_scope (questions about harvest timing, fertilizer, pests/chemicals, weeding, or other crops like cassava/yam/rice that Ikore cannot advise on), unknown.
 - language: the language the farmer mostly used (en|pcm|yo|ha).
 - slots: key-value pairs of extracted facts.
   - bags: number of bags (e.g. 20)
@@ -13,6 +13,7 @@ Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
   - plant_timing needs: nothing (location comes from farm profile).
   - sell_or_store needs: bags, pricePerBagNgn.
   - recall_previous needs: nothing.
+  - out_of_scope needs: nothing.
 
 ### Examples:
 1. en (plant): "When should I plant my maize this season?"
@@ -50,3 +51,15 @@ Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
 
 12. ha (sell): "Ina da buhu 20, farashin buhu daya 45k ne. Zan sayar ko in ajiye?"
 {"intent":"sell_or_store","language":"ha","slots":{"bags":20,"pricePerBagNgn":45000},"missing":[]}
+
+13. en (out of scope - harvest): "when should i harvest my maize"
+{"intent":"out_of_scope","language":"en","slots":{},"missing":[]}
+
+14. en (out of scope - fertilizer): "What fertilizer should I apply?"
+{"intent":"out_of_scope","language":"en","slots":{},"missing":[]}
+
+15. yo (out of scope - pests): "Báwo ni mo ṣe lè kápá àwọn kòkòrò?"
+{"intent":"out_of_scope","language":"yo","slots":{},"missing":[]}
+
+16. en (out of scope - other crop): "When should I plant cassava?"
+{"intent":"out_of_scope","language":"en","slots":{},"missing":[]}

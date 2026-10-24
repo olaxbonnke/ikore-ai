@@ -16,4 +16,5 @@ export type UnderstandIntent =
   | "profile_update"
   | "recall_previous"
   | "smalltalk"
+  | "out_of_scope"
   | "unknown";

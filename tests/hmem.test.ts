@@ -133,6 +133,43 @@ describe("H-MEM farm memory wrapper", () => {
     }
   });
 
+  it("deduplicateMemories removes duplicate memories with identical or normalized content", async () => {
+    const { deduplicateMemories } = await import("../src/memory/hmem.ts");
+    const list = [
+      { id: "mem-1", content: "Planting advice for 2026-04-10: wait_7." },
+      { id: "mem-2", content: "planting advice for 2026-04-10:   wait_7. " },
+      { id: "mem-3", content: "Different advice for 2026-04-10: plant_now." },
+    ];
+    const deduped = deduplicateMemories(list);
+    expect(deduped.length).toBe(2);
+    expect(deduped[0].id).toBe("mem-1");
+    expect(deduped[1].id).toBe("mem-3");
+  });
+
+  it("prevents storing identical memory twice for same farm (same question + same verdict + same date)", async () => {
+    const farmId = "farm_ade_iseyin";
+    const eventPayload = {
+      type: "advice",
+      intent: "plant_timing",
+      verdict: "wait_14",
+      decisionId: "dec_test_dedup",
+      question: "when should i plant maize",
+      date: "2026-04-10",
+      content: 'Question: "when should i plant maize". Planting advice for 2026-04-10: wait_14.',
+    };
+
+    const firstId = await remember(farmId, eventPayload);
+    expect(firstId).toBeDefined();
+
+    // Store again with a different runId or no runId, but identical question, verdict, date
+    const secondId = await remember(farmId, {
+      ...eventPayload,
+      runId: "run_different_123",
+    });
+
+    expect(secondId).toBe(firstId);
+  });
+
   it("hmem:reset renames .oko/hmem to a backup folder rather than deleting files", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

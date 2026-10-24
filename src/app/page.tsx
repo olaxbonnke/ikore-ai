@@ -447,7 +447,8 @@ export default function HomePage() {
                       </div>
                       {evidenceView.llm.fallbackUsed && (
                         <p className="text-xs text-amber-700 italic">
-                          * Notice: Deterministic grounded template fallback was used for safety.
+                          * Notice: Deterministic grounded template fallback was used for safety
+                          {evidenceView.llm.fallbackReason ? ` (${evidenceView.llm.fallbackReason})` : ""}.
                         </p>
                       )}
                     </div>

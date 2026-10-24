@@ -68,6 +68,7 @@ export interface FormattedEvidenceView {
     respondedModel: string;
     latencyMs: number;
     fallbackUsed: boolean;
+    fallbackReason?: string;
   };
   runId: string;
   traceFile: string;
@@ -135,6 +136,7 @@ export function formatEvidenceView(data: any): FormattedEvidenceView {
       respondedModel: data?.llm?.responded_model || "none",
       latencyMs: data?.llm?.latency_ms ?? 0,
       fallbackUsed: Boolean(data?.llm?.fallback_used),
+      fallbackReason: data?.llm?.fallback_reason || undefined,
     },
     runId: data?.run_id || "",
     traceFile: data?.trace_file || "",

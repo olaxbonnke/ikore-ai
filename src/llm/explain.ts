@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentReply, Decision, Lang } from "../core/types.ts";
 import { formatGroundedDate } from "../i18n/glossary.ts";
 import { templatePlanting, templateSelling, templateRecallAdvice, templateNoPreviousAdvice } from "../i18n/templates.ts";
+import { formatPlainChance } from "../core/decide.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 
@@ -166,9 +167,7 @@ export function getAllowedNumericSets(decision: Decision): {
     allowedNumbers.add(parseInt(chosenMatch[1], 10));
   }
 
-  // Sivakumar dry spell rule constants: 7 dry days, 21-day window, base 100 seasons
-  allowedNumbers.add(7);
-  allowedNumbers.add(21);
+  // Base 100 seasons (e.g. "1 in 100" or percentage basis)
   allowedNumbers.add(100);
 
   // Plain-language singular unit count (1 week, 1 season, 1 month)
@@ -263,21 +262,71 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
   const sentences = splitSentences(text);
 
   if (decision.intent === "plant_timing") {
+    const plantNowOpt = decision.options?.find((o) => o.option === "plant_now") as
+      | { replantProbability?: number }
+      | undefined;
+    let plantNowProb: number | undefined;
+    if (typeof plantNowOpt?.replantProbability === "number") {
+      plantNowProb = plantNowOpt.replantProbability;
+    } else if (typeof decision.keyNumbers.replantProbabilityNow === "number") {
+      plantNowProb = decision.keyNumbers.replantProbabilityNow as number;
+    } else if (typeof decision.keyNumbers.replantProbability === "number" && decision.chosen === "plant_now") {
+      plantNowProb = decision.keyNumbers.replantProbability as number;
+    } else if (typeof decision.keyNumbers.replantRisk_plantNow === "string") {
+      const p = parseFloat(decision.keyNumbers.replantRisk_plantNow.replace("%", ""));
+      if (Number.isFinite(p) && p > 0) plantNowProb = p / 100;
+    } else if (typeof decision.keyNumbers.replantRiskNow === "string") {
+      const p = parseFloat(decision.keyNumbers.replantRiskNow.replace("%", ""));
+      if (Number.isFinite(p) && p > 0) plantNowProb = p / 100;
+    }
+
+    const plantNowDerived = plantNowProb !== undefined ? formatPlainChance(plantNowProb) : undefined;
+    const strMatchN = String(decision.keyNumbers.plainChance_plantNow_en || "").match(/1\s+(?:in|for\s+every)\s+(\d+)/i);
+    const expectedN =
+      plantNowDerived?.n ??
+      (decision.keyNumbers.plantNow_n as number | undefined) ??
+      (strMatchN ? parseInt(strMatchN[1], 10) : undefined) ??
+      7;
+
+    // If expected denominator is known (e.g. 10 for 0.101, 7 for 0.141),
+    // strictly reject any text referencing a mismatched plain chance figure for planting:
+    if (expectedN !== undefined) {
+      const matchN = text.match(/\b1\s+(?:in|for\s+every)\s+(\d+)\b/i);
+      if (matchN) {
+        const foundN = parseInt(matchN[1], 10);
+        if (foundN !== expectedN) {
+          return {
+            valid: false,
+            reason: `Replant chance "1 in ${foundN}" does not match decision expected "1 in ${expectedN}" (replantProbability: ${plantNowProb ?? decision.keyNumbers.replantProbabilityNow})`,
+          };
+        }
+      }
+    }
+
     const plantNowRisk = String(
-      decision.keyNumbers.replantRisk_plantNow || decision.keyNumbers.replantRiskNow || "14.1%"
+      decision.keyNumbers.replantRisk_plantNow ||
+      decision.keyNumbers.replantRiskNow ||
+      (plantNowProb !== undefined ? `${(plantNowProb * 100).toFixed(1)}%` : "14.1%")
     );
     const plantNowNum = plantNowRisk.replace("%", "").trim();
 
     // Plain chance phrases for plant_now
-    const plantNowPlainPhrases = [
-      "about 1 in 7",
-      "1 in 7",
-      "about 1 for every 7",
-      "1 for every 7",
-      "ẹ̀ẹ̀kan nínú àsìkò méje",
+    const plantNowPlainPhrases: string[] = [
       plantNowRisk,
       `${plantNowNum}%`,
     ];
+    if (expectedN !== undefined) {
+      plantNowPlainPhrases.push(
+        `about 1 in ${expectedN}`,
+        `1 in ${expectedN}`,
+        `about 1 for every ${expectedN}`,
+        `1 for every ${expectedN}`
+      );
+    }
+    if (plantNowDerived?.yo) plantNowPlainPhrases.push(plantNowDerived.yo);
+    if (typeof decision.keyNumbers.plainChance_plantNow_yo === "string") {
+      plantNowPlainPhrases.push(decision.keyNumbers.plainChance_plantNow_yo);
+    }
 
     for (const s of sentences) {
       const lower = s.toLowerCase();
@@ -285,8 +334,8 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
       const hasWaitKeyword =
         /\b(wait|waiting|waited|dúró|jira)\b/i.test(s) ||
         /\b(?:after\s+)?(?:7|14)\s+days?\b/i.test(s) ||
-        /\bwait\s+(?:a|one)\s+week\b/i.test(s) ||
-        /\bọ̀sẹ̀\s+kan\b/i.test(s);
+        /\bwait\s+(?:a|one|two)\s+weeks?\b/i.test(s) ||
+        /\bọ̀sẹ̀\s+(?:kan|méjì)\b/i.test(s);
 
       if (hasPlantNowRisk && hasWaitKeyword) {
         return {
@@ -342,8 +391,15 @@ export function validateOutputStructure(output: ExplainOutput): { valid: boolean
   }
 
   const reasonNumbers = findNumericTokens(output.reason);
-  if (reasonNumbers.length > 3) {
+  if (reasonNumbers.length > 4) {
     return { valid: false, reason: `Reason has ${reasonNumbers.length} numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
+  }
+  if (reasonNumbers.length === 4) {
+    // If 4 numbers are present, only allow if one of them is an option horizon/duration (e.g. 7, 14, 4, 8, 12, 24) or 1
+    const hasHorizonOrUnit = reasonNumbers.some((n) => ["1", "7", "14", "4", "8", "12", "24"].includes(n));
+    if (!hasHorizonOrUnit) {
+      return { valid: false, reason: `Reason has 4 numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
+    }
   }
 
   // No ISO dates in headline or reason
@@ -424,19 +480,51 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
   const k = decision.keyNumbers;
 
   if (decision.intent === "plant_timing") {
-    const rawDate = String(k.plantingDate || decision.createdAt.slice(0, 10));
+    const chosenOpt = decision.options?.find((o) => o.option === decision.chosen) as
+      | { plantingDate?: string }
+      | undefined;
+    const rawDate = String(chosenOpt?.plantingDate || k.plantingDate || decision.createdAt.slice(0, 10));
     const formattedDate = formatGroundedDate(rawDate, lang);
+
+    const plantNowOpt = decision.options?.find((o) => o.option === "plant_now") as
+      | { replantProbability?: number }
+      | undefined;
+    const plantNowProb =
+      typeof plantNowOpt?.replantProbability === "number"
+        ? plantNowOpt.replantProbability
+        : typeof k.replantProbabilityNow === "number"
+        ? (k.replantProbabilityNow as number)
+        : undefined;
+    const derivedPlainPlantNow = plantNowProb !== undefined ? formatPlainChance(plantNowProb) : undefined;
+    const plantNowChance =
+      k[`plainChance_plantNow_${lang}`] ||
+      (derivedPlainPlantNow ? (derivedPlainPlantNow as any)[lang] || derivedPlainPlantNow.en : k.plainChance_plantNow_en) ||
+      "about 1 in 10 seasons";
+
+    const wait7Opt = decision.options?.find((o) => o.option === "wait_7") as
+      | { plantingDate?: string }
+      | undefined;
+    const wait7DateRaw = wait7Opt?.plantingDate || (decision.chosen === "wait_7" ? String(k.plantingDate || "") : undefined);
+    const wait7Date = wait7DateRaw ? formatGroundedDate(wait7DateRaw, lang) : formattedDate;
+
+    const wait14Opt = decision.options?.find((o) => o.option === "wait_14") as
+      | { plantingDate?: string }
+      | undefined;
+    const wait14DateRaw = wait14Opt?.plantingDate || (decision.chosen === "wait_14" ? String(k.plantingDate || "") : undefined);
+    const wait14Date = wait14DateRaw ? formatGroundedDate(wait14DateRaw, lang) : "24 April";
 
     return {
       plant_now: {
-        replantChance: k[`plainChance_plantNow_${lang}`] || k.plainChance_plantNow_en || "about 1 in 7 seasons",
+        replantChance: plantNowChance,
       },
       wait_7: {
-        plantingDate: formattedDate,
+        plantingDate: wait7Date,
+        duration: "one week",
         replantChance: k[`plainChance_wait7_${lang}`] || k.plainChance_wait7_en || "almost never",
       },
       wait_14: {
-        plantingDate: "24 April",
+        plantingDate: wait14Date,
+        duration: "two weeks",
         replantChance: k[`plainChance_wait14_${lang}`] || k.plainChance_wait14_en || "almost never",
       },
       context: {

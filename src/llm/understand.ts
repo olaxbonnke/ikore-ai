@@ -15,6 +15,7 @@ export const UnderstandSchema = z.object({
     "profile_update",
     "recall_previous",
     "smalltalk",
+    "out_of_scope",
     "unknown",
   ]),
   language: z.enum(["en", "pcm", "yo", "ha"]),
@@ -106,6 +107,63 @@ export function isRecallQuery(text: string): boolean {
 }
 
 /**
+ * Detects questions outside the agent's supported capabilities:
+ * - Harvest timing / harvesting
+ * - Fertilizer, chemicals, manure
+ * - Pests, insects, weeds, spraying, disease
+ * - Other non-maize crops (cassava, yam, rice, etc.)
+ */
+export function isOutOfScopeQuery(text: string): boolean {
+  if (!text) return false;
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+
+  // If the query is explicitly asking to sell or store (e.g. "after harvest should I sell or store?"),
+  // it is in-scope for sell_or_store.
+  const hasSellOrStore =
+    /\b(?:sell|store|selling|storage|market|price|t[aàá]|t[oọ̀ó]j[uú]|sayar|ajiye|per\s+bag|buhu|àpò)\b/iu.test(nfc);
+
+  // 1. Harvest timing / operations (when not a sell/store decision)
+  if (!hasSellOrStore) {
+    if (
+      /\b(?:harvest|harvesting|k[oóọ̀]r[eéè]|ikore|ìkórè|girbi|girbe)\b/iu.test(nfc) ||
+      /\b(?:harvest|harvesting|kore|ikore|girbi|girbe)\b/iu.test(stripped)
+    ) {
+      return true;
+    }
+  }
+
+  // 2. Fertilizers & soil chemicals
+  if (
+    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|aj[ií]l[eẹ̀é]|taki)\b/iu.test(nfc) ||
+    /\b(?:fertiliz(?:er)?|fertiliser|urea|npk|manure|ajile|taki)\b/iu.test(stripped)
+  ) {
+    return true;
+  }
+
+  // 3. Pests, insects, weeds, diseases, spraying
+  if (
+    /\b(?:pests?|armyworms?|stem\s*borers?|caterpillars?|insects?|weeds?|weeding|fungicides?|herbicides?|pesticides?|k[oòó]k[oòó]r[oòó]|kwari)\b/iu.test(nfc) ||
+    /\b(?:pests?|armyworms?|stem\s*borers?|caterpillars?|insects?|weeds?|weeding|fungicides?|herbicides?|pesticides?|kokoro|kwari)\b/iu.test(stripped)
+  ) {
+    return true;
+  }
+
+  // 4. Other non-maize crops (cassava, yam, rice, cowpea, cocoa, etc.)
+  if (
+    /\b(?:cassava|yams?|rice|sorghum|millet|cowpeas?|cocoa|soybeans?|tomatoes?|peppers?|gb[aá]g[uú]d[aá]|gbaguda|[eẹ́ẹ̀]g[eẹ́ẹ̀]|ege|[ií]s[uú]|isu|[ií]r[eẹ́ẹ̀]s[ií]|iresi|rogo|doya|shinkafa|wake)\b/iu.test(nfc) ||
+    /\b(?:cassava|yams?|rice|sorghum|millet|cowpeas?|cocoa|soybeans?|tomatoes?|peppers?|gbaguda|ege|isu|iresi|rogo|doya|shinkafa|wake)\b/iu.test(stripped)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Deterministic rule-based extractor (fast, offline, zero-network fallback).
  */
 export function extractRules(text: string): UnderstandResult {
@@ -137,6 +195,8 @@ export function extractRules(text: string): UnderstandResult {
   let intent: UnderstandResult["intent"] = "unknown";
   if (isRecallQuery(text)) {
     intent = "recall_previous";
+  } else if (isOutOfScopeQuery(text)) {
+    intent = "out_of_scope";
   } else if (
     /(?<=^|\P{L})(?:why|wetin make|kilode|kílódé|me ya sa)(?=\P{L}|$)/iu.test(nfc) ||
     /(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(stripped)
@@ -145,13 +205,13 @@ export function extractRules(text: string): UnderstandResult {
   } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(nfc)) {
     intent = "briefing";
   } else if (
-    /(?<=^|\P{L})(?:sell|store|price|market|bag|harvest|keep|corn|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:sell|store|price|market|bag|harvest|keep|corn|ta|toju|sayar|ajiye|apo|ra)(?=\P{L}|$)/iu.test(stripped)
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|keep|ta|toju|sayar|ajiye|apo|ra)(?=\P{L}|$)/iu.test(stripped)
   ) {
     intent = "sell_or_store";
   } else if (
-    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|when|gbìn|shuka|ìgbà)(?=\P{L}|$)/iu.test(nfc) ||
-    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|when|gbin|shuka|igba)(?=\P{L}|$)/iu.test(stripped)
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbìn|shuka)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|gbin|shuka)(?=\P{L}|$)/iu.test(stripped)
   ) {
     intent = "plant_timing";
   } else if (/(?<=^|\P{L})(?:hi|hello|good morning|kedu|bawo)(?=\P{L}|$)/iu.test(nfc)) {
@@ -266,6 +326,22 @@ export async function understand(
   if (isRecallQuery(text)) {
     const rules = extractRules(text);
     rules.intent = "recall_previous";
+    return {
+      ...rules,
+      meta: {
+        usedLlm: false,
+        provider: "rules",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
+  }
+
+  // Detect out-of-scope queries (harvest, fertilizer, pests, other crops) early
+  if (isOutOfScopeQuery(text)) {
+    const rules = extractRules(text);
+    rules.intent = "out_of_scope";
     return {
       ...rules,
       meta: {

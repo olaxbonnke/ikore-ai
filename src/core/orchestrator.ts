@@ -15,8 +15,8 @@
 import { getConfig } from "../config.ts";
 import { getGateway } from "../data/gateway.ts";
 import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
-import { templatePlanting, templateSelling, templateUnavailable, templateNoPreviousAdvice } from "../i18n/templates.ts";
-import { ask, remember, getFarmHMEM } from "../memory/hmem.ts";
+import { templatePlanting, templateSelling, templateUnavailable, templateNoPreviousAdvice, templateOutOfScope } from "../i18n/templates.ts";
+import { ask, remember, getFarmHMEM, deduplicateMemories } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
 import { ZetarisError, LLMError } from "./errors.ts";
 import { explain } from "./explain.ts";
@@ -126,6 +126,43 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     status: "ok",
   });
 
+  // Handle out_of_scope intent (harvest timing, fertilizer, pests, other crops)
+  if (understood.intent === "out_of_scope") {
+    const text = templateOutOfScope(lang);
+    tracer.log({
+      step: "explain",
+      component: "orchestrator",
+      input_summary: `intent=out_of_scope lang=${lang}`,
+      output_summary: `path=template model=template words=${text.split(/\s+/).length}`,
+      latency_ms: 1,
+      requested_model: "none",
+      responded_model: "template",
+      status: "ok",
+    });
+    tracer.log({
+      step: "validate",
+      component: "validator",
+      input_summary: `text_length=${text.length}`,
+      output_summary: `status=valid path=template`,
+      latency_ms: 1,
+      status: "ok",
+    });
+    return {
+      text,
+      lang,
+      intent: "out_of_scope",
+      memoryIdsUsed: [],
+      recalledMemories: [],
+      path: "template",
+      model: "template",
+      runId,
+      traceFile,
+      queriesRun: [],
+      rowCounts: {},
+      decision: undefined,
+    };
+  }
+
   // Handle recall_previous intent ("remind me", "what did you tell me", etc.)
   if (understood.intent === "recall_previous") {
     const tRecall = performance.now();
@@ -143,9 +180,28 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       })
       .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
 
+    const isPlantQuestion = /\b(plant|gbìn|gbin|shuka)\b/i.test(message.text);
+    const isSellQuestion = /\b(sell|store|market|tà|tọ́jú|sayar|ajiye)\b/i.test(message.text);
+
+    adviceRecords.sort((a: any, b: any) => {
+      if (isPlantQuestion) {
+        const aPlant = typeof a.content === "string" && /plant/i.test(a.content);
+        const bPlant = typeof b.content === "string" && /plant/i.test(b.content);
+        if (aPlant && !bPlant) return -1;
+        if (!aPlant && bPlant) return 1;
+      } else if (isSellQuestion) {
+        const aSell = typeof a.content === "string" && /sell|store/i.test(a.content);
+        const bSell = typeof b.content === "string" && /sell|store/i.test(b.content);
+        if (aSell && !bSell) return -1;
+        if (!aSell && bSell) return 1;
+      }
+      return (b.timestamp || 0) - (a.timestamp || 0);
+    });
+
+    const uniqueAdvice = deduplicateMemories(adviceRecords);
     const memoryIdsUsed: string[] = [];
     const recalledMemories: string[] = [];
-    for (const r of adviceRecords.slice(0, 3)) {
+    for (const r of uniqueAdvice.slice(0, 3)) {
       memoryIdsUsed.push(r.id);
       recalledMemories.push(r.content);
     }
@@ -349,7 +405,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     let prices: MonthlyPriceRecord[] = [];
     let pRes: any;
     const pQuery = priceSeasonality(farm.state);
-    queriesRun.push("priceSeasonality");
+    queriesRun.push(pQuery.sql);
     try {
       const gateway = getGateway();
       pRes = await gateway.query<MonthlyPriceRecord>(pQuery.sql);
@@ -432,7 +488,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       step: "explain",
       component: isSample ? "orchestrator" : (explanation.path === "llm" ? "nightshift" : "orchestrator"),
       input_summary: `decision_id=${decision.id} lang=${lang}`,
-      output_summary: `path=${explanation.path} model=${respModel} words=${explanation.text.split(/\s+/).length}`,
+      output_summary: `path=${explanation.path} model=${respModel} words=${explanation.text.split(/\s+/).length}${explanation.fallbackReason ? ` fallback_reason="${explanation.fallbackReason}"` : ""}`,
       latency_ms: Math.round(performance.now() - tExplain),
       requested_model: reqModel,
       responded_model: respModel,
@@ -497,7 +553,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       traceFile,
       queriesRun,
       rowCounts,
-      recalledMemories,
+      recalledMemories: deduplicateMemories(recalledMemories.map((c) => ({ content: c }))).map((x) => x.content),
       storedMemoryId,
     };
   }
@@ -649,7 +705,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     step: "explain",
     component: isSample ? "orchestrator" : (explanation.path === "llm" ? "nightshift" : "orchestrator"),
     input_summary: `decision_id=${decision.id} lang=${lang}`,
-    output_summary: `path=${explanation.path} model=${respModelPlant} words=${explanation.text.split(/\s+/).length}`,
+    output_summary: `path=${explanation.path} model=${respModelPlant} words=${explanation.text.split(/\s+/).length}${explanation.fallbackReason ? ` fallback_reason="${explanation.fallbackReason}"` : ""}`,
     latency_ms: Math.round(performance.now() - tExplain),
     requested_model: reqModelPlant,
     responded_model: respModelPlant,
@@ -714,7 +770,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     traceFile,
     queriesRun,
     rowCounts,
-    recalledMemories,
+    recalledMemories: deduplicateMemories(recalledMemories.map((c) => ({ content: c }))).map((x) => x.content),
     storedMemoryId,
   };
 }

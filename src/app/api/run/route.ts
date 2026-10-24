@@ -122,6 +122,7 @@ export async function POST(req: Request) {
         responded_model: isSample ? "template" : (reply.model || "template"),
         latency_ms: reply.latencyMs ?? 0,
         fallback_used: reply.path === "template",
+        ...(reply.fallbackReason && !isSample ? { fallback_reason: reply.fallbackReason } : {}),
       },
       zetaris: {
         queries_run: reply.queriesRun || [],

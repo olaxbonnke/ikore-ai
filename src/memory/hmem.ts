@@ -62,6 +62,23 @@ export interface SleepReportRecord {
 const farmHmemCache = new Map<string, any>();
 const memoryToFarmMap = new Map<string, string>();
 
+/**
+ * Normalises text and deduplicates memories based on their content.
+ */
+export function deduplicateMemories<T extends { content?: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    if (!item || typeof item.content !== "string") continue;
+    const norm = item.content.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
+    if (!seen.has(norm)) {
+      seen.add(norm);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 export function clearHMEMCache(): void {
   farmHmemCache.clear();
   memoryToFarmMap.clear();
@@ -224,7 +241,9 @@ export async function remember(
     }
   }
 
-  // Duplicate-save prevention: dedupe strictly within a run (same run_id)
+  // Duplicate-save prevention:
+  // 1. Same-run deduplication
+  // 2. Same-farm identical memory deduplication: (same question + same verdict + same date) or identical content
   if (typeof event === "object" && event !== null) {
     const runId = "runId" in event && event.runId ? String(event.runId) : undefined;
     const decId = "decisionId" in event && event.decisionId ? String(event.decisionId) : undefined;
@@ -249,6 +268,27 @@ export async function remember(
 
     if (decId) {
       tags.push(`decision:${decId}`);
+    }
+
+    // Prevent storing identical memory twice for same farm: (same question + same verdict + same date)
+    const eventVerdict = "verdict" in event && event.verdict ? String(event.verdict) : undefined;
+    const eventDate = "date" in event && event.date ? String(event.date).slice(0, 10) : undefined;
+    const qMatch = content.match(/Question:\s*"([^"]+)"/i);
+    const eventQuestion = ("question" in event && event.question ? String(event.question) : qMatch ? qMatch[1] : "").trim().toLowerCase();
+
+    if (eventQuestion && eventVerdict && eventDate) {
+      const identical = [...hmem.store.records.values()].find((r: any) => {
+        if (typeof r.content !== "string") return false;
+        const rContentLower = r.content.toLowerCase();
+        const hasQ = rContentLower.includes(eventQuestion);
+        const hasV = rContentLower.includes(eventVerdict.toLowerCase());
+        const hasD = rContentLower.includes(eventDate);
+        return hasQ && hasV && hasD;
+      });
+
+      if (identical) {
+        return identical.id;
+      }
     }
   }
 
@@ -303,7 +343,7 @@ export async function ask(
     topN,
   });
 
-  const summaries: RetrievedMemorySummary[] = (rawResult.memories || []).map((rm: any) => {
+  const rawSummaries: RetrievedMemorySummary[] = (rawResult.memories || []).map((rm: any) => {
     memoryToFarmMap.set(rm.memory.id, farmId);
     return {
       id: rm.memory.id,
@@ -316,6 +356,8 @@ export async function ask(
       memory: rm.memory,
     };
   });
+
+  const summaries = deduplicateMemories(rawSummaries);
 
   const result = Object.assign(summaries, {
     memories: summaries,
