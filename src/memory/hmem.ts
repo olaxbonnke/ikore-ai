@@ -75,9 +75,9 @@ function autoSeedFarm(farmId: string, hmem: any): void {
     const scaleFact = `[Demo fact from data/farms_seed.csv] ${farm.ownerName} farms ${farm.hectares} hectares in ${farm.lga}, ${farm.state} State.`;
 
     const facts = [
-      { content: profileText, tags: [`farm:${farmId}`, "profile", "farm_info", "maize", farm.storage, "type:farm_profile", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
-      { content: storageFact, tags: [`farm:${farmId}`, "storage", "storage_method", farm.storage, "type:farm_fact", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
-      { content: scaleFact, tags: [`farm:${farmId}`, "hectares", "location", "field_size", "type:farm_fact", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
+      { content: profileText, tags: [`farm:${farmId}`, "profile", "farm_info", "maize", farm.storage, "type:farm_profile", "demo-seed", "synthetic", "seed_version:2"], type: "factual", layer: "long_term" },
+      { content: storageFact, tags: [`farm:${farmId}`, "storage", "storage_method", farm.storage, "type:farm_fact", "demo-seed", "synthetic", "seed_version:2"], type: "factual", layer: "long_term" },
+      { content: scaleFact, tags: [`farm:${farmId}`, "hectares", "location", "field_size", "type:farm_fact", "demo-seed", "synthetic", "seed_version:2"], type: "factual", layer: "long_term" },
     ];
 
     for (const f of facts) {
@@ -108,7 +108,7 @@ function autoSeedFarm(farmId: string, hmem: any): void {
               content: seasonText,
               type: "factual",
               layer: "long_term",
-              tags: [`farm:${farmId}`, "past_season", "harvest", `year:${row.season_year}`, "records", "demo_seed", "demo-seed", "synthetic", "type:farm_season_record"],
+              tags: [`farm:${farmId}`, "past_season", "harvest", `year:${row.season_year}`, "records", "demo_seed", "demo-seed", "synthetic", "type:farm_season_record", "seed_version:2"],
               confidence: 0.9,
               source: "demo-seed",
               provenance: { origin: "demo-seed", label: "demo_seed", source: "data/farm_records.csv", learnedAt: Date.now() },
@@ -142,6 +142,34 @@ export async function getFarmHMEM(farmId: string): Promise<any> {
     // If memory store has no records for this farm, auto-seed default profile facts
     if (inst.store.records.size === 0) {
       autoSeedFarm(farmId, inst);
+    } else {
+      // Check seed version marker: if store lacks seed_version:2, reseed demo records without touching user memories
+      const records = [...inst.store.records.values()];
+      const hasSeedV2 = records.some((r: any) => Array.isArray(r.tags) && r.tags.includes("seed_version:2"));
+      if (!hasSeedV2) {
+        const demoRecords = records.filter((r: any) => {
+          const isUserAdvice =
+            r.tags?.includes("type:advice") ||
+            r.content?.includes("Question:") ||
+            r.tags?.some((t: string) => t.startsWith("run:"));
+          if (isUserAdvice) return false;
+          const isDemo =
+            r.source === "demo-seed" ||
+            r.tags?.includes("demo-seed") ||
+            r.tags?.includes("demo_seed") ||
+            r.tags?.includes("type:farm_profile") ||
+            r.tags?.includes("type:farm_fact") ||
+            r.tags?.includes("type:farm_season_record") ||
+            r.tags?.includes("profile") ||
+            r.tags?.includes("past_season");
+          return isDemo;
+        });
+
+        for (const dr of demoRecords) {
+          inst.store.delete(dr.id, "reseed_demo_v2");
+        }
+        autoSeedFarm(farmId, inst);
+      }
     }
   }
   return inst;
@@ -196,27 +224,31 @@ export async function remember(
     }
   }
 
-  // Duplicate-save prevention: dedupe strictly within a run (same run_id / decisionId), NOT by content across runs
+  // Duplicate-save prevention: dedupe strictly within a run (same run_id)
   if (typeof event === "object" && event !== null) {
-    const decId = "decisionId" in event && event.decisionId ? String(event.decisionId) : undefined;
     const runId = "runId" in event && event.runId ? String(event.runId) : undefined;
-    if (decId || runId) {
+    const decId = "decisionId" in event && event.decisionId ? String(event.decisionId) : undefined;
+
+    if (runId) {
       const existing = [...hmem.store.records.values()].find((r: any) => {
-        if (Array.isArray(r.tags)) {
-          if (decId && r.tags.includes(`decision:${decId}`)) return true;
-          if (runId && r.tags.includes(`run:${runId}`)) return true;
-        }
-        return false;
+        return Array.isArray(r.tags) && r.tags.includes(`run:${runId}`);
+      });
+      if (existing) {
+        return existing.id;
+      }
+      tags.push(`run:${runId}`);
+    } else if (decId) {
+      // Fallback only if runId was not supplied
+      const existing = [...hmem.store.records.values()].find((r: any) => {
+        return Array.isArray(r.tags) && r.tags.includes(`decision:${decId}`);
       });
       if (existing) {
         return existing.id;
       }
     }
+
     if (decId) {
       tags.push(`decision:${decId}`);
-    }
-    if (runId) {
-      tags.push(`run:${runId}`);
     }
   }
 

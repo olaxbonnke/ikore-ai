@@ -3,7 +3,7 @@ import * as path from "path";
 import { z } from "zod";
 import type { AgentReply, Decision, Lang } from "../core/types.ts";
 import { formatGroundedDate } from "../i18n/glossary.ts";
-import { templatePlanting, templateSelling } from "../i18n/templates.ts";
+import { templatePlanting, templateSelling, templateRecallAdvice, templateNoPreviousAdvice } from "../i18n/templates.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 
@@ -709,6 +709,127 @@ export async function explain(
       fallbackReason: err.message,
       latencyMs,
       model: "template",
+    };
+  }
+}
+
+/**
+ * Explain previous advice recalled from H-MEM for "remind me" queries.
+ */
+export async function explainRecall(params: {
+  question: string;
+  adviceContent: string;
+  lang: Lang;
+  provider?: LLMProvider;
+}): Promise<{
+  text: string;
+  path: "llm" | "template";
+  model?: string;
+  latencyMs: number;
+  fallbackReason?: string;
+}> {
+  const t0 = performance.now();
+  const isSample = process.env.SAMPLE_MODE === "true";
+
+  if (isSample) {
+    const text = templateRecallAdvice(params.adviceContent, params.lang);
+    return {
+      text,
+      path: "template",
+      model: "template",
+      latencyMs: 0,
+    };
+  }
+
+  const activeProvider = params.provider || new NightshiftProvider();
+
+  try {
+    const langName = LANG_NAMES[params.lang] || params.lang;
+    const systemPrompt = `You are Ikore AI, a farm assistant in Nigeria. The farmer is asking you to remind them of advice previously given.
+Language: ${langName} (${params.lang}).
+Recorded memory of past advice:
+"""
+${params.adviceContent}
+"""
+
+Rules:
+1. Write a direct, polite reminder quoting the past advice and its date from the memory above.
+2. NO percentages ("%"). Never use "%" or the word "percent".
+3. Strictly quote ONLY numbers, dates, and recommendations present in the recorded memory. Never invent or hallucinate new facts.
+4. Output JSON matching schema:
+{
+  "headline": "<max 12 words summary>",
+  "reason": "<1-2 short sentences reminding the farmer of the advice and date>"
+}`;
+
+    const userPrompt = JSON.stringify({
+      question: params.question,
+      adviceMemory: params.adviceContent,
+    });
+
+    let response: ExplainOutput;
+    let respondedModel = "unknown";
+
+    if (typeof (activeProvider as any).completeWithMeta === "function") {
+      const meta = await (activeProvider as any).completeWithMeta({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        json: ExplainOutputSchema,
+        temperature: 0.2,
+        stepName: "explain",
+      });
+      response = meta.content;
+      respondedModel = meta.model;
+    } else {
+      response = await activeProvider.complete<ExplainOutput>({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        json: ExplainOutputSchema,
+        temperature: 0.2,
+        stepName: "explain",
+      });
+      respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
+    }
+
+    // Validation
+    const headlinePctCheck = validateNoPercentages(response.headline);
+    if (!headlinePctCheck.valid) {
+      throw new Error(headlinePctCheck.reason);
+    }
+    const reasonPctCheck = validateNoPercentages(response.reason);
+    if (!reasonPctCheck.valid) {
+      throw new Error(reasonPctCheck.reason);
+    }
+
+    // Check that numeric tokens are in the memory content
+    const fullText = `${response.headline}\n\n${response.reason}`;
+    const tokens = findNumericTokens(fullText);
+    for (const token of tokens) {
+      const cleaned = token.replace(/[₦,]/g, "").trim();
+      const numVal = parseFloat(cleaned);
+      if (Number.isFinite(numVal)) {
+        if (!params.adviceContent.includes(cleaned) && !params.adviceContent.includes(token)) {
+          throw new Error(`Numeric token ${token} does not appear in recorded advice memory`);
+        }
+      }
+    }
+
+    const latencyMs = Math.round(performance.now() - t0);
+    return {
+      text: fullText,
+      path: "llm",
+      model: respondedModel,
+      latencyMs,
+    };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - t0);
+    const fallbackText = templateRecallAdvice(params.adviceContent, params.lang);
+    return {
+      text: fallbackText,
+      path: "template",
+      model: "template",
+      latencyMs,
+      fallbackReason: err.message,
     };
   }
 }

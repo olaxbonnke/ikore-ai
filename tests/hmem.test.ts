@@ -75,4 +75,85 @@ describe("H-MEM farm memory wrapper", () => {
     expect(typeof loaded.HMEM).toBe("function");
     expect(loaded.source).toContain("vendor/hmem");
   });
+
+  it("dedupes strictly by runId: same runId stores once, different runIds store distinct memories", async () => {
+    const { remember, getFarmHMEM } = await import("../src/memory/hmem.ts");
+    const farmId = "farm_ade_iseyin";
+    const hmem = await getFarmHMEM(farmId);
+    const initialCount = hmem.store.records.size;
+
+    const runA = `run_test_${Date.now()}_a`;
+    const runB = `run_test_${Date.now()}_b`;
+    const decFixed = "dec_2026-04-10_farm_ade_iseyin_plant_timing_01";
+
+    // Call 1 with runA
+    const idA1 = await remember(farmId, {
+      type: "advice",
+      runId: runA,
+      decisionId: decFixed,
+      content: "Question: 'Should I plant now?'. Advice: plant_now",
+    });
+
+    // Call 2 with same runA (should dedup and return idA1)
+    const idA2 = await remember(farmId, {
+      type: "advice",
+      runId: runA,
+      decisionId: decFixed,
+      content: "Question: 'Should I plant now?'. Advice: plant_now",
+    });
+
+    expect(idA1).toBe(idA2);
+    expect(hmem.store.records.size).toBe(initialCount + 1);
+
+    // Call 3 with different runB even though decisionId is identical (must store a new record)
+    const idB = await remember(farmId, {
+      type: "advice",
+      runId: runB,
+      decisionId: decFixed,
+      content: "Question: 'What about planting later?'. Advice: wait_7",
+    });
+
+    expect(idB).not.toBe(idA1);
+    expect(hmem.store.records.size).toBe(initialCount + 2);
+  });
+
+  it("reseeds demo memories with [Demo ...] labels and seed_version:2 without deleting user memories", async () => {
+    const { getFarmHMEM, clearHMEMCache } = await import("../src/memory/hmem.ts");
+    const farmId = "farm_ade_iseyin";
+    const hmem = await getFarmHMEM(farmId);
+
+    // Verify all seeded demo facts have [Demo ...] prefix and seed_version:2 tag
+    const demoRecords = [...hmem.store.records.values()].filter(
+      (r: any) => r.source === "demo-seed" || r.tags?.includes("demo-seed")
+    );
+    expect(demoRecords.length).toBeGreaterThan(0);
+    for (const rec of demoRecords) {
+      expect(rec.tags).toContain("seed_version:2");
+      expect(rec.content).toMatch(/^\[Demo (?:profile|fact|record) from data\//);
+    }
+  });
+
+  it("hmem:reset renames .oko/hmem to a backup folder rather than deleting files", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { resetHMEM } = await import("../scripts/hmem-reset.ts");
+
+    const stateDir = process.env.OKO_STATE_DIR || ".oko";
+    const hmemDir = path.resolve(process.cwd(), stateDir, "hmem");
+
+    // Ensure hmem directory exists
+    fs.mkdirSync(hmemDir, { recursive: true });
+    const dummyFile = path.join(hmemDir, "test_marker.txt");
+    fs.writeFileSync(dummyFile, "marker_content", "utf-8");
+
+    const result = resetHMEM();
+    expect(result.success).toBe(true);
+    expect(result.renamedTo).toBeDefined();
+    expect(fs.existsSync(hmemDir)).toBe(false);
+    expect(fs.existsSync(result.renamedTo!)).toBe(true);
+    expect(fs.existsSync(path.join(result.renamedTo!, "test_marker.txt"))).toBe(true);
+
+    // Restore for subsequent tests
+    fs.renameSync(result.renamedTo!, hmemDir);
+  });
 });

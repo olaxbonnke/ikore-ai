@@ -21,6 +21,7 @@
     "snapshot": "tsx scripts/snapshot.ts",
     "snapshots:fetch": "tsx scripts/fetch-snapshots.ts",
     "seed": "tsx scripts/seed-farms.ts",
+    "hmem:reset": "tsx scripts/hmem-reset.ts",
     "nightshift": "tsx scripts/nightshift.ts",
     "demo": "tsx scripts/demo.ts"
   },

@@ -15,11 +15,12 @@
 import { getConfig } from "../config.ts";
 import { getGateway } from "../data/gateway.ts";
 import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
-import { templatePlanting, templateSelling, templateUnavailable } from "../i18n/templates.ts";
-import { ask, remember } from "../memory/hmem.ts";
+import { templatePlanting, templateSelling, templateUnavailable, templateNoPreviousAdvice } from "../i18n/templates.ts";
+import { ask, remember, getFarmHMEM } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
 import { ZetarisError, LLMError } from "./errors.ts";
 import { explain } from "./explain.ts";
+import { explainRecall } from "../llm/explain.ts";
 import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
 import { listOptions } from "./options.ts";
@@ -124,6 +125,122 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     responded_model: understood.meta?.respondedModel,
     status: "ok",
   });
+
+  // Handle recall_previous intent ("remind me", "what did you tell me", etc.)
+  if (understood.intent === "recall_previous") {
+    const tRecall = performance.now();
+    const hmem = await getFarmHMEM(farmId);
+    const allRecords = [...hmem.store.records.values()];
+    const adviceRecords = allRecords
+      .filter((r: any) => {
+        return (
+          (Array.isArray(r.tags) && r.tags.includes("type:advice")) ||
+          (typeof r.content === "string" &&
+            (r.content.includes("Planting advice") ||
+              r.content.includes("Sell or store advice") ||
+              r.content.includes("advice for")))
+        );
+      })
+      .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    const memoryIdsUsed: string[] = [];
+    const recalledMemories: string[] = [];
+    for (const r of adviceRecords.slice(0, 3)) {
+      memoryIdsUsed.push(r.id);
+      recalledMemories.push(r.content);
+    }
+
+    tracer.log({
+      step: "recall",
+      component: "hmem",
+      input_summary: `farm_id=${farmId} query="previous advice recommendation"`,
+      output_summary: `recalled_count=${memoryIdsUsed.length} ids=${memoryIdsUsed.join(",")}`,
+      latency_ms: Math.round(performance.now() - tRecall),
+      status: "ok",
+    });
+
+    if (adviceRecords.length === 0) {
+      const text = templateNoPreviousAdvice(lang);
+      tracer.log({
+        step: "explain",
+        component: "orchestrator",
+        input_summary: `intent=recall_previous advice_records=0 lang=${lang}`,
+        output_summary: `path=template model=template words=${text.split(/\s+/).length}`,
+        latency_ms: 1,
+        requested_model: isSample ? "none" : (process.env.METERLESS_MODEL || "none"),
+        responded_model: "template",
+        status: "ok",
+      });
+      tracer.log({
+        step: "validate",
+        component: "validator",
+        input_summary: `text_length=${text.length}`,
+        output_summary: `status=valid path=template`,
+        latency_ms: 1,
+        status: "ok",
+      });
+      return {
+        text,
+        lang,
+        intent: "recall_previous",
+        memoryIdsUsed: [],
+        recalledMemories: [],
+        path: "template",
+        model: "template",
+        runId,
+        traceFile,
+        queriesRun: [],
+        rowCounts: {},
+      };
+    }
+
+    const latestAdvice = adviceRecords[0];
+    const tExplain = performance.now();
+    const explanation = await explainRecall({
+      question: message.text,
+      adviceContent: latestAdvice.content,
+      lang,
+    });
+
+    const reqModel = isSample ? "none" : (process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
+    const respModel = isSample ? "template" : (explanation.model || "template");
+
+    tracer.log({
+      step: "explain",
+      component: isSample ? "orchestrator" : (explanation.path === "llm" ? "nightshift" : "orchestrator"),
+      input_summary: `intent=recall_previous memory_id=${latestAdvice.id} lang=${lang}`,
+      output_summary: `path=${explanation.path} model=${respModel} words=${explanation.text.split(/\s+/).length}`,
+      latency_ms: Math.round(performance.now() - tExplain),
+      requested_model: reqModel,
+      responded_model: respModel,
+      status: "ok",
+    });
+
+    tracer.log({
+      step: "validate",
+      component: "validator",
+      input_summary: `text_length=${explanation.text.length}`,
+      output_summary: `status=valid path=${explanation.path}`,
+      latency_ms: 1,
+      status: "ok",
+    });
+
+    return {
+      text: explanation.text,
+      lang,
+      intent: "recall_previous",
+      memoryIdsUsed,
+      recalledMemories,
+      path: explanation.path,
+      model: respModel,
+      latencyMs: explanation.latencyMs,
+      fallbackReason: explanation.fallbackReason,
+      runId,
+      traceFile,
+      queriesRun: [],
+      rowCounts: {},
+    };
+  }
 
   // Step 2: Recall
   const tRecall = performance.now();
@@ -339,6 +456,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         intent: decision.intent,
         verdict: decision.chosen,
         decisionId: decision.id,
+        runId,
         keyNumbers: decision.keyNumbers,
         content: `Question: "${message.text}". Sell or store advice for ${asOf}: ${decision.chosen}. Offered ₦${currentPricePerBag.toLocaleString()}/bag for ${bags} bags. Expected return ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
         date: decision.createdAt,
@@ -555,6 +673,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       intent: decision.intent,
       verdict: decision.chosen,
       decisionId: decision.id,
+      runId,
       keyNumbers: decision.keyNumbers,
       content: `Question: "${message.text}". Planting advice for ${asOf}: ${decision.chosen}. Planting date ${decision.keyNumbers.plantingDate}. Replant risk ${decision.keyNumbers.replantRisk}, expected value ₦${Number(decision.keyNumbers.expectedValueNgn).toLocaleString()}.`,
       date: decision.createdAt,

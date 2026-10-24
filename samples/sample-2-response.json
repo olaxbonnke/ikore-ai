@@ -1,6 +1,6 @@
 {
-  "run_id": "run_1792850848893_c5pe9",
-  "mode": "sample",
+  "run_id": "run_1792852533641_5ywm4",
+  "mode": "live",
   "intent": "sell_or_store",
   "decision": {
     "id": "dec_2026-04-10_farm_ade_iseyin_sell_or_store_01",
@@ -239,9 +239,9 @@
         "id": "ev_explanation_model",
         "kind": "assumption",
         "label": "Explanation Model",
-        "source": "Sample Mode",
-        "statistic": "Written by deterministic template (SAMPLE_MODE=true)",
-        "value": "template"
+        "source": "Meterless Nightshift",
+        "statistic": "Written by nvidia/nemotron-3.5-lightning-30b-a3b via Meterless Nightshift",
+        "value": "nvidia/nemotron-3.5-lightning-30b-a3b"
       }
     ],
     "assumptions": [
@@ -250,12 +250,11 @@
       "Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023 (14 years). Prices after January 2023 aren't in this data.",
       "Today's price: you told me ₦45,000 per bag.",
       "6-month storage (store_24w) estimates are in today's money, after allowing for general price rises (CMA-detrended)",
-      "Offline snapshot mode: verified cached Zetaris query results",
       "Close call: store_12w and store_8w scores are within 0.3%. Recommending safer option (store_8w) with lower risk (0.0% vs 40.0%)."
     ],
-    "dataMode": "snapshot"
+    "dataMode": "live"
   },
-  "reply": "Store your maize for 8 weeks.\n\nFor 8 out of 8 past years with data, prices rose enough to cover storage weight loss, with expected return around ₦963,407.",
+  "reply": "Store 8 weeks. Price may drop later.\n\nIn 8 out of 9 past years, Ibadan maize price fell after August. Your 20 bags would lose about half a bag every month in plain sacks.\n\n• Plain sacks lose about half a bag every month",
   "evidence": {
     "asOf": "2026-04-10",
     "chosenOption": "store_8w",
@@ -293,11 +292,11 @@
     "lossBags": 0.06
   },
   "llm": {
-    "provider": "sample",
-    "requested_model": "none",
-    "responded_model": "template",
-    "latency_ms": 0,
-    "fallback_used": true
+    "provider": "nightshift",
+    "requested_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "responded_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "latency_ms": 1447,
+    "fallback_used": false
   },
   "zetaris": {
     "queries_run": [
@@ -311,12 +310,12 @@
     "hmem_used": true,
     "recalled": [
       "Question: \"I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Should I sell now or store?\". Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
-      "Past season 2025 for farm_ade_iseyin: planting date was 2025-04-20, germination was yes, harvested 34 bags of maize, sold in 2025-10 at ₦50000 per bag.",
-      "Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
-      "Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
-      "Past season 2024 for farm_ade_iseyin: planting date was 2024-04-05, germination was no, harvested 22 bags of maize, sold in 2024-08 at ₦44000 per bag."
+      "Question: \"I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Should I sell now or store?\". Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407.",
+      "[Demo record from data/farm_records.csv] Past season 2024 for farm_ade_iseyin: planting date was 2024-04-05, germination was no, harvested 22 bags of maize, sold in 2024-08 at ₦44000 per bag.",
+      "[Demo record from data/farm_records.csv] Past season 2025 for farm_ade_iseyin: planting date was 2025-04-20, germination was yes, harvested 34 bags of maize, sold in 2025-10 at ₦50000 per bag.",
+      "Sell or store advice for 2026-04-10: store_8w. Offered ₦45,000/bag for 20 bags. Expected return ₦963,407."
     ],
-    "stored": "mem-8"
+    "stored": "mem-29"
   },
-  "trace_file": "logs/trace-run_1792850848893_c5pe9.jsonl"
+  "trace_file": "logs/trace-run_1792852533641_5ywm4.jsonl"
 }

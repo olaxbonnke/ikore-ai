@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     {
       run_id: reply.runId || runId,
       mode,
-      intent: reply.decision?.intent || "unknown",
+      intent: reply.intent || reply.decision?.intent || "unknown",
       decision: reply.decision || null,
       reply: reply.text,
       evidence: reply.decision?.keyNumbers || {},

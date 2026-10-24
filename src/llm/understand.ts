@@ -13,6 +13,7 @@ export const UnderstandSchema = z.object({
     "why",
     "briefing",
     "profile_update",
+    "recall_previous",
     "smalltalk",
     "unknown",
   ]),
@@ -39,17 +40,19 @@ export function extractRules(text: string): UnderstandResult {
 
   // 1. Language detection
   let language: Lang = "en";
-  if (/(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà)(?=\P{L}|$)/iu.test(lower)) {
+  if (/(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà|rántí|ranti|ìmọ̀ràn|imoran|kí lo|kí ni|sọ fún)(?=\P{L}|$)/iu.test(lower)) {
     language = "yo";
-  } else if (/(?<=^|\P{L})(?:don|make|dey|wetin|na|fit|abeg|corn|keep am|i get|how much)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (/(?<=^|\P{L})(?:don|make|dey|wetin|na|fit|abeg|corn|keep am|i get|how much|talk|bin talk)(?=\P{L}|$)/iu.test(lower)) {
     language = "pcm";
-  } else if (/(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (/(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye|tuna)(?=\P{L}|$)/iu.test(lower)) {
     language = "ha";
   }
 
   // 2. Intent detection
   let intent: UnderstandResult["intent"] = "unknown";
-  if (/(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(lower)) {
+  if (/(?:remind\s+(?:me|us)|what\s+did\s+you\s+(?:tell|say|advise)|what\s+was\s+your\s+advice|previous\s+advice|earlier\s+advice|wetin\s+you\s+(?:talk|tell|say)|which\s+advice\s+you\s+give|r[aá]nt[ií]\s+mi|k[ií]\s+(?:l[oọ]|ni\s+o)\s+s[oọ]|ìmọ̀ràn\s+t[ií]\s+o\s+fún\s+mi|when\s+did\s+you\s+say)/iu.test(lower)) {
+    intent = "recall_previous";
+  } else if (/(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(lower)) {
     intent = "why";
   } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(lower)) {
     intent = "briefing";

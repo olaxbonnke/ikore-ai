@@ -1,6 +1,6 @@
 {
-  "run_id": "run_1792850848975_u6grl",
-  "mode": "sample",
+  "run_id": "run_1792852536988_lv4nx",
+  "mode": "live",
   "intent": "plant_timing",
   "decision": {
     "id": "dec_2026-04-10_farm_bisi_ogbomoso_plant_timing_01",
@@ -738,7 +738,7 @@
         "id": "ev_rain_history",
         "kind": "history",
         "label": "Daily rainfall history (farm_bisi_ogbomoso)",
-        "source": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=4.24&latitude=8.13&start=19910101&end=20260409&format=JSON",
+        "source": "Zetaris (local)",
         "sql": "SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = 'farm_bisi_ogbomoso' ORDER BY date ASC",
         "queryName": "rainDaily",
         "statistic": "35 analog years evaluated with 21-day pre-season similarity weighting",
@@ -777,9 +777,9 @@
         "id": "ev_explanation_model",
         "kind": "assumption",
         "label": "Explanation Model",
-        "source": "Sample Mode",
-        "statistic": "Written by deterministic template (SAMPLE_MODE=true)",
-        "value": "template"
+        "source": "Meterless Nightshift",
+        "statistic": "Written by nvidia/nemotron-3.5-lightning-30b-a3b via Meterless Nightshift",
+        "value": "nvidia/nemotron-3.5-lightning-30b-a3b"
       }
     ],
     "assumptions": [
@@ -792,7 +792,7 @@
     ],
     "dataMode": "live"
   },
-  "reply": "Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.",
+  "reply": "Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.\n\n• A wo àkọsílẹ̀ ọdún 35 sẹ́yìn",
   "evidence": {
     "asOf": "2026-04-10",
     "chosenOption": "wait_7",
@@ -836,11 +836,11 @@
     "seasonsCount": 35
   },
   "llm": {
-    "provider": "sample",
-    "requested_model": "none",
-    "responded_model": "template",
-    "latency_ms": 0,
-    "fallback_used": true
+    "provider": "nightshift",
+    "requested_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "responded_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "latency_ms": 3382,
+    "fallback_used": false
   },
   "zetaris": {
     "queries_run": [
@@ -855,13 +855,13 @@
   "memory": {
     "hmem_used": true,
     "recalled": [
-      "Farm profile: Mama Bisi (farm_bisi_ogbomoso) operates 2 hectares of maize in Ogbomoso North, Oyo State (derived_savanna). Storage method: sack. Preferred language: pcm. Risk profile: normal.",
-      "Storage method for Mama Bisi (farm_bisi_ogbomoso) is sack.",
-      "Mama Bisi farms 2 hectares in Ogbomoso North, Oyo State.",
-      "Past season 2025 for farm_bisi_ogbomoso: planting date was 2025-04-18, germination was yes, harvested 42 bags of maize, sold in 2025-10 at ₦48000 per bag.",
+      "[Demo profile from data/farms_seed.csv] Farm profile: Mama Bisi (farm_bisi_ogbomoso) operates 2 hectares of maize in Ogbomoso North, Oyo State (derived_savanna). Storage method: sack. Preferred language: pcm. Risk profile: normal.",
+      "[Demo fact from data/farms_seed.csv] Storage method for Mama Bisi (farm_bisi_ogbomoso) is sack.",
+      "Question: \"When should I plant maize?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000.",
+      "Question: \"When should I plant maize?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000.",
       "Question: \"When should I plant my maize this season?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000."
     ],
-    "stored": "mem-132"
+    "stored": "mem-144"
   },
-  "trace_file": "logs/trace-run_1792850848975_u6grl.jsonl"
+  "trace_file": "logs/trace-run_1792852536988_lv4nx.jsonl"
 }

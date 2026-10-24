@@ -76,6 +76,7 @@ export interface AgentReply {
   text: string;
   lang: Lang;
   decision?: Decision;
+  intent?: string;
   askedQuestion?: boolean;
   memoryIdsUsed: string[];
   path?: "llm" | "template";

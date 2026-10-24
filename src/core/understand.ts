@@ -14,5 +14,6 @@ export type UnderstandIntent =
   | "why"
   | "briefing"
   | "profile_update"
+  | "recall_previous"
   | "smalltalk"
   | "unknown";

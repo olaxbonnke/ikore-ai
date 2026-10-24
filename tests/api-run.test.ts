@@ -270,5 +270,130 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(line.requested_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
       expect(line.responded_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
     });
+
+    it("stores different memory IDs across two distinct runs for the same farm", async () => {
+      process.env.SAMPLE_MODE = "true";
+      process.env.DATA_MODE = "snapshot";
+
+      const req1 = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Should I plant my maize now or wait?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+      const res1 = await runPost(req1);
+      expect(res1.status).toBe(200);
+      const json1 = await res1.json();
+      expect(json1.memory.stored).toMatch(/^mem-/);
+
+      const req2 = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "What is the replant risk if I plant today?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+      const res2 = await runPost(req2);
+      expect(res2.status).toBe(200);
+      const json2 = await res2.json();
+      expect(json2.memory.stored).toMatch(/^mem-/);
+
+      // Verify that call 1 and call 2 stored distinct memory IDs
+      expect(json1.memory.stored).not.toBe(json2.memory.stored);
+    });
+
+    it("answers recall_previous ('remind me') from memory without any Zetaris queries", async () => {
+      process.env.SAMPLE_MODE = "true";
+      process.env.DATA_MODE = "snapshot";
+
+      // 1. Ensure at least one planting advice is on record for farm_bisi_ogbomoso
+      const reqSeed = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "When should I plant maize?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+      await runPost(reqSeed);
+
+      // 2. Ask "Remind me, when did you say I should plant?"
+      const reqRecall = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Remind me, when did you say I should plant?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(reqRecall);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+
+      expect(json.intent).toBe("recall_previous");
+      expect(json.zetaris.queries_run).toEqual([]);
+      expect(json.zetaris.row_counts).toEqual({});
+      expect(json.memory.hmem_used).toBe(true);
+      expect(json.memory.recalled.length).toBeGreaterThan(0);
+      expect(json.reply).toMatch(/advised you to|plant/i);
+
+      // Verify trace has exactly: understand -> recall -> explain -> validate (no observe, simulate, decide)
+      const tracePath = path.resolve(process.cwd(), json.trace_file);
+      const lines = fs
+        .readFileSync(tracePath, "utf-8")
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => JSON.parse(l));
+
+      const steps = lines.map((l) => l.step);
+      expect(steps).toEqual(["understand", "recall", "explain", "validate"]);
+      const components = lines.map((l) => l.component);
+      expect(components).not.toContain("zetaris");
+    });
+
+    it("handles recall_previous in Nigerian Pidgin and Yoruba", async () => {
+      process.env.SAMPLE_MODE = "true";
+      process.env.DATA_MODE = "snapshot";
+
+      // Pidgin
+      const reqPcm = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Wetin you talk about planting earlier?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "pcm",
+        }),
+      });
+      const resPcm = await runPost(reqPcm);
+      const jsonPcm = await resPcm.json();
+      expect(jsonPcm.intent).toBe("recall_previous");
+      expect(jsonPcm.zetaris.queries_run).toEqual([]);
+      expect(jsonPcm.reply).toMatch(/tell you|plant/i);
+
+      // Yoruba
+      const reqYo = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Rántí mi, ìgbà wo ni o sọ pé kí n gbìn?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "yo",
+        }),
+      });
+      const resYo = await runPost(reqYo);
+      const jsonYo = await resYo.json();
+      expect(jsonYo.intent).toBe("recall_previous");
+      expect(jsonYo.zetaris.queries_run).toEqual([]);
+      expect(jsonYo.reply).toMatch(/gbà ọ́ nímọ̀ràn|gbìn/i);
+    });
   });
 });
