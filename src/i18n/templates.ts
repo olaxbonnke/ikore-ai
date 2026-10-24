@@ -130,6 +130,26 @@ export function templateNoPreviousAdvice(lang: Lang = "en"): string {
   return "I do not have any previous advice recorded yet for this farm.";
 }
 
+function localizeRiskText(risk: string, lang: Lang): string {
+  const r = risk.trim().toLowerCase();
+  const num = parseFloat(r.replace("%", ""));
+
+  const isLow = r.includes("almost never") || r.includes("never") || (Number.isFinite(num) && num < 2);
+  const isOneInSeven = r.includes("1 in 7") || (Number.isFinite(num) && num >= 10 && num <= 20);
+
+  if (lang === "yo") {
+    if (isOneInSeven) return "ẹ̀ẹ̀kan nínú àsìkò méje";
+    return "fẹ́rẹ́ kò ṣẹlẹ̀ rárá";
+  }
+  if (lang === "pcm") {
+    if (isOneInSeven) return "about 1 for every 7 seasons";
+    return "almost never happen";
+  }
+  if (isOneInSeven) return "about 1 in 7 seasons";
+  if (isLow) return "almost never";
+  return r.replace("%", "").trim();
+}
+
 /** Pre-written grounded reminder quoting previous stored advice (DESIGN.md Step 7 & Day 4.2 Polish). */
 export function templateRecallAdvice(content: string, lang: Lang = "en"): string {
   // Extract date if present (e.g. "Planting advice for 2026-04-10" or "for 2026-04-10")
@@ -147,7 +167,7 @@ export function templateRecallAdvice(content: string, lang: Lang = "en"): string
     const plantDate = plantDateMatch ? formatGroundedDate(plantDateMatch[1], lang) : formattedDate;
 
     const riskMatch = content.match(/Replant risk ([^,.]+)/i);
-    const risk = riskMatch ? riskMatch[1].trim() : "";
+    const risk = riskMatch ? localizeRiskText(riskMatch[1], lang) : "";
 
     if (lang === "yo") {
       if (verdict === "wait_7" || verdict === "wait_14") {

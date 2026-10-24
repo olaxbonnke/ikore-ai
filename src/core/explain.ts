@@ -6,6 +6,7 @@ export {
   countSentences,
   countWords,
   explain,
+  explainRecall,
   findInvalidNumbers,
   findNumericTokens,
   getAllowedNumericSet,
@@ -13,6 +14,7 @@ export {
   validateNoPercentages,
   validateOptionAttribution,
   validateOutputStructure,
+  validateRecallLanguage,
   validateYoruba,
   type ExplainOutput,
 } from "../llm/explain.ts";

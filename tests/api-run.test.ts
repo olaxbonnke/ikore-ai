@@ -398,7 +398,41 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(jsonYo.reply).not.toMatch(/Planting advice reminder/i);
     });
 
-    it("classifies exact YO question 'Kí lo sọ fún mi nípa ìgbà tí màá gbìn?' as recall_previous in both NFC and NFD encodings", async () => {
+    it("classifies 'Sọ fún mi ìgbà tí màá gbìn àgbàdo' as plant_timing in both NFC and NFD encodings", async () => {
+      const { understand } = await import("../src/llm/understand.ts");
+      const plantQuestion = "Sọ fún mi ìgbà tí màá gbìn àgbàdo";
+
+      // NFC
+      const nfcQuestion = plantQuestion.normalize("NFC");
+      const resNFC = await understand(nfcQuestion);
+      expect(resNFC.intent).toBe("plant_timing");
+      expect(resNFC.language).toBe("yo");
+
+      // NFD (decomposed combining marks)
+      const nfdQuestion = plantQuestion.normalize("NFD");
+      const resNFD = await understand(nfdQuestion);
+      expect(resNFD.intent).toBe("plant_timing");
+      expect(resNFD.language).toBe("yo");
+
+      // End-to-end via /api/run
+      process.env.SAMPLE_MODE = "true";
+      process.env.DATA_MODE = "snapshot";
+      const req = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: nfcQuestion,
+          farm_id: "farm_bisi_ogbomoso",
+        }),
+      });
+      const res = await runPost(req);
+      const json = await res.json();
+      expect(json.intent).toBe("plant_timing");
+      expect(json.decision).toBeDefined();
+      expect(json.decision.chosen).toMatch(/wait_|plant_/);
+    });
+
+    it("classifies exact YO question 'Kí lo sọ fún mi nípa ìgbà tí màá gbìn?' as recall_previous in both NFC and NFD and replies in Yoruba", async () => {
       const { understand } = await import("../src/llm/understand.ts");
       const yoQuestion = "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?";
 
@@ -421,12 +455,15 @@ describe("JSON API: /api/health and /api/run", () => {
         body: JSON.stringify({
           question: nfcQuestion,
           farm_id: "farm_bisi_ogbomoso",
+          lang: "yo",
         }),
       });
       const apiResNFC = await runPost(reqNFC);
       const apiJsonNFC = await apiResNFC.json();
       expect(apiJsonNFC.intent).toBe("recall_previous");
       expect(apiJsonNFC.zetaris.queries_run).toEqual([]);
+      expect(apiJsonNFC.reply).toMatch(/sọ fún ọ|Ọjọ́ Ẹtì|gbìn/i);
+      expect(apiJsonNFC.reply).not.toMatch(/I told you|wait a week|plant around|advised you/i);
       expect(apiJsonNFC.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
       expect(apiJsonNFC.reply).not.toMatch(/Planting advice reminder/i);
 
@@ -436,21 +473,24 @@ describe("JSON API: /api/health and /api/run", () => {
         body: JSON.stringify({
           question: nfdQuestion,
           farm_id: "farm_bisi_ogbomoso",
+          lang: "yo",
         }),
       });
       const apiResNFD = await runPost(reqNFD);
       const apiJsonNFD = await apiResNFD.json();
       expect(apiJsonNFD.intent).toBe("recall_previous");
       expect(apiJsonNFD.zetaris.queries_run).toEqual([]);
+      expect(apiJsonNFD.reply).toMatch(/sọ fún ọ|Ọjọ́ Ẹtì|gbìn/i);
+      expect(apiJsonNFD.reply).not.toMatch(/I told you|wait a week|plant around|advised you/i);
       expect(apiJsonNFD.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
       expect(apiJsonNFD.reply).not.toMatch(/Planting advice reminder/i);
     });
 
-    it("ensures recall replies across en, pcm, and yo never contain YYYY-MM-DD or reminder headings", async () => {
+    it("ensures recall replies across en, pcm, and yo strictly follow their language and format", async () => {
       const questions = [
-        { text: "Remind me, when did you say I should plant?", lang: "en" as const },
-        { text: "Wetin you tell me about planting?", lang: "pcm" as const },
-        { text: "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?", lang: "yo" as const },
+        { text: "Remind me, when did you say I should plant?", lang: "en" as const, match: /told you to|plant around/i, forbidden: [/sọ fún ọ/i, /gbìn/i] },
+        { text: "Wetin you tell me about planting?", lang: "pcm" as const, match: /tell you say|make you/i, forbidden: [/I advised you to/i, /sọ fún ọ/i] },
+        { text: "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?", lang: "yo" as const, match: /sọ fún ọ|Ọjọ́ Ẹtì|gbìn/i, forbidden: [/I told you/i, /wait a week/i, /advised you/i] },
       ];
 
       for (const q of questions) {
@@ -466,6 +506,10 @@ describe("JSON API: /api/health and /api/run", () => {
         const res = await runPost(req);
         const json = await res.json();
         expect(json.intent).toBe("recall_previous");
+        expect(json.reply).toMatch(q.match);
+        for (const forb of q.forbidden) {
+          expect(json.reply).not.toMatch(forb);
+        }
         expect(json.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
         expect(json.reply).not.toMatch(/Planting advice reminder/i);
         expect(json.reply).not.toMatch(/Advice reminder/i);

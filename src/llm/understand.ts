@@ -35,6 +35,7 @@ export type UnderstandResult = z.infer<typeof UnderstandSchema> & {
 /**
  * Detects if a farmer's message is asking to recall past advice (DESIGN.md Step 1 & Day 4.2 Follow-up).
  * Checks both NFC-normalized text and a diacritic-stripped form (NFD without combining marks).
+ * Requires explicit phrasings referencing past advice, avoiding false positives on general requests like "sọ fún mi" ("tell me").
  */
 export function isRecallQuery(text: string): boolean {
   if (!text) return false;
@@ -44,26 +45,37 @@ export function isRecallQuery(text: string): boolean {
     .replace(/\p{M}/gu, "")
     .toLowerCase();
 
-  // Yoruba patterns (NFC)
+  // Yoruba patterns (NFC) - Require past reference to what was previously said
+  // "kí lo sọ", "kí ni o sọ", "o ti sọ", "ìmọ̀ràn tí o fún mi", "ṣé o rántí ohun tí o sọ", "rántí ohun tí o sọ", "tí o sọ tẹ́lẹ̀", "rántí mi"
   const yorubaPatterns = [
-    /k[ií]\s+lo\s+s[oọ]/iu,
+    /k[ií]\s+l?o\s+s[oọ]/iu,
     /k[ií]\s+ni\s+o\s+s[oọ]/iu,
-    /r[aá]nt[ií]/iu,
-    /ṣ[eé]\s+o\s+r[aá]nt[ií]/iu,
+    /o\s+ti\s+s[oọ]/iu,
     /ìm[oọ̀òó]\s*r[aàá]n\s+t[ií]\s+o\s+f[uú]n\s+mi/iu,
-    /s[oọ]\s+f[uú]n\s+mi/iu,
+    /ṣ[eé]\s+o\s+r[aàá]nt[ií]\s+ohun\s+t[ií]\s+o\s+s[oọ]/iu,
+    /r[aàá]nt[ií]\s+ohun\s+t[ií]\s+o\s+s[oọ]/iu,
+    /r[aàá]nt[ií]\s+mi\b/iu,
+    /t[ií]\s+o\s+s[oọ]\s+t[eẹ́ẹ̀]l[eẹ̀é]/iu,
   ];
 
-  // Pidgin patterns
+  // Pidgin patterns - Must reference past conversation
+  // "wetin you talk", "wetin you tell me", "wetin you say before", "which advice you give me", "remind me"
   const pidginPatterns = [
-    /wetin\s+you\s+(?:talk|tell(?:\s+me)?|say)/iu,
-    /which\s+advice\s+you\s+give/iu,
+    /wetin\s+you\s+talk/iu,
+    /wetin\s+you\s+tell\s+me/iu,
+    /wetin\s+you\s+say\s+before/iu,
+    /which\s+advice\s+you\s+give\s+me/iu,
+    /remind\s+me/iu,
   ];
 
-  // English & general patterns
+  // English & general patterns - Must reference past advice
+  // "remind me", "what did you tell me", "what did you say", "you said", "last time"
   const englishPatterns = [
     /remind\s+(?:me|us)/iu,
-    /what\s+did\s+you\s+(?:tell(?:\s+me)?|say|advise)/iu,
+    /what\s+did\s+you\s+(?:tell\s+me|say|advise)/iu,
+    /what\s+did\s+you\s+tell/iu,
+    /you\s+said/iu,
+    /last\s+time/iu,
     /when\s+did\s+you\s+say/iu,
     /what\s+was\s+(?:your\s+)?advice/iu,
     /previous\s+advice/iu,
@@ -74,10 +86,12 @@ export function isRecallQuery(text: string): boolean {
   const strippedPatterns = [
     /ki\s+lo\s+so/iu,
     /ki\s+ni\s+o\s+so/iu,
-    /ranti/iu,
-    /se\s+o\s+ranti/iu,
+    /o\s+ti\s+so/iu,
     /imoran\s+ti\s+o\s+fun\s+mi/iu,
-    /so\s+fun\s+mi/iu,
+    /se\s+o\s+ranti\s+ohun\s+ti\s+o\s+so/iu,
+    /ranti\s+ohun\s+ti\s+o\s+so/iu,
+    /ranti\s+mi\b/iu,
+    /ti\s+o\s+so\s+tele/iu,
   ];
 
   for (const pat of [...yorubaPatterns, ...pidginPatterns, ...englishPatterns]) {
@@ -123,15 +137,24 @@ export function extractRules(text: string): UnderstandResult {
   let intent: UnderstandResult["intent"] = "unknown";
   if (isRecallQuery(text)) {
     intent = "recall_previous";
-  } else if (/(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (
+    /(?<=^|\P{L})(?:why|wetin make|kilode|kílódé|me ya sa)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(stripped)
+  ) {
     intent = "why";
-  } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (/(?<=^|\P{L})(?:brief|morning|update|report)(?=\P{L}|$)/iu.test(nfc)) {
     intent = "briefing";
-  } else if (/(?<=^|\P{L})(?:sell|store|price|market|bag|harvest|keep|corn|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|harvest|keep|corn|tà|tọ́jú|sayar|ajiye|àpò|rà)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:sell|store|price|market|bag|harvest|keep|corn|ta|toju|sayar|ajiye|apo|ra)(?=\P{L}|$)/iu.test(stripped)
+  ) {
     intent = "sell_or_store";
-  } else if (/(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|when|gbìn|shuka|ìgbà)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|when|gbìn|shuka|ìgbà)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:plant|sow|seed|ground|start|planting|when|gbin|shuka|igba)(?=\P{L}|$)/iu.test(stripped)
+  ) {
     intent = "plant_timing";
-  } else if (/(?<=^|\P{L})(?:hi|hello|good morning|kedu|bawo)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (/(?<=^|\P{L})(?:hi|hello|good morning|kedu|bawo)(?=\P{L}|$)/iu.test(nfc)) {
     intent = "smalltalk";
   } else {
     intent = "plant_timing";

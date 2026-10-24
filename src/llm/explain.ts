@@ -722,6 +722,30 @@ export const RecallOutputSchema = z.object({
 export type RecallOutput = z.infer<typeof RecallOutputSchema>;
 
 /**
+ * Language validator for recall replies.
+ * Ensures Yoruba has tone marks and no English leaks, Pidgin has no formal English phrasings,
+ * and English remains English.
+ */
+export function validateRecallLanguage(text: string, lang: Lang): { valid: boolean; reason?: string } {
+  if (lang === "yo") {
+    const yoCheck = validateYoruba(text);
+    if (!yoCheck.valid) {
+      return yoCheck;
+    }
+    const englishLeak = /\b(i told you|i advised|on \d|wait a week|plant around|you should|do not|advice on record|planting advice|replant risk is)\b/i;
+    if (englishLeak.test(text)) {
+      return { valid: false, reason: "Contains English phrases instead of Yoruba" };
+    }
+  } else if (lang === "pcm") {
+    const formalEnglish = /\b(i advised you to|you should wait|past seasons? evaluated|i told you to wait a week)\b/i;
+    if (formalEnglish.test(text)) {
+      return { valid: false, reason: "Contains formal English phrasing instead of Nigerian Pidgin" };
+    }
+  }
+  return { valid: true };
+}
+
+/**
  * Explain previous advice recalled from H-MEM for "remind me" queries.
  */
 export async function explainRecall(params: {
@@ -757,23 +781,45 @@ export async function explainRecall(params: {
       formatGroundedDate(iso, params.lang)
     );
 
+    let langRules = "";
+    if (params.lang === "yo") {
+      langRules = `Language: Yoruba (yo).
+CRITICAL RULES FOR YORUBA:
+1. Output MUST be 100% in Yoruba with proper diacritics and tone marks (á, à, é, è, ẹ́, ẹ̀, í, ì, ó, ò, ọ́, ọ̀, ú, ù, ṣ, ẹ, ọ).
+2. Dates MUST include the Yoruba day of the week and date: e.g. "${formatGroundedDate("2026-04-10", "yo")}".
+3. STRICTLY FORBIDDEN to output English sentences like "On 10 April I told you..." or "wait a week". Any English text will cause an immediate rejection.
+4. Style Example in Yoruba:
+"Ní ${formatGroundedDate("2026-04-10", "yo")} mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí ${formatGroundedDate("2026-04-17", "yo")}."`;
+    } else if (params.lang === "pcm") {
+      langRules = `Language: Nigerian Pidgin (pcm).
+CRITICAL RULES FOR NIGERIAN PIDGIN:
+1. Output MUST be in natural Nigerian Pidgin.
+2. STRICTLY FORBIDDEN to use formal British/American English like "I advised you to" or "You should wait".
+3. Style Example in Pidgin:
+"For 10 April I tell you say make you wait one week and plant around 17 April."`;
+    } else {
+      langRules = `Language: English (en).
+Style Example in English:
+"On 10 April I told you to wait a week and plant around 17 April."`;
+    }
+
     const systemPrompt = `You are Ikore AI, a farm assistant in Nigeria. The farmer is asking you to remind them of advice previously given.
-Language: ${langName} (${params.lang}).
+${langRules}
+
 Recorded memory of past advice:
 """
 ${groundedMemory}
 """
 
-Rules:
-1. Write 1 or 2 short sentences in ${langName} directly reminding the farmer of the advice and date from the memory above.
-2. Example: "On 10 April I told you to wait a week and plant around 17 April."
-3. Do NOT output any title, heading, or label like "Planting advice reminder" or "Advice Reminder". Start directly with the sentence.
-4. NO percentages ("%"). Never use "%" or the word "percent".
-5. Never use ISO dates like YYYY-MM-DD or 2026-04-10. Always use farmer-friendly dates like "${formatGroundedDate("2026-04-10", params.lang)}" and "${formatGroundedDate("2026-04-17", params.lang)}".
-6. Strictly quote ONLY numbers and recommendations present in the recorded memory. Never invent or hallucinate new facts.
-7. Output JSON matching schema:
+General Rules:
+1. Write 1 or 2 short sentences in ${langName} directly reminding the farmer of the advice and dates from the memory above.
+2. Do NOT output any title, heading, or label like "Planting advice reminder" or "Advice Reminder". Start directly with the reminder sentence.
+3. NO percentages ("%"). Never use "%" or the word "percent".
+4. Never use ISO dates like YYYY-MM-DD or 2026-04-10. Always use farmer-friendly dates like "${formatGroundedDate("2026-04-10", params.lang)}" and "${formatGroundedDate("2026-04-17", params.lang)}".
+5. Strictly quote ONLY numbers and recommendations present in the recorded memory. Never invent or hallucinate new facts.
+6. Output JSON matching schema:
 {
-  "reply": "<1-2 short sentences directly reminding the farmer>"
+  "reply": "<1-2 short sentences in ${langName} directly reminding the farmer>"
 }`;
 
     const userPrompt = JSON.stringify({
@@ -781,38 +827,60 @@ Rules:
       adviceMemory: groundedMemory,
     });
 
-    let response: RecallOutput;
-    let respondedModel = "unknown";
+    const cleanRecallText = (resp: RecallOutput) => {
+      let text = (resp.reply || resp.reason || resp.headline || "").trim();
+      text = text.replace(/^(?:(?:planting|selling|farm)?\s*(?:advice\s*)?reminder[:\s-]*)+/i, "").trim();
+      if (text.includes("\n\n")) {
+        const parts = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+        if (parts.length > 1 && parts[0].length < 35 && !/[.!?]$/.test(parts[0])) {
+          text = parts.slice(1).join("\n\n");
+        }
+      }
+      return text;
+    };
 
-    if (typeof (activeProvider as any).completeWithMeta === "function") {
-      const meta = await (activeProvider as any).completeWithMeta({
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        json: RecallOutputSchema,
-        temperature: 0.2,
-        stepName: "explain",
-      });
-      response = meta.content;
-      respondedModel = meta.model;
-    } else {
-      response = await activeProvider.complete<RecallOutput>({
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        json: RecallOutputSchema,
-        temperature: 0.2,
-        stepName: "explain",
-      });
-      respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
-    }
+    const callRecallLLM = async (sys: string) => {
+      let resp: RecallOutput;
+      let model = "unknown";
+      if (typeof (activeProvider as any).completeWithMeta === "function") {
+        const meta = await (activeProvider as any).completeWithMeta({
+          system: sys,
+          messages: [{ role: "user", content: userPrompt }],
+          json: RecallOutputSchema,
+          temperature: 0.2,
+          stepName: "explain",
+        });
+        resp = meta.content;
+        model = meta.model;
+      } else {
+        resp = await activeProvider.complete<RecallOutput>({
+          system: sys,
+          messages: [{ role: "user", content: userPrompt }],
+          json: RecallOutputSchema,
+          temperature: 0.2,
+          stepName: "explain",
+        });
+        model = (activeProvider as any).lastRespondedModel || activeProvider.name;
+      }
+      return { resp, model };
+    };
 
-    let replyText = (response.reply || response.reason || response.headline || "").trim();
+    let { resp: response, model: respondedModel } = await callRecallLLM(systemPrompt);
+    let replyText = cleanRecallText(response);
 
-    // Drop any heading like "Planting advice reminder", "Advice reminder:", etc.
-    replyText = replyText.replace(/^(?:(?:planting|selling|farm)?\s*(?:advice\s*)?reminder[:\s-]*)+/i, "").trim();
-    if (replyText.includes("\n\n")) {
-      const parts = replyText.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
-      if (parts.length > 1 && parts[0].length < 35 && !/[.!?]$/.test(parts[0])) {
-        replyText = parts.slice(1).join("\n\n");
+    // Language check: if wrong language, retry once with a stricter instruction; if it still fails, fall back to template
+    let langCheck = validateRecallLanguage(replyText, params.lang);
+    if (!langCheck.valid) {
+      console.warn(`[ExplainRecall] Reply failed language check (${langCheck.reason}): "${replyText}". Retrying once with strict language prompt...`);
+      const strictSystemPrompt = `${systemPrompt}\n\nCRITICAL: Your previous response was rejected because it was in the WRONG LANGUAGE (${langCheck.reason}). You MUST output ONLY in ${langName} (${params.lang}). Do NOT use English under any circumstances!`;
+      const retryResult = await callRecallLLM(strictSystemPrompt);
+      response = retryResult.resp;
+      respondedModel = retryResult.model;
+      replyText = cleanRecallText(response);
+
+      langCheck = validateRecallLanguage(replyText, params.lang);
+      if (!langCheck.valid) {
+        throw new Error(`Language check failed after retry: ${langCheck.reason}`);
       }
     }
 
@@ -840,6 +908,8 @@ Rules:
     const offsetMatches = params.adviceContent.matchAll(/(?:wait_|store_)(\d+)/g);
     for (const om of offsetMatches) {
       memoryNumbers.add(om[1]);
+      if (om[1] === "7") memoryNumbers.add("1");
+      if (om[1] === "14") memoryNumbers.add("2");
     }
 
     const tokens = findNumericTokens(replyText);
@@ -862,6 +932,7 @@ Rules:
     };
   } catch (err: any) {
     const latencyMs = Math.round(performance.now() - t0);
+    console.warn(`[ExplainRecall] path=template | reason="${err.message}" | latency=${latencyMs}ms`);
     const fallbackText = templateRecallAdvice(params.adviceContent, params.lang);
     return {
       text: fallbackText,

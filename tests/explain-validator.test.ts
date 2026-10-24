@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   explain,
+  explainRecall,
   findInvalidNumbers,
   validateNoPercentages,
   validateOptionAttribution,
   validateOutputStructure,
+  validateRecallLanguage,
   validateYoruba,
   type ExplainOutput,
 } from "../src/core/explain.ts";
@@ -498,5 +500,66 @@ describe("Intent & Slot extraction (src/llm/understand.ts)", () => {
     expect(res.intent).toBe("plant_timing");
     expect(res.language).toBe("en");
     expect(res.missing).toEqual([]);
+  });
+});
+
+describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
+  it("validates language correctly for Yoruba, Pidgin, and English", () => {
+    // English leak in Yoruba
+    const badYo = validateRecallLanguage("On 10 April I told you to wait a week and plant around 17 April.", "yo");
+    expect(badYo.valid).toBe(false);
+
+    // Valid Yoruba
+    const goodYo = validateRecallLanguage("Ní Ọjọ́ Ẹtì, 10 April mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.", "yo");
+    expect(goodYo.valid).toBe(true);
+
+    // Formal English in Pidgin
+    const badPcm = validateRecallLanguage("I advised you to wait one week before planting.", "pcm");
+    expect(badPcm.valid).toBe(false);
+
+    // Valid Pidgin
+    const goodPcm = validateRecallLanguage("For 10 April I tell you say make you wait one week and plant around 17 April.", "pcm");
+    expect(goodPcm.valid).toBe(true);
+  });
+
+  it("retries on language mismatch and falls back to templateRecallAdvice if retry still fails", async () => {
+    process.env.SAMPLE_MODE = "false";
+
+    // Mock provider returning English when Yoruba was requested
+    const englishLeakProvider = new MockLLMProvider({
+      reply: "On 10 April I told you to wait a week and plant around 17 April.",
+    } as any);
+
+    const result = await explainRecall({
+      question: "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?",
+      adviceContent: "Question: \"When to plant?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000.",
+      lang: "yo",
+      provider: englishLeakProvider,
+    });
+
+    // Should fall back to Yoruba template
+    expect(result.path).toBe("template");
+    expect(result.fallbackReason).toContain("Language check failed");
+    expect(result.text).toMatch(/sọ fún ọ/);
+    expect(result.text).toMatch(/Ọjọ́ Ẹtì, 17 April/);
+    expect(result.text).not.toMatch(/I told you|wait a week/i);
+  });
+
+  it("accepts valid Yoruba reply from provider", async () => {
+    process.env.SAMPLE_MODE = "false";
+
+    const yorubaProvider = new MockLLMProvider({
+      reply: "Ní Ọjọ́ Ẹtì, 10 April mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.",
+    } as any);
+
+    const result = await explainRecall({
+      question: "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?",
+      adviceContent: "Question: \"When to plant?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000.",
+      lang: "yo",
+      provider: yorubaProvider,
+    });
+
+    expect(result.path).toBe("llm");
+    expect(result.text).toBe("Ní Ọjọ́ Ẹtì, 10 April mo sọ fún ọ pé kí o dúró fún ọ̀sẹ̀ kan kí o sì gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.");
   });
 });
