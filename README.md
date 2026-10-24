@@ -137,11 +137,17 @@ To run live queries and live LLM generations:
    ```
    *Port Note*: The application listens on port 3000 (`http://localhost:3000`).
 
+### Web Interface
+Once the server is running, open `http://localhost:3000` (or your configured port) in any browser to access the visual chat interface:
+- **Farm Profile Selector**: Choose between Mama Bisi (Ogbomoso North) and Baba Ade (Iseyin).
+- **Interactive Question Box**: Ask custom questions or select example chips for English planting advice, Yoruba planting advice, or memory recall.
+- **Evidence & Grounding Panel**: Expand the collapsible panel to inspect compared options, replant risk percentages, median establishment rainfall, actual Zetaris SQL queries run, H-MEM memory recall/store details, and Nemotron model telemetry returned directly from `/api/run`.
+
 ---
 
 ## Judge API & Inspection
 
-Ikore AI exposes a JSON REST API for automated judge evaluation without requiring UI interaction.
+In addition to the web interface at `/`, Ikore AI exposes a JSON REST API for automated judge evaluation without requiring UI interaction:
 
 ### 1. `GET /api/health`
 Checks system health and verifies whether live providers are configured (without exposing secrets).
