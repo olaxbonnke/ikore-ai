@@ -1,36 +1,38 @@
-// Engine loader. After `npm run setup`, the H-MEM reference lives in
-// vendor/hmem (degit copy). Inside the monorepo, the sibling path works
-// without setup. The startup line names which source loaded, so nobody
-// debugs the wrong copy.
+// Engine loader for Meterless H-MEM.
+// Resolves paths from project root (process.cwd()) so Next.js server routes find vendor/hmem.
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
+import { pathToFileURL } from "node:url";
 
 export interface LoadedEngine {
   HMEM: new (opts: { clock?: () => number; persistDir?: string; actor?: string; minerFn?: (prompt: string) => Promise<string> }) => any;
   source: string;
 }
 
-export async function loadHMEM(): Promise<LoadedEngine> {
-  const distEntry = path.join(here, "..", "vendor", "hmem", "dist", "index.js");
-  const srcEntry = path.join(here, "..", "vendor", "hmem", "src", "index.ts");
-  const monorepoEntry = path.join(here, "..", "..", "..", "engines", "hmem", "reference", "src", "index.ts");
-
-  // Ensure compiled dist/index.js exists if src/index.ts is present
-  if (!fs.existsSync(distEntry) && fs.existsSync(srcEntry)) {
-    try {
-      const { execSync } = await import("node:child_process");
-      execSync("npx esbuild vendor/hmem/src/index.ts --bundle --platform=node --format=esm --outfile=vendor/hmem/dist/index.js", {
-        cwd: path.join(here, ".."),
-        stdio: "ignore",
-      });
-    } catch {
-      // Continue to try direct candidates if build fails
+/**
+ * Finds project root by checking process.cwd() and walking up towards package.json.
+ */
+function findProjectRoot(): string {
+  let dir = process.cwd();
+  while (dir) {
+    if (fs.existsSync(path.join(dir, "package.json"))) {
+      if (fs.existsSync(path.join(dir, "vendor", "hmem"))) {
+        return dir;
+      }
     }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
+  return process.cwd();
+}
+
+export async function loadHMEM(): Promise<LoadedEngine> {
+  const root = findProjectRoot();
+  const distEntry = path.join(root, "vendor", "hmem", "dist", "index.js");
+  const srcEntry = path.join(root, "vendor", "hmem", "src", "index.ts");
+  const monorepoEntry = path.join(root, "..", "..", "engines", "hmem", "reference", "src", "index.ts");
 
   const CANDIDATES = [
     { label: "vendor/hmem dist", entry: distEntry },
@@ -41,15 +43,15 @@ export async function loadHMEM(): Promise<LoadedEngine> {
   for (const c of CANDIDATES) {
     if (fs.existsSync(c.entry)) {
       try {
-        const mod = await import(pathToFileURL(c.entry).href);
+        const mod = await import(/* webpackIgnore: true */ pathToFileURL(c.entry).href);
         if (mod && mod.HMEM) {
           return { HMEM: mod.HMEM, source: c.label };
         }
       } catch {
-        // Try next candidate if loader fails (e.g. Node typescript strip error)
+        // Try next candidate if loader fails (e.g. Node raw typescript strip issue)
       }
     }
   }
 
-  throw new Error("H-MEM engine not found. Run `npm run build:hmem` or `npm run setup`.");
+  throw new Error(`H-MEM engine not found. Looked in ${distEntry}. Run \`npm run build:hmem\` or \`npm run setup\`.`);
 }

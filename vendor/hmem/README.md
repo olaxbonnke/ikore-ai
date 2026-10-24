@@ -1,5 +1,8 @@
 # H-MEM Reference Implementation
 
+> **Origin**: Vendored reference implementation from `meterless/meterless/engines/hmem/reference` (`@meterless/hmem-reference`).  
+> **Licence**: Apache License 2.0 (see [LICENSE](./LICENSE)). Third-party vendored code.
+
 This folder makes the spec in [`../AGENTS.md`](../AGENTS.md) executable. It is deterministic, has zero runtime dependencies, and runs in memory with optional JSON persistence. It exists so every example in [`../examples/`](../examples/) runs, and so you can see each contract behave before building your own.
 
 What it is NOT: a production library. The embedder is a deterministic hash mock, storage is a JSON file, and there is no network code. Your implementation replaces every piece of this with your stack; the contracts stay the same.

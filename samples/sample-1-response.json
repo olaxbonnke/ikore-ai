@@ -1,5 +1,5 @@
 {
-  "run_id": "run_1792848018971_s9smb",
+  "run_id": "run_1792850848451_vode3",
   "mode": "sample",
   "intent": "plant_timing",
   "decision": {
@@ -859,9 +859,9 @@
       "Storage method for Mama Bisi (farm_bisi_ogbomoso) is sack.",
       "Mama Bisi farms 2 hectares in Ogbomoso North, Oyo State.",
       "Past season 2025 for farm_bisi_ogbomoso: planting date was 2025-04-18, germination was yes, harvested 42 bags of maize, sold in 2025-10 at ₦48000 per bag.",
-      "Sell or store advice for 2026-08-20: sell_now. Offered ₦45,000/bag for 20 bags. Expected return ₦900,000."
+      "Question: \"When should I plant my maize this season?\". Planting advice for 2026-04-10: wait_7. Planting date 2026-04-17. Replant risk 0.7%, expected value ₦1,400,000."
     ],
     "stored": "mem-132"
   },
-  "trace_file": "logs/trace-run_1792848018971_s9smb.jsonl"
+  "trace_file": "logs/trace-run_1792850848451_vode3.jsonl"
 }

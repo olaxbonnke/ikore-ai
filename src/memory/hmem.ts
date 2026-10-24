@@ -70,14 +70,14 @@ export function clearHMEMCache(): void {
 function autoSeedFarm(farmId: string, hmem: any): void {
   try {
     const farm = getFarmProfile(farmId);
-    const profileText = `Farm profile: ${farm.ownerName} (${farmId}) operates ${farm.hectares} hectares of maize in ${farm.lga}, ${farm.state} State (${farm.zone}). Storage method: ${farm.storage}. Preferred language: ${farm.preferredLang}. Risk profile: ${farm.riskAversion}.`;
-    const storageFact = `Storage method for ${farm.ownerName} (${farmId}) is ${farm.storage}.`;
-    const scaleFact = `${farm.ownerName} farms ${farm.hectares} hectares in ${farm.lga}, ${farm.state} State.`;
+    const profileText = `[Demo profile from data/farms_seed.csv] Farm profile: ${farm.ownerName} (${farmId}) operates ${farm.hectares} hectares of maize in ${farm.lga}, ${farm.state} State (${farm.zone}). Storage method: ${farm.storage}. Preferred language: ${farm.preferredLang}. Risk profile: ${farm.riskAversion}.`;
+    const storageFact = `[Demo fact from data/farms_seed.csv] Storage method for ${farm.ownerName} (${farmId}) is ${farm.storage}.`;
+    const scaleFact = `[Demo fact from data/farms_seed.csv] ${farm.ownerName} farms ${farm.hectares} hectares in ${farm.lga}, ${farm.state} State.`;
 
     const facts = [
-      { content: profileText, tags: [`farm:${farmId}`, "profile", "farm_info", "maize", farm.storage, "type:farm_profile"], type: "factual", layer: "long_term" },
-      { content: storageFact, tags: [`farm:${farmId}`, "storage", "storage_method", farm.storage, "type:farm_fact"], type: "factual", layer: "long_term" },
-      { content: scaleFact, tags: [`farm:${farmId}`, "hectares", "location", "field_size", "type:farm_fact"], type: "factual", layer: "long_term" },
+      { content: profileText, tags: [`farm:${farmId}`, "profile", "farm_info", "maize", farm.storage, "type:farm_profile", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
+      { content: storageFact, tags: [`farm:${farmId}`, "storage", "storage_method", farm.storage, "type:farm_fact", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
+      { content: scaleFact, tags: [`farm:${farmId}`, "hectares", "location", "field_size", "type:farm_fact", "demo-seed", "synthetic"], type: "factual", layer: "long_term" },
     ];
 
     for (const f of facts) {
@@ -87,8 +87,8 @@ function autoSeedFarm(farmId: string, hmem: any): void {
         layer: f.layer,
         tags: f.tags,
         confidence: 0.95,
-        source: `farm:${farmId}:profile_seed`,
-        provenance: { origin: "system_seed", learnedAt: Date.now(), label: `Default farm seed for ${farmId}` },
+        source: "demo-seed",
+        provenance: { origin: "demo-seed", label: "demo_seed", source: "data/farms_seed.csv", learnedAt: Date.now() },
       });
     }
 
@@ -103,15 +103,15 @@ function autoSeedFarm(farmId: string, hmem: any): void {
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = parts[idx] ?? ""; });
           if (row.farm_id === farmId) {
-            const seasonText = `Past season ${row.season_year} for ${row.farm_id}: planting date was ${row.planting_date}, germination was ${row.germination_ok}, harvested ${row.yield_bags} bags of maize, sold in ${row.sale_month} at ₦${row.sale_price_per_bag} per bag.`;
+            const seasonText = `[Demo record from data/farm_records.csv] Past season ${row.season_year} for ${row.farm_id}: planting date was ${row.planting_date}, germination was ${row.germination_ok}, harvested ${row.yield_bags} bags of maize, sold in ${row.sale_month} at ₦${row.sale_price_per_bag} per bag.`;
             hmem.store.add({
               content: seasonText,
               type: "factual",
               layer: "long_term",
-              tags: [`farm:${farmId}`, "past_season", "harvest", `year:${row.season_year}`, "records", "demo_seed", "type:farm_season_record"],
+              tags: [`farm:${farmId}`, "past_season", "harvest", `year:${row.season_year}`, "records", "demo_seed", "demo-seed", "synthetic", "type:farm_season_record"],
               confidence: 0.9,
-              source: `farm:${farmId}:records_seed`,
-              provenance: { origin: "demo_seed", learnedAt: Date.now(), label: "Historical records seed" },
+              source: "demo-seed",
+              provenance: { origin: "demo-seed", label: "demo_seed", source: "data/farm_records.csv", learnedAt: Date.now() },
             });
           }
         }
@@ -196,20 +196,28 @@ export async function remember(
     }
   }
 
-  // Duplicate-save prevention: check if identical content or same decisionId already exists
-  const existing = [...hmem.store.records.values()].find((r: any) => {
-    if (r.content === content) return true;
-    if (typeof event === "object" && event !== null && "decisionId" in event && event.decisionId) {
-      if (Array.isArray(r.tags) && r.tags.includes(`decision:${event.decisionId}`)) return true;
+  // Duplicate-save prevention: dedupe strictly within a run (same run_id / decisionId), NOT by content across runs
+  if (typeof event === "object" && event !== null) {
+    const decId = "decisionId" in event && event.decisionId ? String(event.decisionId) : undefined;
+    const runId = "runId" in event && event.runId ? String(event.runId) : undefined;
+    if (decId || runId) {
+      const existing = [...hmem.store.records.values()].find((r: any) => {
+        if (Array.isArray(r.tags)) {
+          if (decId && r.tags.includes(`decision:${decId}`)) return true;
+          if (runId && r.tags.includes(`run:${runId}`)) return true;
+        }
+        return false;
+      });
+      if (existing) {
+        return existing.id;
+      }
     }
-    return false;
-  });
-  if (existing) {
-    return existing.id;
-  }
-
-  if (typeof event === "object" && event !== null && "decisionId" in event && event.decisionId) {
-    tags.push(`decision:${event.decisionId}`);
+    if (decId) {
+      tags.push(`decision:${decId}`);
+    }
+    if (runId) {
+      tags.push(`run:${runId}`);
+    }
   }
 
   let provenanceRecord: any = {

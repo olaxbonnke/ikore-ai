@@ -167,26 +167,51 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(json.memory.stored).toMatch(/^mem-/);
     });
 
-    it("prevents duplicate saves for the same decision or content", async () => {
+    it("prevents duplicate saves for the same decision run", async () => {
       const { remember, getFarmHMEM } = await import("../src/memory/hmem.ts");
       const farmId = "farm_ade_iseyin";
       const hmem = await getFarmHMEM(farmId);
       const initialCount = hmem.store.records.size;
+      const decId = `dec_dedup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
       const id1 = await remember(farmId, {
         type: "advice",
-        decisionId: "dec_dedup_test_01",
+        decisionId: decId,
         content: "Unique dedup test content for 2026-04-10",
       });
 
       const id2 = await remember(farmId, {
         type: "advice",
-        decisionId: "dec_dedup_test_01",
+        decisionId: decId,
         content: "Unique dedup test content for 2026-04-10",
       });
 
       expect(id1).toBe(id2);
       expect(hmem.store.records.size).toBe(initialCount + 1);
+    });
+
+    it("allows storing identical question across different seasons / decision runs", async () => {
+      const { remember, getFarmHMEM } = await import("../src/memory/hmem.ts");
+      const farmId = "farm_ade_iseyin";
+      const hmem = await getFarmHMEM(farmId);
+      const initialCount = hmem.store.records.size;
+      const dec1 = `dec_season_2026_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const dec2 = `dec_season_2027_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+      const id1 = await remember(farmId, {
+        type: "advice",
+        decisionId: dec1,
+        content: "Should I plant now?",
+      });
+
+      const id2 = await remember(farmId, {
+        type: "advice",
+        decisionId: dec2,
+        content: "Should I plant now?",
+      });
+
+      expect(id1).not.toBe(id2);
+      expect(hmem.store.records.size).toBe(initialCount + 2);
     });
 
     it("returns HTTP 503 JSON with trace when Zetaris is unreachable in live mode", async () => {

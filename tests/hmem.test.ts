@@ -67,4 +67,12 @@ describe("H-MEM farm memory wrapper", () => {
     expect(Array.isArray(preview.toArchive)).toBe(true);
     expect(Array.isArray(preview.toSynthesize)).toBe(true);
   });
+
+  it("imports the engine through src/engine.ts with cwd = project root and asserts H-MEM loads", async () => {
+    const { loadHMEM } = await import("../src/engine.ts");
+    const loaded = await loadHMEM();
+    expect(loaded).toBeDefined();
+    expect(typeof loaded.HMEM).toBe("function");
+    expect(loaded.source).toContain("vendor/hmem");
+  });
 });
