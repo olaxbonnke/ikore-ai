@@ -18,6 +18,7 @@ import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
 import { templatePlanting, templateSelling, templateUnavailable } from "../i18n/templates.ts";
 import { ask, remember } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
+import { explain } from "./explain.ts";
 import { getFarmProfile } from "./farm-profile.ts";
 import { loadRainDaily } from "./observe.ts";
 import { listOptions } from "./options.ts";
@@ -135,8 +136,14 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     }
 
     if (!currentPricePerBag || !Number.isFinite(currentPricePerBag) || currentPricePerBag <= 0) {
+      const askText =
+        lang === "yo"
+          ? "Élò ni àwọn oníṣòwò ń fẹ́ ra àpò àgbàdo kan lọ́wọ́ rẹ lónìí?"
+          : lang === "pcm"
+          ? "How much dem dey offer you for one bag of corn today?"
+          : "What price per bag are buyers offering you today?";
       return {
-        text: "What price per bag are buyers offering you today?",
+        text: askText,
         lang,
         askedQuestion: true,
         memoryIdsUsed,
@@ -184,7 +191,8 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     });
 
     // Step 7: Explain
-    const text = templateSelling(decision, lang);
+    const explanation = await explain(decision, lang);
+    const text = explanation.text;
 
     // Step 8: Remember
     try {
@@ -294,7 +302,8 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
   }
 
   // Step 7: Explain
-  const text = templatePlanting(decision, lang);
+  const explanation = await explain(decision, lang);
+  const text = explanation.text;
 
   // Step 8: Remember
   try {
