@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { explain } from "../src/core/explain.ts";
 import type { Decision } from "../src/core/types.ts";
-
-dotenv.config();
 
 async function main(): Promise<void> {
   console.log(`======================================================`);

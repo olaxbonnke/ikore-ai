@@ -1,11 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync, spawn } from "node:child_process";
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { getGateway } from "../src/data/gateway.ts";
 import { runZetarisSql } from "./zetaris-apply.ts";
-
-dotenv.config();
 
 const CODESPACE_NAME = "urban-rotary-phone-4r45wxx56g5cqvwq";
 

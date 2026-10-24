@@ -1,7 +1,5 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { ZetarisGateway } from "../src/data/zetaris.ts";
-
-dotenv.config();
 
 async function verify(): Promise<void> {
   const restUrl = process.env.ZETARIS_REST_URL?.trim();

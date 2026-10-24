@@ -1,0 +1,321 @@
+{
+  "run_id": "run_1792843104495_e3d4x",
+  "mode": "sample",
+  "intent": "sell_or_store",
+  "decision": {
+    "id": "dec_2026-04-10_farm_ade_iseyin_sell_or_store_01",
+    "farmId": "farm_ade_iseyin",
+    "intent": "sell_or_store",
+    "createdAt": "2026-04-10T08:00:00+01:00",
+    "options": [
+      {
+        "option": "store_12w",
+        "label": "Store 12 weeks",
+        "horizonMonths": 3,
+        "horizonWeeks": 12,
+        "outcome": {
+          "p10": 890140,
+          "p50": 1021227,
+          "p90": 1215022,
+          "mean": 1038041,
+          "riskMetric": 0.4,
+          "riskLabel": "chance of earning less than selling now",
+          "n": 10,
+          "cheaperPriceCount": 1,
+          "countEarnedLess": 4,
+          "usedYellowFallback": false
+        },
+        "score": 964091,
+        "notes": [
+          "Storage upside: in 6 of 10 past years, price gains exceeded storage losses."
+        ],
+        "dropped": false,
+        "lowConfidence": false,
+        "bagsSoldNow": 0,
+        "bagsStored": 20,
+        "cashGeneratedNow": 0,
+        "assumptions": {
+          "monthlyLossPct": 0.3,
+          "monthlyStorageCostNgn": 0,
+          "bagWeightKg": 100
+        }
+      },
+      {
+        "option": "store_8w",
+        "label": "Store 8 weeks",
+        "horizonMonths": 2,
+        "horizonWeeks": 8,
+        "outcome": {
+          "p10": 905957,
+          "p50": 963407,
+          "p90": 1193981,
+          "mean": 1016311,
+          "riskMetric": 0,
+          "riskLabel": "chance of earning less than selling now",
+          "n": 8,
+          "cheaperPriceCount": 0,
+          "countEarnedLess": 0,
+          "usedYellowFallback": false
+        },
+        "score": 961134,
+        "notes": [
+          "Storage upside: in 8 of 8 past years, price gains exceeded storage losses."
+        ],
+        "dropped": false,
+        "lowConfidence": false,
+        "bagsSoldNow": 0,
+        "bagsStored": 20,
+        "cashGeneratedNow": 0,
+        "assumptions": {
+          "monthlyLossPct": 0.3,
+          "monthlyStorageCostNgn": 0,
+          "bagWeightKg": 100
+        }
+      },
+      {
+        "option": "store_4w",
+        "label": "Store 4 weeks",
+        "horizonMonths": 1,
+        "horizonWeeks": 4,
+        "outcome": {
+          "p10": 907610,
+          "p50": 940983,
+          "p90": 1034438,
+          "mean": 960725,
+          "riskMetric": 0,
+          "riskLabel": "chance of earning less than selling now",
+          "n": 8,
+          "cheaperPriceCount": 0,
+          "countEarnedLess": 0,
+          "usedYellowFallback": false
+        },
+        "score": 934168,
+        "notes": [
+          "Storage upside: in 8 of 8 past years, price gains exceeded storage losses."
+        ],
+        "dropped": false,
+        "lowConfidence": false,
+        "bagsSoldNow": 0,
+        "bagsStored": 20,
+        "cashGeneratedNow": 0,
+        "assumptions": {
+          "monthlyLossPct": 0.3,
+          "monthlyStorageCostNgn": 0,
+          "bagWeightKg": 100
+        }
+      },
+      {
+        "option": "sell_now",
+        "label": "Sell now",
+        "horizonMonths": 0,
+        "horizonWeeks": 0,
+        "outcome": {
+          "p10": 900000,
+          "p50": 900000,
+          "p90": 900000,
+          "mean": 900000,
+          "riskMetric": 0,
+          "riskLabel": "chance of earning less than selling now",
+          "n": 1
+        },
+        "score": 900000,
+        "notes": [
+          "Immediate cash with 0% storage weight loss and 0 market risk."
+        ],
+        "bagsSoldNow": 20,
+        "bagsStored": 0,
+        "cashGeneratedNow": 900000,
+        "assumptions": {
+          "monthlyLossPct": 0.3,
+          "monthlyStorageCostNgn": 0,
+          "bagWeightKg": 100
+        }
+      },
+      {
+        "option": "store_24w",
+        "label": "Store 24 weeks (6 months, in today's money)",
+        "horizonMonths": 6,
+        "horizonWeeks": 24,
+        "outcome": {
+          "p10": 639143,
+          "p50": 871644,
+          "p90": 1128855,
+          "mean": 871478,
+          "riskMetric": 0.556,
+          "riskLabel": "chance of earning less than selling now",
+          "n": 9,
+          "cheaperPriceCount": 5,
+          "countEarnedLess": 5,
+          "usedYellowFallback": false
+        },
+        "score": 755311,
+        "notes": [
+          "Values in today's money, after allowing for general price rises.",
+          "High risk: in 5 of 9 past years, holding grain earned less than selling immediately."
+        ],
+        "dropped": false,
+        "lowConfidence": false,
+        "bagsSoldNow": 0,
+        "bagsStored": 20,
+        "cashGeneratedNow": 0,
+        "assumptions": {
+          "monthlyLossPct": 0.3,
+          "monthlyStorageCostNgn": 0,
+          "bagWeightKg": 100
+        }
+      }
+    ],
+    "chosen": "store_8w",
+    "runnerUp": "store_12w",
+    "confidence": "low",
+    "riskBadge": "green",
+    "keyNumbers": {
+      "asOf": "2026-04-10",
+      "chosenOption": "store_8w",
+      "chosenLabel": "Store 8 weeks",
+      "score": 961134,
+      "expectedValueNgn": 963407,
+      "nAnalogYears": 8,
+      "lambda": 0.25,
+      "riskMetric": 0,
+      "riskPercent": "0.0%",
+      "riskLabel": "chance of earning less than selling now",
+      "valueP10Ngn": 905957,
+      "valueP50Ngn": 963407,
+      "valueP90Ngn": 1193981,
+      "waitingRiskPercent": "55.6%",
+      "nStore4w": 8,
+      "nStore8w": 8,
+      "nStore12w": 10,
+      "nStore24w": 9,
+      "cheaperCount": 0,
+      "nYears": 8,
+      "countEarnedLess": 0,
+      "currentPricePerBag": 45000,
+      "bags": 20,
+      "valueSellNowNgn": 900000,
+      "horizonWeeks": 8,
+      "horizonMonths": 2,
+      "monthlyLossPct": 0.3,
+      "bagsSoldNow": 0,
+      "bagsStored": 20,
+      "cashGeneratedNow": 0,
+      "storageLossBags_en": "a small amount",
+      "storageLossBags_pcm": "small amount",
+      "storageLossBags_yo": "iye díẹ̀",
+      "lossBags": 0.06
+    },
+    "evidence": [
+      {
+        "id": "ev_price_seasonality",
+        "kind": "history",
+        "label": "WFP Ibadan wholesale white maize seasonal price pattern",
+        "source": "WFP VAM, via HDX (Ibadan, Oyo)",
+        "sql": "SELECT state, market, commodity, unit, pricetype, ym, price_ngn_per_kg FROM oko_pg.prices WHERE LOWER(state) = LOWER('Oyo') ORDER BY ym ASC, commodity ASC",
+        "queryName": "priceSeasonality",
+        "statistic": "Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023 (14 years). Prices after January 2023 aren't in this data.",
+        "value": 14,
+        "unit": "years"
+      },
+      {
+        "id": "ev_stated_price",
+        "kind": "price",
+        "label": "Today's offered price",
+        "source": "Farmer statement",
+        "statistic": "Today's price: you told me ₦45,000 per bag.",
+        "value": 45000,
+        "unit": "NGN/bag"
+      },
+      {
+        "id": "ev_storage_loss",
+        "kind": "assumption",
+        "label": "Storage weight loss rate (pics)",
+        "source": "Assumption (data/storage_loss.csv)",
+        "statistic": "Assumed 0.3% weight loss per month in PICS hermetic bags",
+        "value": 0.3,
+        "unit": "%/month"
+      },
+      {
+        "id": "ev_explanation_model",
+        "kind": "assumption",
+        "label": "Explanation Model",
+        "source": "Sample Mode",
+        "statistic": "Written by deterministic template (SAMPLE_MODE=true)",
+        "value": "template"
+      }
+    ],
+    "assumptions": [
+      "Assumed 0.3% weight loss per month in PICS hermetic bags",
+      "Storage cost assumed ₦0/month (stored on-farm)",
+      "Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023 (14 years). Prices after January 2023 aren't in this data.",
+      "Today's price: you told me ₦45,000 per bag.",
+      "6-month storage (store_24w) estimates are in today's money, after allowing for general price rises (CMA-detrended)",
+      "Offline snapshot mode: verified cached Zetaris query results",
+      "Close call: store_12w and store_8w scores are within 0.3%. Recommending safer option (store_8w) with lower risk (0.0% vs 40.0%)."
+    ],
+    "dataMode": "snapshot"
+  },
+  "reply": "Store your maize for 8 weeks.\n\nFor 8 out of 8 past years with data, prices rose enough to cover storage weight loss, with expected return around ₦963,407.",
+  "evidence": {
+    "asOf": "2026-04-10",
+    "chosenOption": "store_8w",
+    "chosenLabel": "Store 8 weeks",
+    "score": 961134,
+    "expectedValueNgn": 963407,
+    "nAnalogYears": 8,
+    "lambda": 0.25,
+    "riskMetric": 0,
+    "riskPercent": "0.0%",
+    "riskLabel": "chance of earning less than selling now",
+    "valueP10Ngn": 905957,
+    "valueP50Ngn": 963407,
+    "valueP90Ngn": 1193981,
+    "waitingRiskPercent": "55.6%",
+    "nStore4w": 8,
+    "nStore8w": 8,
+    "nStore12w": 10,
+    "nStore24w": 9,
+    "cheaperCount": 0,
+    "nYears": 8,
+    "countEarnedLess": 0,
+    "currentPricePerBag": 45000,
+    "bags": 20,
+    "valueSellNowNgn": 900000,
+    "horizonWeeks": 8,
+    "horizonMonths": 2,
+    "monthlyLossPct": 0.3,
+    "bagsSoldNow": 0,
+    "bagsStored": 20,
+    "cashGeneratedNow": 0,
+    "storageLossBags_en": "a small amount",
+    "storageLossBags_pcm": "small amount",
+    "storageLossBags_yo": "iye díẹ̀",
+    "lossBags": 0.06
+  },
+  "llm": {
+    "provider": "sample",
+    "requested_model": "none",
+    "responded_model": "template",
+    "latency_ms": 0,
+    "fallback_used": true
+  },
+  "zetaris": {
+    "queries_run": [
+      "priceSeasonality"
+    ],
+    "row_counts": {
+      "prices": 312
+    }
+  },
+  "memory": {
+    "hmem_used": true,
+    "recalled": [
+      "Past season 2025 for farm_ade_iseyin: planting date was 2025-04-20, germination was yes, harvested 34 bags of maize, sold in 2025-10 at ₦50000 per bag.",
+      "Past season 2024 for farm_ade_iseyin: planting date was 2024-04-05, germination was no, harvested 22 bags of maize, sold in 2024-08 at ₦44000 per bag.",
+      "Farm profile: Baba Ade (farm_ade_iseyin) operates 1.5 hectares of maize in Iseyin, Oyo State (derived_savanna). Storage method: pics. Preferred language: yo. Risk profile: low.",
+      "Baba Ade farms 1.5 hectares in Iseyin, Oyo State.",
+      "Storage method for Baba Ade (farm_ade_iseyin) is pics."
+    ]
+  },
+  "trace_file": "logs/trace-run_1792843104495_e3d4x.jsonl"
+}

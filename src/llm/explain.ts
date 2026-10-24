@@ -503,8 +503,8 @@ export async function explain(
       kind: "assumption",
       label: "Explanation Model",
       source: "Sample Mode",
-      statistic: "Written by sample template (SAMPLE_MODE=true)",
-      value: "none",
+      statistic: "Written by deterministic template (SAMPLE_MODE=true)",
+      value: "template",
     });
 
     return {
@@ -516,7 +516,7 @@ export async function explain(
       path: "template",
       fallbackReason: "SAMPLE_MODE=true",
       latencyMs: 0,
-      model: "none",
+      model: "template",
     };
   }
 

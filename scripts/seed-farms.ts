@@ -1,9 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { remember } from "../src/memory/hmem.ts";
-
-dotenv.config();
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text

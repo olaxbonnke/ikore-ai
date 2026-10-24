@@ -5,11 +5,9 @@
 //   model mode: queries OpenAI-compatible endpoint via Meterless Nightshift.
 //     The NVIDIA key is managed in Nightshift's Providers tab, not in this project.
 
-import dotenv from "dotenv";
+import "./core/env.ts";
 import { completeChat, getNightshiftConfig } from "./core/nightshift.ts";
 import { LLMError } from "./core/errors.ts";
-
-dotenv.config();
 
 export interface AnswerResult {
   mode: "retrieval-only" | "model";

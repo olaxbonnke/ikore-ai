@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+import "../core/env.ts";
 import { SnapshotGateway } from "./snapshot.ts";
 import { ZetarisGateway } from "./zetaris.ts";
-
-dotenv.config();
 
 export type GatewaySource = "live" | "snapshot" | "mock";
 
@@ -26,8 +24,10 @@ export function getGateway(env: Record<string, string | undefined> = process.env
   const apiKey = env.ZETARIS_API_KEY?.trim();
   const orgId = env.ZETARIS_ORG_ID?.trim();
   const dataMode = env.DATA_MODE?.trim();
+  const sampleMode = env.SAMPLE_MODE === "true";
 
-  const isZetarisConfigured = Boolean(restUrl && apiKey && orgId) && dataMode !== "snapshot";
+  const isZetarisConfigured =
+    Boolean(restUrl && apiKey && orgId) && dataMode !== "snapshot" && !sampleMode;
 
   if (isZetarisConfigured) {
     console.log("[DataGateway] Active gateway: ZetarisGateway (live)");

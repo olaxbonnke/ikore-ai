@@ -1,9 +1,8 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import * as fs from "fs";
 import { handle } from "../src/core/orchestrator.ts";
 import { templatePlanting, templateSelling } from "../src/i18n/templates.ts";
 
-dotenv.config();
 process.env.DATA_MODE = "snapshot";
 
 interface QARun {

@@ -82,6 +82,11 @@ export interface AgentReply {
   fallbackReason?: string;
   latencyMs?: number;
   model?: string;
+  runId?: string;
+  traceFile?: string;
+  queriesRun?: string[];
+  rowCounts?: Record<string, number>;
+  recalledMemories?: string[];
 }
 
 /** User message into the orchestrator (DESIGN.md section 4). */
@@ -89,6 +94,8 @@ export interface IncomingMessage {
   farmId: string;
   text: string;
   recentTurns?: Array<{ role: "user" | "assistant"; text: string; at: string }>;
+  runId?: string;
+  lang?: Lang;
 }
 
 /** Observation built in observe.ts from DataGateway (filled in Day 2+). */

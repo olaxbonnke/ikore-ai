@@ -1,9 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import dotenv from "dotenv";
-
-dotenv.config();
+import "../src/core/env.ts";
 
 export async function runZetarisSql(sql: string): Promise<Record<string, unknown>> {
   const restUrl = process.env.ZETARIS_REST_URL?.replace(/\/+$/, "");

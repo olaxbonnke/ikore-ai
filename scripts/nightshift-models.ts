@@ -1,7 +1,5 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { getNightshiftConfig } from "../src/core/nightshift.ts";
-
-dotenv.config();
 
 async function main(): Promise<void> {
   const config = getNightshiftConfig();
@@ -13,7 +11,7 @@ async function main(): Promise<void> {
   console.log(`Endpoint:        ${endpoint}`);
   console.log(`App ID:          ${config.app}`);
   console.log(`Scope:           ${config.scope || "(default)"}`);
-  console.log(`Token:           ${config.token ? `${config.token.slice(0, 8)}...` : "(none provided)"}`);
+  console.log(`Token:           ${config.token ? "[configured]" : "(none provided)"}`);
   console.log(`Configured Model:${config.model ? ` ${config.model}` : " (unset / auto)"}`);
   console.log(`------------------------------------------------------`);
 

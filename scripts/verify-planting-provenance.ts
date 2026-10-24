@@ -1,9 +1,7 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { getGateway } from "../src/data/gateway.ts";
 import { loadRainDaily } from "../src/core/observe.ts";
 import { simulatePlanting } from "../src/core/simulate/planting.ts";
-
-dotenv.config();
 
 const farmId = "farm_bisi_ogbomoso";
 const asOf = "2026-04-10";

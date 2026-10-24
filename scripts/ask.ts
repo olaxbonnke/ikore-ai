@@ -1,7 +1,5 @@
-import dotenv from "dotenv";
+import "../src/core/env.ts";
 import { handle } from "../src/core/orchestrator.ts";
-
-dotenv.config();
 
 async function main(): Promise<void> {
   const farmId = process.argv[2] || "farm_bisi_ogbomoso";

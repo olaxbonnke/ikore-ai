@@ -233,7 +233,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
 
     // Template used
     expect(reply.path).toBe("template");
-    expect(reply.model).toBe("none");
+    expect(reply.model).toBe("template");
     expect(reply.fallbackReason).toBe("SAMPLE_MODE=true");
     expect(reply.text).toContain("Wait a week. Plant around 17 April.");
 
@@ -241,7 +241,7 @@ describe("Meterless Nightshift Provider (src/core/nightshift.ts)", () => {
     const ev = decisionCopy.evidence.find((e) => e.id === "ev_explanation_model");
     expect(ev).toBeDefined();
     expect(ev?.source).toBe("Sample Mode");
-    expect(ev?.value).toBe("none");
+    expect(ev?.value).toBe("template");
   });
 
   it("logs warning when METERLESS_MODEL is unset or meterless/auto", async () => {

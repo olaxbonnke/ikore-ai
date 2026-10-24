@@ -1,0 +1,866 @@
+{
+  "run_id": "run_1792843103607_j8m3j",
+  "mode": "sample",
+  "intent": "plant_timing",
+  "decision": {
+    "id": "dec_2026-04-10_farm_bisi_ogbomoso_plant_timing_01",
+    "farmId": "farm_bisi_ogbomoso",
+    "intent": "plant_timing",
+    "createdAt": "2026-04-10T08:00:00+01:00",
+    "options": [
+      {
+        "option": "wait_14",
+        "label": "Wait 14 days",
+        "plantingDate": "2026-04-24",
+        "offsetDays": 14,
+        "replantProbability": 0.0071,
+        "establishmentRainMm": {
+          "p10": 108,
+          "p50": 159.7,
+          "p90": 267.2
+        },
+        "rainfallAdequacy": {
+          "p10": 1,
+          "p50": 1,
+          "p90": 1
+        },
+        "n": 35,
+        "lowConfidence": false,
+        "evidence": {
+          "sourceUrls": [],
+          "analogYears": [
+            {
+              "year": 2023,
+              "weight": 0.18134183595638165,
+              "r21": 145.36999999999998
+            },
+            {
+              "year": 2015,
+              "weight": 0.14078583752718313,
+              "r21": 136.64000000000001
+            },
+            {
+              "year": 1997,
+              "weight": 0.09863699606000416,
+              "r21": 124.37
+            },
+            {
+              "year": 2022,
+              "weight": 0.08042357678075368,
+              "r21": 117.32999999999998
+            },
+            {
+              "year": 2016,
+              "weight": 0.06576370239287713,
+              "r21": 110.38999999999999
+            },
+            {
+              "year": 1994,
+              "weight": 0.03898791637184966,
+              "r21": 92.36000000000001
+            },
+            {
+              "year": 2020,
+              "weight": 0.038393314403208714,
+              "r21": 91.82999999999998
+            },
+            {
+              "year": 2017,
+              "weight": 0.03446741627991378,
+              "r21": 88.11000000000001
+            },
+            {
+              "year": 2003,
+              "weight": 0.028946588485650297,
+              "r21": 82.09
+            },
+            {
+              "year": 2014,
+              "weight": 0.028217291871757276,
+              "r21": 81.21
+            },
+            {
+              "year": 2000,
+              "weight": 0.026450408966493876,
+              "r21": 78.98
+            },
+            {
+              "year": 2007,
+              "weight": 0.020321688177281867,
+              "r21": 69.89000000000001
+            },
+            {
+              "year": 2021,
+              "weight": 0.016617383942707665,
+              "r21": 62.949999999999996
+            },
+            {
+              "year": 2025,
+              "weight": 0.015210841933936922,
+              "r21": 59.90000000000001
+            },
+            {
+              "year": 1999,
+              "weight": 0.014974519659906683,
+              "r21": 59.35999999999999
+            },
+            {
+              "year": 2001,
+              "weight": 0.014045002672917148,
+              "r21": 57.15
+            },
+            {
+              "year": 1991,
+              "weight": 0.013891092159571053,
+              "r21": 56.77
+            },
+            {
+              "year": 2004,
+              "weight": 0.01271899873393671,
+              "r21": 53.73
+            },
+            {
+              "year": 2013,
+              "weight": 0.012086173120713391,
+              "r21": 51.97
+            },
+            {
+              "year": 2012,
+              "weight": 0.011024736548578544,
+              "r21": 48.800000000000004
+            },
+            {
+              "year": 2009,
+              "weight": 0.010787561521732823,
+              "r21": 48.05000000000002
+            },
+            {
+              "year": 1995,
+              "weight": 0.010564675165450536,
+              "r21": 47.33
+            },
+            {
+              "year": 2011,
+              "weight": 0.01011207649897255,
+              "r21": 45.82
+            },
+            {
+              "year": 2024,
+              "weight": 0.009732339748649853,
+              "r21": 44.5
+            },
+            {
+              "year": 1992,
+              "weight": 0.008526917451356314,
+              "r21": 39.940000000000005
+            },
+            {
+              "year": 2008,
+              "weight": 0.007864242587121158,
+              "r21": 37.150000000000006
+            },
+            {
+              "year": 2010,
+              "weight": 0.00721321750384142,
+              "r21": 34.17
+            },
+            {
+              "year": 1996,
+              "weight": 0.007058039641079861,
+              "r21": 33.42
+            },
+            {
+              "year": 2019,
+              "weight": 0.006462501020635517,
+              "r21": 30.38
+            },
+            {
+              "year": 2002,
+              "weight": 0.005724807073046058,
+              "r21": 26.20000000000001
+            },
+            {
+              "year": 2018,
+              "weight": 0.0054257946118282,
+              "r21": 24.349999999999994
+            },
+            {
+              "year": 1998,
+              "weight": 0.004744130423084275,
+              "r21": 19.720000000000002
+            },
+            {
+              "year": 2005,
+              "weight": 0.004646109944443301,
+              "r21": 18.999999999999996
+            },
+            {
+              "year": 2006,
+              "weight": 0.004116950505263241,
+              "r21": 14.829999999999998
+            },
+            {
+              "year": 1993,
+              "weight": 0.00371531425787148,
+              "r21": 11.290000000000001
+            }
+          ],
+          "excludedYears": [],
+          "thresholds": {
+            "dryDayThresholdMm": 1,
+            "seedlingStageDays": 21,
+            "criticalDrySpellDays": 7,
+            "establishmentPeriodDays": 30,
+            "establishmentWaterRequirementMm": 100,
+            "seasonWaterRequirementMm": 500,
+            "maxAllowedMissingDays": 2
+          },
+          "currentR21Mm": 148.06,
+          "sigmaR21": 34.486301154906975,
+          "meanR21": 61.29571428571428,
+          "missingDaysCount": 0
+        },
+        "notes": [
+          "Low replanting risk (<15%); safe seedling establishment window"
+        ],
+        "outcome": {
+          "p10": 1400000,
+          "p50": 1400000,
+          "p90": 1400000,
+          "mean": 1389357,
+          "riskMetric": 0.007,
+          "riskLabel": "replanting risk",
+          "n": 35
+        },
+        "score": 1394678
+      },
+      {
+        "option": "wait_7",
+        "label": "Wait 7 days",
+        "plantingDate": "2026-04-17",
+        "offsetDays": 7,
+        "replantProbability": 0.0071,
+        "establishmentRainMm": {
+          "p10": 100.7,
+          "p50": 159.2,
+          "p90": 251.9
+        },
+        "rainfallAdequacy": {
+          "p10": 0.995,
+          "p50": 1,
+          "p90": 1
+        },
+        "n": 35,
+        "lowConfidence": false,
+        "evidence": {
+          "sourceUrls": [],
+          "analogYears": [
+            {
+              "year": 2023,
+              "weight": 0.18134183595638165,
+              "r21": 145.36999999999998
+            },
+            {
+              "year": 2015,
+              "weight": 0.14078583752718313,
+              "r21": 136.64000000000001
+            },
+            {
+              "year": 1997,
+              "weight": 0.09863699606000416,
+              "r21": 124.37
+            },
+            {
+              "year": 2022,
+              "weight": 0.08042357678075368,
+              "r21": 117.32999999999998
+            },
+            {
+              "year": 2016,
+              "weight": 0.06576370239287713,
+              "r21": 110.38999999999999
+            },
+            {
+              "year": 1994,
+              "weight": 0.03898791637184966,
+              "r21": 92.36000000000001
+            },
+            {
+              "year": 2020,
+              "weight": 0.038393314403208714,
+              "r21": 91.82999999999998
+            },
+            {
+              "year": 2017,
+              "weight": 0.03446741627991378,
+              "r21": 88.11000000000001
+            },
+            {
+              "year": 2003,
+              "weight": 0.028946588485650297,
+              "r21": 82.09
+            },
+            {
+              "year": 2014,
+              "weight": 0.028217291871757276,
+              "r21": 81.21
+            },
+            {
+              "year": 2000,
+              "weight": 0.026450408966493876,
+              "r21": 78.98
+            },
+            {
+              "year": 2007,
+              "weight": 0.020321688177281867,
+              "r21": 69.89000000000001
+            },
+            {
+              "year": 2021,
+              "weight": 0.016617383942707665,
+              "r21": 62.949999999999996
+            },
+            {
+              "year": 2025,
+              "weight": 0.015210841933936922,
+              "r21": 59.90000000000001
+            },
+            {
+              "year": 1999,
+              "weight": 0.014974519659906683,
+              "r21": 59.35999999999999
+            },
+            {
+              "year": 2001,
+              "weight": 0.014045002672917148,
+              "r21": 57.15
+            },
+            {
+              "year": 1991,
+              "weight": 0.013891092159571053,
+              "r21": 56.77
+            },
+            {
+              "year": 2004,
+              "weight": 0.01271899873393671,
+              "r21": 53.73
+            },
+            {
+              "year": 2013,
+              "weight": 0.012086173120713391,
+              "r21": 51.97
+            },
+            {
+              "year": 2012,
+              "weight": 0.011024736548578544,
+              "r21": 48.800000000000004
+            },
+            {
+              "year": 2009,
+              "weight": 0.010787561521732823,
+              "r21": 48.05000000000002
+            },
+            {
+              "year": 1995,
+              "weight": 0.010564675165450536,
+              "r21": 47.33
+            },
+            {
+              "year": 2011,
+              "weight": 0.01011207649897255,
+              "r21": 45.82
+            },
+            {
+              "year": 2024,
+              "weight": 0.009732339748649853,
+              "r21": 44.5
+            },
+            {
+              "year": 1992,
+              "weight": 0.008526917451356314,
+              "r21": 39.940000000000005
+            },
+            {
+              "year": 2008,
+              "weight": 0.007864242587121158,
+              "r21": 37.150000000000006
+            },
+            {
+              "year": 2010,
+              "weight": 0.00721321750384142,
+              "r21": 34.17
+            },
+            {
+              "year": 1996,
+              "weight": 0.007058039641079861,
+              "r21": 33.42
+            },
+            {
+              "year": 2019,
+              "weight": 0.006462501020635517,
+              "r21": 30.38
+            },
+            {
+              "year": 2002,
+              "weight": 0.005724807073046058,
+              "r21": 26.20000000000001
+            },
+            {
+              "year": 2018,
+              "weight": 0.0054257946118282,
+              "r21": 24.349999999999994
+            },
+            {
+              "year": 1998,
+              "weight": 0.004744130423084275,
+              "r21": 19.720000000000002
+            },
+            {
+              "year": 2005,
+              "weight": 0.004646109944443301,
+              "r21": 18.999999999999996
+            },
+            {
+              "year": 2006,
+              "weight": 0.004116950505263241,
+              "r21": 14.829999999999998
+            },
+            {
+              "year": 1993,
+              "weight": 0.00371531425787148,
+              "r21": 11.290000000000001
+            }
+          ],
+          "excludedYears": [],
+          "thresholds": {
+            "dryDayThresholdMm": 1,
+            "seedlingStageDays": 21,
+            "criticalDrySpellDays": 7,
+            "establishmentPeriodDays": 30,
+            "establishmentWaterRequirementMm": 100,
+            "seasonWaterRequirementMm": 500,
+            "maxAllowedMissingDays": 2
+          },
+          "currentR21Mm": 148.06,
+          "sigmaR21": 34.486301154906975,
+          "meanR21": 61.29571428571428,
+          "missingDaysCount": 0
+        },
+        "notes": [
+          "Low replanting risk (<15%); safe seedling establishment window"
+        ],
+        "outcome": {
+          "p10": 1391115,
+          "p50": 1400000,
+          "p90": 1400000,
+          "mean": 1384563,
+          "riskMetric": 0.007,
+          "riskLabel": "replanting risk",
+          "n": 35
+        },
+        "score": 1387839
+      },
+      {
+        "option": "plant_now",
+        "label": "Plant now",
+        "plantingDate": "2026-04-10",
+        "offsetDays": 0,
+        "replantProbability": 0.1408,
+        "establishmentRainMm": {
+          "p10": 60,
+          "p50": 167.9,
+          "p90": 230.7
+        },
+        "rainfallAdequacy": {
+          "p10": 0.6,
+          "p50": 1,
+          "p90": 1
+        },
+        "n": 35,
+        "lowConfidence": false,
+        "evidence": {
+          "sourceUrls": [],
+          "analogYears": [
+            {
+              "year": 2023,
+              "weight": 0.18134183595638165,
+              "r21": 145.36999999999998
+            },
+            {
+              "year": 2015,
+              "weight": 0.14078583752718313,
+              "r21": 136.64000000000001
+            },
+            {
+              "year": 1997,
+              "weight": 0.09863699606000416,
+              "r21": 124.37
+            },
+            {
+              "year": 2022,
+              "weight": 0.08042357678075368,
+              "r21": 117.32999999999998
+            },
+            {
+              "year": 2016,
+              "weight": 0.06576370239287713,
+              "r21": 110.38999999999999
+            },
+            {
+              "year": 1994,
+              "weight": 0.03898791637184966,
+              "r21": 92.36000000000001
+            },
+            {
+              "year": 2020,
+              "weight": 0.038393314403208714,
+              "r21": 91.82999999999998
+            },
+            {
+              "year": 2017,
+              "weight": 0.03446741627991378,
+              "r21": 88.11000000000001
+            },
+            {
+              "year": 2003,
+              "weight": 0.028946588485650297,
+              "r21": 82.09
+            },
+            {
+              "year": 2014,
+              "weight": 0.028217291871757276,
+              "r21": 81.21
+            },
+            {
+              "year": 2000,
+              "weight": 0.026450408966493876,
+              "r21": 78.98
+            },
+            {
+              "year": 2007,
+              "weight": 0.020321688177281867,
+              "r21": 69.89000000000001
+            },
+            {
+              "year": 2021,
+              "weight": 0.016617383942707665,
+              "r21": 62.949999999999996
+            },
+            {
+              "year": 2025,
+              "weight": 0.015210841933936922,
+              "r21": 59.90000000000001
+            },
+            {
+              "year": 1999,
+              "weight": 0.014974519659906683,
+              "r21": 59.35999999999999
+            },
+            {
+              "year": 2001,
+              "weight": 0.014045002672917148,
+              "r21": 57.15
+            },
+            {
+              "year": 1991,
+              "weight": 0.013891092159571053,
+              "r21": 56.77
+            },
+            {
+              "year": 2004,
+              "weight": 0.01271899873393671,
+              "r21": 53.73
+            },
+            {
+              "year": 2013,
+              "weight": 0.012086173120713391,
+              "r21": 51.97
+            },
+            {
+              "year": 2012,
+              "weight": 0.011024736548578544,
+              "r21": 48.800000000000004
+            },
+            {
+              "year": 2009,
+              "weight": 0.010787561521732823,
+              "r21": 48.05000000000002
+            },
+            {
+              "year": 1995,
+              "weight": 0.010564675165450536,
+              "r21": 47.33
+            },
+            {
+              "year": 2011,
+              "weight": 0.01011207649897255,
+              "r21": 45.82
+            },
+            {
+              "year": 2024,
+              "weight": 0.009732339748649853,
+              "r21": 44.5
+            },
+            {
+              "year": 1992,
+              "weight": 0.008526917451356314,
+              "r21": 39.940000000000005
+            },
+            {
+              "year": 2008,
+              "weight": 0.007864242587121158,
+              "r21": 37.150000000000006
+            },
+            {
+              "year": 2010,
+              "weight": 0.00721321750384142,
+              "r21": 34.17
+            },
+            {
+              "year": 1996,
+              "weight": 0.007058039641079861,
+              "r21": 33.42
+            },
+            {
+              "year": 2019,
+              "weight": 0.006462501020635517,
+              "r21": 30.38
+            },
+            {
+              "year": 2002,
+              "weight": 0.005724807073046058,
+              "r21": 26.20000000000001
+            },
+            {
+              "year": 2018,
+              "weight": 0.0054257946118282,
+              "r21": 24.349999999999994
+            },
+            {
+              "year": 1998,
+              "weight": 0.004744130423084275,
+              "r21": 19.720000000000002
+            },
+            {
+              "year": 2005,
+              "weight": 0.004646109944443301,
+              "r21": 18.999999999999996
+            },
+            {
+              "year": 2006,
+              "weight": 0.004116950505263241,
+              "r21": 14.829999999999998
+            },
+            {
+              "year": 1993,
+              "weight": 0.00371531425787148,
+              "r21": 11.290000000000001
+            }
+          ],
+          "excludedYears": [],
+          "thresholds": {
+            "dryDayThresholdMm": 1,
+            "seedlingStageDays": 21,
+            "criticalDrySpellDays": 7,
+            "establishmentPeriodDays": 30,
+            "establishmentWaterRequirementMm": 100,
+            "seasonWaterRequirementMm": 500,
+            "maxAllowedMissingDays": 2
+          },
+          "currentR21Mm": 148.06,
+          "sigmaR21": 34.486301154906975,
+          "meanR21": 61.29571428571428,
+          "missingDaysCount": 0
+        },
+        "notes": [
+          "Low replanting risk (<15%); safe seedling establishment window"
+        ],
+        "outcome": {
+          "p10": 785705,
+          "p50": 1400000,
+          "p90": 1400000,
+          "mean": 1289628,
+          "riskMetric": 0.141,
+          "riskLabel": "replanting risk",
+          "n": 35
+        },
+        "score": 1037667
+      }
+    ],
+    "chosen": "wait_7",
+    "runnerUp": "wait_14",
+    "confidence": "high",
+    "riskBadge": "green",
+    "keyNumbers": {
+      "asOf": "2026-04-10",
+      "chosenOption": "wait_7",
+      "chosenLabel": "Wait 7 days",
+      "score": 1387839,
+      "expectedValueNgn": 1400000,
+      "nAnalogYears": 35,
+      "lambda": 0.5,
+      "replantRisk": "0.7%",
+      "replantProbability": 0.007,
+      "plantingDate": "2026-04-17",
+      "rainP10Mm": 100.7,
+      "rainP50Mm": 159.2,
+      "rainP90Mm": 251.9,
+      "adequacyP10": "99.5%",
+      "adequacyP50": "100.0%",
+      "adequacyP90": "100.0%",
+      "replantRiskNow": "14.1%",
+      "replantProbabilityNow": 0.1408,
+      "replantRisk_plantNow": "14.1%",
+      "replantIn100_plantNow": 14,
+      "plainChance_plantNow_en": "about 1 in 7 seasons",
+      "plainChance_plantNow_pcm": "about 1 for every 7 seasons",
+      "plainChance_plantNow_yo": "ẹ̀ẹ̀kan nínú àsìkò méje",
+      "plantNow_n": 7,
+      "replantRisk_wait7": "0.7%",
+      "replantIn100_wait7": 1,
+      "plainChance_wait7_en": "almost never",
+      "plainChance_wait7_pcm": "e no dey almost happen",
+      "plainChance_wait7_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+      "replantRisk_wait14": "0.7%",
+      "replantIn100_wait14": 1,
+      "plainChance_wait14_en": "almost never",
+      "plainChance_wait14_pcm": "e no dey almost happen",
+      "plainChance_wait14_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+      "plainChance_chosen_en": "almost never",
+      "plainChance_chosen_pcm": "e no dey almost happen",
+      "plainChance_chosen_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+      "replantIn100_chosen": 1,
+      "in100": 100,
+      "seasonsCount": 35
+    },
+    "evidence": [
+      {
+        "id": "ev_rain_history",
+        "kind": "history",
+        "label": "Daily rainfall history (farm_bisi_ogbomoso)",
+        "source": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG&longitude=4.24&latitude=8.13&start=19910101&end=20260409&format=JSON",
+        "sql": "SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = 'farm_bisi_ogbomoso' ORDER BY date ASC",
+        "queryName": "rainDaily",
+        "statistic": "35 analog years evaluated with 21-day pre-season similarity weighting",
+        "value": 35,
+        "unit": "analog_years"
+      },
+      {
+        "id": "ev_spike_guard",
+        "kind": "assumption",
+        "label": "Daily precipitation spike guard (MAX_DAILY_RAIN_MM)",
+        "source": "Climate Data Gateway",
+        "statistic": "Values > 200 mm/day nulled to prevent unphysical sensor spikes",
+        "value": 200,
+        "unit": "mm/day"
+      },
+      {
+        "id": "ev_sivakumar_threshold",
+        "kind": "assumption",
+        "label": "False-start seedling dry spell threshold",
+        "source": "Adapted from Sivakumar (1988) West Africa agroclimatology",
+        "statistic": "More than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
+        "value": 7,
+        "unit": "days"
+      },
+      {
+        "id": "ev_nimet_benchmark",
+        "kind": "forecast",
+        "label": "NiMet 2026 Seasonal Climate Prediction benchmark (Oyo)",
+        "source": "NiMet (Oyo State Meteorological Manager Emmanuel Udoh, Ibadan, March 2026)",
+        "sql": "SELECT state, season, onset_start, onset_end, wait_after_onset_days_min, wait_after_onset_days_max, source_name, source_url, note FROM oko_pg.nimet_onset WHERE LOWER(state) = LOWER('Oyo') AND season = 2026 LIMIT 1",
+        "queryName": "nimetOnset",
+        "statistic": "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 17 April, falls inside that window.",
+        "value": "inside"
+      },
+      {
+        "id": "ev_explanation_model",
+        "kind": "assumption",
+        "label": "Explanation Model",
+        "source": "Sample Mode",
+        "statistic": "Written by deterministic template (SAMPLE_MODE=true)",
+        "value": "template"
+      }
+    ],
+    "assumptions": [
+      "Base yield for smallholder maize: 2,000 kg/ha",
+      "Seed cost: ₦25,000/ha; Replant labour: ₦20,000/ha",
+      "Dry-spell rule: more than 7 dry days within the first 21 days after planting, adapted from Sivakumar (1988), whose onset criterion uses 30 days",
+      "2.0 ha from farms_seed.csv; 2,000 kg/ha is an uncited illustrative yield; ₦350/kg is an illustrative price matching the Aug 2022 Ibadan row in oko_pg.prices, not a 2026 forecast. Used only to scale scores, never shown to the farmer.",
+      "200 mm daily rainfall spike guard applied to satellite climate data",
+      "Close call: wait_7 and wait_14 have equal 0.7% replant risk, so the earlier date is chosen to keep more of the season."
+    ],
+    "dataMode": "live"
+  },
+  "reply": "Wait a week. Plant around 17 April.\n\nIf you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in 35 past seasons.",
+  "evidence": {
+    "asOf": "2026-04-10",
+    "chosenOption": "wait_7",
+    "chosenLabel": "Wait 7 days",
+    "score": 1387839,
+    "expectedValueNgn": 1400000,
+    "nAnalogYears": 35,
+    "lambda": 0.5,
+    "replantRisk": "0.7%",
+    "replantProbability": 0.007,
+    "plantingDate": "2026-04-17",
+    "rainP10Mm": 100.7,
+    "rainP50Mm": 159.2,
+    "rainP90Mm": 251.9,
+    "adequacyP10": "99.5%",
+    "adequacyP50": "100.0%",
+    "adequacyP90": "100.0%",
+    "replantRiskNow": "14.1%",
+    "replantProbabilityNow": 0.1408,
+    "replantRisk_plantNow": "14.1%",
+    "replantIn100_plantNow": 14,
+    "plainChance_plantNow_en": "about 1 in 7 seasons",
+    "plainChance_plantNow_pcm": "about 1 for every 7 seasons",
+    "plainChance_plantNow_yo": "ẹ̀ẹ̀kan nínú àsìkò méje",
+    "plantNow_n": 7,
+    "replantRisk_wait7": "0.7%",
+    "replantIn100_wait7": 1,
+    "plainChance_wait7_en": "almost never",
+    "plainChance_wait7_pcm": "e no dey almost happen",
+    "plainChance_wait7_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+    "replantRisk_wait14": "0.7%",
+    "replantIn100_wait14": 1,
+    "plainChance_wait14_en": "almost never",
+    "plainChance_wait14_pcm": "e no dey almost happen",
+    "plainChance_wait14_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+    "plainChance_chosen_en": "almost never",
+    "plainChance_chosen_pcm": "e no dey almost happen",
+    "plainChance_chosen_yo": "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+    "replantIn100_chosen": 1,
+    "in100": 100,
+    "seasonsCount": 35
+  },
+  "llm": {
+    "provider": "sample",
+    "requested_model": "none",
+    "responded_model": "template",
+    "latency_ms": 0,
+    "fallback_used": true
+  },
+  "zetaris": {
+    "queries_run": [
+      "SELECT date, rain_mm FROM oko_pg.rain_daily WHERE farm_id = 'farm_bisi_ogbomoso' ORDER BY date ASC",
+      "SELECT state, season, onset_start, onset_end, wait_after_onset_days_min, wait_after_onset_days_max, source_name, source_url, note FROM oko_pg.nimet_onset WHERE LOWER(state) = LOWER('Oyo') AND season = 2026 LIMIT 1"
+    ],
+    "row_counts": {
+      "rain_daily": 12899,
+      "nimet_onset": 1
+    }
+  },
+  "memory": {
+    "hmem_used": true,
+    "recalled": [
+      "Farm profile: Mama Bisi (farm_bisi_ogbomoso) operates 2 hectares of maize in Ogbomoso North, Oyo State (derived_savanna). Storage method: sack. Preferred language: pcm. Risk profile: normal.",
+      "Storage method for Mama Bisi (farm_bisi_ogbomoso) is sack.",
+      "Mama Bisi farms 2 hectares in Ogbomoso North, Oyo State.",
+      "Past season 2025 for farm_bisi_ogbomoso: planting date was 2025-04-18, germination was yes, harvested 42 bags of maize, sold in 2025-10 at ₦48000 per bag.",
+      "Sell or store advice for 2026-08-20: sell_now. Offered ₦45,000/bag for 20 bags. Expected return ₦900,000."
+    ]
+  },
+  "trace_file": "logs/trace-run_1792843103607_j8m3j.jsonl"
+}

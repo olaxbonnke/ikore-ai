@@ -9,3 +9,5 @@ vendor/hmem/
 *.log
 *.tsbuildinfo
 .DS_Store
+logs/*
+!logs/.gitkeep

@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+import "./env.ts";
 import type { ZodType } from "zod";
 import type { LLMCompleteParams, LLMProvider } from "../llm/provider.ts";
-
-dotenv.config();
 
 export interface NightshiftConfig {
   baseUrl: string;
