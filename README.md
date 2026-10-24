@@ -1,80 +1,277 @@
 # Ikore AI
 
-Ìkórè means harvest in Yoruba.
+**Ìkórè** means *harvest* in Yoruba.
 
-Ikore AI is a farm decision agent designed to empower Nigerian smallholder farmers with data-grounded agronomic and economic intelligence. It addresses two critical inflection points that determine a farmer's seasonal livelihood:
-1. **When to plant**: Minimising false-start replanting risk and ensuring adequate seasonal rainfall through historical analog-year analysis and forecast integration.
-2. **Whether to sell or store**: Comparing immediate harvest prices against storage costs, post-harvest loss curves, and seasonal market price appreciation.
+Ikore AI is an agronomic decision agent designed to empower Nigerian smallholder farmers in Oyo State (calibrated for Ogbomoso and Iseyin) with data-grounded guidance on maize planting dates and harvest selling-versus-storage timing. The agent provides plain-language explanations in English, Nigerian Pidgin, and Yoruba, strictly computing all probabilities and economic figures in deterministic code so that language models never calculate or alter figures shown to farmers.
 
-> **Current Implementation & Scope**: Maize in Oyo State (e.g. Ogbomoso and Iseyin) is the first supported crop and geography. The crop parameters, agronomic thresholds, and data adapters are designed to extend cleanly to other crops (e.g. sorghum, cassava) and states, but currently only **maize in Oyo State** is fully implemented and validated against real satellite and historical records.
-
----
-
-## Architecture & Core Tech
-
-Ikore AI combines deterministic agronomic modeling with modern agent infrastructure:
-
-- **Data Layer (Zetaris)**: Federated, read-only data access over 35+ years of daily climate history (NASA POWER PRECTOTCORR), 16-day weather forecasts (Open-Meteo), WFP monthly market prices, and crop calendars via `DataGateway` (`ZetarisGateway` in live mode, `SnapshotGateway` for offline reproducible evaluation).
-- **Farm Memory & Ledger (Meterless H-MEM)**: Multi-session, auditable memory per farm using real Meterless H-MEM services (`MemoryMiningService`, `MemoryRetrievalService`, `TrustLedgerService`, `SleepCycleService`).
-- **Explanation Layer (NVIDIA Nemotron via Nightshift)**: Models run through Meterless Nightshift (primary AI provider). NVIDIA Nemotron writes the farmer-facing explanations in English, Nigerian Pidgin and Yoruba. The NVIDIA key is stored in Nightshift's Providers tab, not in this project. Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
-- **Pure Simulation Engine**: 100% deterministic, pure functions taking explicit `asOf` dates (Africa/Lagos timezone) with zero unseeded randomness or ungrounded heuristics.
+- **Hackathon Track**: Track 3: Reasoning Architecture
+- **Team**: ARAZAKA (Solo: Bonnke Olaitan)
+- **Repository**: [https://github.com/olaxbonnke/ikore-ai](https://github.com/olaxbonnke/ikore-ai)
+- **Languages Supported**: English (`en`), Yoruba (`yo`), Nigerian Pidgin (`pcm`)
 
 ---
 
-## Quickstart
+## Architecture & Reasoning Pipeline
 
-### Prerequisites
-- Node.js 20+
-- npm
+Ikore AI enforces a strict separation between perception, memory retrieval, federated data queries, deterministic simulation, multilingual explanation, multi-gate validation, and memory retention.
 
-### Installation
+### The 8-Step Decision Pipeline
+
+1. **Understand**: Parses user message into intent (`plant_timing`, `sell_or_store`, `recall_previous`), slots (bags, offer price), and language using deterministic rules and NVIDIA Nemotron via Meterless Nightshift.
+2. **Recall (H-MEM)**: Queries per-farm long-term memory in Meterless H-MEM for past farm profile facts, historical records, and previous advice.
+3. **Observe (Zetaris)**: Executes federated, read-only SQL queries via Zetaris `DataGateway` across 35+ years of daily climate history (`rain_daily`), seasonal agro-meteorological onset benchmarks (`nimet_onset`), and wholesale market prices.
+4. **Simulate**: Pure deterministic agronomic simulations:
+   - *Planting*: Analog-year rainfall weighting and false-start seedling mortality simulation (`simulatePlanting`).
+   - *Selling*: Post-harvest storage loss curves and detrended WFP market price seasonality (`simulateSelling`).
+5. **Decide**: Evaluates candidate options (`plant_now`, `wait_7`, `wait_14` or `sell_now`, `store_4w`, `store_12w`), scoring each option and expressing risks as farmer-friendly plain chance phrases (e.g., "almost never", "about 1 in 7 seasons") and bag counts.
+6. **Explain**: Generates a natural language explanation in the requested language using NVIDIA Nemotron through Meterless Nightshift (or verified deterministic templates).
+7. **Validate**: Multi-gate validator enforces output structure (≤12-word headline, ≤2-sentence reason, ≤3 numbers total, zero percentages, no ISO dates, no technical jargon), validates that every single number quoted exists in the deterministic `keyNumbers`, verifies that numbers are attached only to the option they describe, and checks Yoruba tone marks or Pidgin phrasing.
+8. **Remember (H-MEM)**: Persists the question, recommendation, and key numbers into the farm's H-MEM memory store with run-level deduplication.
+
+### The `recall_previous` Shortcut
+
+When a farmer asks to be reminded of previous advice (e.g. *"Remind me, when did you say I should plant?"*, *"Kí lo sọ fún mi nípa ìgbà tí màá gbìn?"*, or *"Wetin you tell me about planting earlier?"*), the pipeline executes a dedicated shortcut:
+
+`understand` &rarr; `recall` (H-MEM) &rarr; `explain` (Nemotron via Nightshift) &rarr; `validate`
+
+It completely bypasses `observe` (executing 0 Zetaris queries), `simulate`, `decide`, and `remember`, directly answering from the farm's recorded H-MEM ledger.
+
+### Reasoning Pipeline Diagram
+
+```mermaid
+flowchart TD
+    Farmer([Farmer Query]) --> Understand["1. Understand<br/>(Intent, Slots, Language)"]
+    Understand --> IsRecall{Intent is<br/>recall_previous?}
+    
+    %% Recall Shortcut
+    IsRecall -- Yes --> HMemRecallShort["2. Recall from H-MEM<br/>(Retrieve prior advice)"]
+    HMemRecallShort --> ExplainRecall["3. Explain Recall<br/>(Nemotron via Nightshift)"]
+    ExplainRecall --> ValidateShort["4. Validate & Localize<br/>(Language Guard & Templates)"]
+    ValidateShort --> ReplyShort([Farmer Reminder])
+
+    %% Full Decision Pipeline
+    IsRecall -- No --> HMemRecall["2. Recall from H-MEM<br/>(Farm Profile & Memory)"]
+    HMemRecall --> Observe["3. Observe (Zetaris SQL)<br/>(Rainfall, NiMet, Prices)"]
+    Observe --> Simulate["4. Pure Simulation<br/>(Analog Years / Storage Loss)"]
+    Simulate --> Decide["5. Decision Engine<br/>(Plain Chance & Bags)"]
+    Decide --> Explain["6. Grounded Explain<br/>(Nemotron via Nightshift)"]
+    Explain --> Validate["7. Multi-Gate Validation<br/>(Numbers, Attribution, Lang)"]
+    Validate --> Remember["8. Remember in H-MEM<br/>(Store Run & Audit Trail)"]
+    Remember --> Reply([Farmer Reply])
+```
+
+---
+
+## Sponsor Technology
+
+### 1. Zetaris (Federated Data Layer)
+- **Code locations**: `src/data/gateway.ts`, `src/data/queries.ts`, `scripts/zetaris-load.ts`, `scripts/zetaris-verify.ts`, `zetaris/sql/*.sql`.
+- **Role**: Provides federated SQL query access over the `oko_pg` catalog (`rain_daily`, `nimet_onset`, and price tables), executed read-only per run via `DataGateway` (`ZetarisGateway` in live mode, `SnapshotGateway` in snapshot mode).
+- **How to verify**:
+  - In `/api/run` responses, inspect `zetaris.queries_run` and `zetaris.row_counts` (e.g. 12,899 rows for `rain_daily`, 1 row for `nimet_onset`).
+  - In execution traces (`logs/trace-<run_id>.jsonl`), see step `observe` with component `zetaris`.
+  - Run `npm run zetaris:verify` to check connectivity to the engine.
+
+### 2. Meterless H-MEM (Per-Farm Long-Term Memory)
+- **Code locations**: `src/memory/hmem.ts`, `src/engine.ts`, `scripts/hmem-seed.ts`, `vendor/hmem/` (vendored Apache-2.0 reference engine).
+- **Role**: Maintains persistent, per-farm memory stores with trust ledgers. Recalls farm context prior to decision simulation, records each question and advice run with unique deduplication IDs, and directly answers "remind me" inquiries from memory.
+- **How to verify**:
+  - In `/api/run` responses, check `memory.hmem_used: true`, `memory.recalled` (listing retrieved memories), and `memory.stored: "mem-<id>"`.
+  - In execution traces, see step `recall` and step `remember` with component `hmem`.
+  - Test recall queries to verify that `memory.hmem_used` is true while `zetaris.queries_run` is empty (`[]`).
+
+### 3. Meterless Nightshift (Primary AI Provider)
+- **Code locations**: `src/core/nightshift.ts`, `src/llm/provider.ts`, `src/core/llm.ts`, `scripts/nightshift-models.ts`, `scripts/nightshift-smoke.ts`.
+- **Role**: Acts as the primary AI provider exposing an OpenAI-compatible desktop service at `METERLESS_BASE_URL`. All LLM calls route through Nightshift with bearer token `METERLESS_RUNTIME_TOKEN` and header `meterless-app: ikore-ai`. No NVIDIA keys exist in the application code.
+- **How to verify**:
+  - In `/api/run` responses, check `llm.provider: "nightshift"`.
+  - In execution traces, see steps `understand` and `explain` with component `nightshift`.
+  - Run `npx tsx scripts/nightshift-smoke.ts` to test an isolated request and verify model headers.
+
+### 4. NVIDIA Nemotron (Language & Explanation Model)
+- **Code locations**: `src/llm/understand.ts`, `src/llm/explain.ts`, `prompts/understand.md`, `prompts/explain.md`.
+- **Model**: `nvidia/nemotron-3.5-lightning-30b-a3b`.
+- **Role**: Parses unstructured farmer queries into typed intents and slots, and writes concise, farmer-facing explanations in English, Yoruba, and Nigerian Pidgin. Crucially, requests pass `chat_template_kwargs: { enable_thinking: false }` to disable reasoning tokens and prevent response truncation.
+- **How to verify**:
+  - In `/api/run` responses, check `llm.requested_model: "nvidia/nemotron-3.5-lightning-30b-a3b"` and `llm.responded_model`.
+  - In `decision.evidence`, verify the audit entry `[ev_explanation_model]` attributing the text to the responded model.
+
+---
+
+## Quick Start
+
+### Option A: Offline / Sample Mode (Zero Credentials, Immediate)
+Sample mode runs 100% offline using bundled snapshots, seeded farm profiles, and deterministic templates. No Docker, no Nightshift, and no API keys are required:
+
 ```bash
-git clone https://github.com/olaxbonnke/oko-farm-agent.git
-cd oko-farm-agent
+git clone https://github.com/olaxbonnke/ikore-ai.git
+cd ikore-ai
 npm install
+npm run demo
+```
+This seeds demo farm memories into `.oko/hmem` and starts the Next.js server at `http://localhost:3000`.
+
+### Option B: Live Mode (Zetaris + Nightshift + Nemotron)
+To run live queries and live LLM generations:
+
+1. **Zetaris**: Run the PostgreSQL container with ingested data (`npm run zetaris:load`) and launch the Zetaris engine. During hackathon development, Zetaris was hosted in a remote Docker environment (GitHub Codespace) and tunneled locally via SSH:
+   ```bash
+   ssh -N -L 8000:localhost:8000 <remote-host>
+   ```
+2. **Meterless Nightshift**: Start the local Nightshift desktop application (defaulting to `http://127.0.0.1:8088/v1`). Under the **Providers** tab in Nightshift, configure the NVIDIA provider and enter your NVIDIA API key.
+3. **Environment Configuration**: Configure `.env` (blank keys shown for safety):
+   ```bash
+   DATA_MODE=live
+   ZETARIS_REST_URL=http://localhost:8000
+   ZETARIS_API_KEY=
+   ZETARIS_ORG_ID=
+   METERLESS_BASE_URL=http://127.0.0.1:8088/v1
+   METERLESS_RUNTIME_TOKEN=
+   METERLESS_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
+   METERLESS_APP=ikore-ai
+   SAMPLE_MODE=false
+   ```
+4. **Start the Application**:
+   ```bash
+   npm run dev
+   ```
+   *Port Note*: The application listens on port 3000 (`http://localhost:3000`).
+
+---
+
+## Judge API & Inspection
+
+Ikore AI exposes a JSON REST API for automated judge evaluation without requiring UI interaction.
+
+### 1. `GET /api/health`
+Checks system health and verifies whether live providers are configured (without exposing secrets).
+
+**cURL**:
+```bash
+curl http://localhost:3000/api/health
 ```
 
-> **H-MEM Engine (Clean-Clone & Bundling)**:
-> The Meterless H-MEM reference engine is vendored in `vendor/hmem` under its original Apache-2.0 license and committed with pre-built ESM distribution (`vendor/hmem/dist/index.js`). A fresh clone has full H-MEM memory capabilities out of the box with zero external downloads and no risk of degit rate limits.
-> If you ever need to re-vendor or refresh the upstream reference implementation from Meterless:
-> ```bash
-> npm run setup        # Clones upstream reference into vendor/hmem and builds vendor/hmem/dist/index.js
-> ```
-
-
-### Verification & Testing
-```bash
-npm test             # Runs all Vitest test suites (pure simulations, memory, gateway)
-npx tsc --noEmit     # Validates TypeScript types strictly
-npm run zetaris:verify # Verifies live Zetaris connectivity or fallback
+**PowerShell**:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:3000/api/health" -Method Get | ConvertTo-Json
 ```
 
-### Running the App
+**Response Example**:
+```json
+{
+  "ok": true,
+  "sample_mode": true,
+  "nightshift_configured": false,
+  "zetaris_configured": false
+}
+```
+
+### 2. `POST /api/run`
+Executes the reasoning orchestrator end-to-end.
+
+**Request Body**:
+- `question` (string, required): Farmer's query.
+- `farm_id` (string, optional, default: `"farm_bisi_ogbomoso"`).
+- `lang` (`"en"` | `"yo"` | `"pcm"`, optional, detected from text if omitted).
+
+**cURL**:
 ```bash
-npm run dev          # Next.js development server at http://localhost:3000
-npm run demo         # Runs snapshot-backed demo with seeded farm memories
+curl -X POST http://localhost:3000/api/run \
+  -H "Content-Type: application/json" \
+  -d '{"question":"When should I plant my maize this season?","farm_id":"farm_bisi_ogbomoso","lang":"en"}'
+```
+
+**PowerShell**:
+```powershell
+$body = @{
+  question = "When should I plant my maize this season?"
+  farm_id  = "farm_bisi_ogbomoso"
+  lang     = "en"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:3000/api/run" -Method Post -Body $body -ContentType "application/json" | ConvertTo-Json -Depth 6
+```
+
+**Response Fields**:
+- `run_id`: Unique identifier for the run.
+- `mode`: `"live"` or `"sample"`.
+- `intent`: Classified intent (`"plant_timing"`, `"sell_or_store"`, or `"recall_previous"`).
+- `decision`: Full decision object (options evaluated, chosen verdict, runner-up, and deterministic `keyNumbers`).
+- `reply`: Farmer-facing natural language text formatted without percentages or jargon.
+- `evidence`: Grounded numbers and assumption badges backing the decision.
+- `llm`: Provider details (`nightshift` or `sample`), requested model, responded model, latency, and whether fallback occurred.
+- `zetaris`: SQL queries executed and row counts returned.
+- `memory`: H-MEM usage flag (`hmem_used`), recalled memory snippets, and the stored memory ID.
+- `trace_file`: Path to the execution trace log (`logs/trace-<run_id>.jsonl`).
+
+### Sample Runs
+Reference JSON judge request and response files are saved in `samples/`:
+- `samples/sample-1-request.json` & `samples/sample-1-response.json`: English planting decision on `farm_bisi_ogbomoso`.
+- `samples/sample-2-request.json` & `samples/sample-2-response.json`: English selling decision on `farm_ade_iseyin`.
+- `samples/sample-3-request.json` & `samples/sample-3-response.json`: Yoruba planting decision on `farm_bisi_ogbomoso`.
+
+### Execution Traces
+Every run writes an execution trace to `logs/trace-<run_id>.jsonl` with structured step records:
+```json
+{"timestamp":"2026-10-24T15:15:26.912Z","run_id":"run_...","step":"understand","component":"nightshift","latency_ms":180,"status":"ok"}
+{"timestamp":"2026-10-24T15:15:27.092Z","run_id":"run_...","step":"recall","component":"hmem","latency_ms":5,"status":"ok"}
+{"timestamp":"2026-10-24T15:15:27.098Z","run_id":"run_...","step":"observe","component":"zetaris","latency_ms":420,"status":"ok"}
+...
 ```
 
 ---
 
-## Key Commands
+## Testing & Quality Assurance
 
-- `npm test`: Run full Vitest test suite.
-- `npm run setup`: Vendor Meterless H-MEM reference into `vendor/hmem`.
-- `npm run seed`: Seed demo farm profiles into H-MEM memory.
-- `npm run zetaris:verify`: Test connectivity to live Zetaris or offline fallback.
-- `npm run zetaris:load`: Ingest tables into PostgreSQL container and register JDBC datasource in Zetaris.
-- `npm run snapshots:fetch`: Fetch live NASA POWER and Open-Meteo climate data with sanity bounds.
-- `npx tsx scripts/nightshift-models.ts`: Inspect available model IDs registered in Meterless Nightshift.
-- `npx tsx scripts/nightshift-smoke.ts`: Send a test decision explanation through Nightshift and verify model attribution.
+Ikore AI includes comprehensive unit and integration test coverage across simulations, memory, gateways, API routes, and language validators:
+
+```bash
+npm test             # Runs all 122 Vitest tests
+npx tsc --noEmit     # Validates TypeScript compilation with zero errors
+```
+
+- **Test Suites**: 10 files passing (`tests/planting.test.ts`, `tests/selling.test.ts`, `tests/api-run.test.ts`, `tests/hmem.test.ts`, `tests/gateway.test.ts`, `tests/nightshift.test.ts`, `tests/explain-validator.test.ts`, `tests/decide.test.ts`, `tests/stats.test.ts`, `tests/smoke.test.ts`).
+- **Test Count**: 122 passing tests.
 
 ---
 
-## AI and Model Usage
+## Honest Limitations
 
-Models run through Meterless Nightshift (primary AI provider). NVIDIA Nemotron [exact id] writes the farmer-facing explanations in English, Nigerian Pidgin and Yoruba. The NVIDIA key is stored in Nightshift's Providers tab, not in this project.
+1. **Geographic Scope**: The agronomic models, planting dates, and weather baseline are calibrated exclusively for **Oyo State** (Ogbomoso and Iseyin in the derived savanna zone). Parameters are not calibrated for northern Sudan/Sahel zones or south-eastern rainforest zones.
+2. **Synthetic Farm Profiles**: Farm profile details (`data/farms_seed.csv`) and seasonal farm logs (`data/farm_records.csv`) are synthetic demo records used to seed H-MEM for evaluation. They are explicitly tagged in memory as `[Demo profile from data/farms_seed.csv]` and `[Demo record from data/farm_records.csv]`.
+3. **Data Gaps & Sources**:
+   - *Precipitation*: NASA POWER daily precipitation records experience satellite telemetry lag and occasional gaps; 16-day forecasts rely on Open-Meteo. A 200 mm spike guard (`MAX_DAILY_RAIN_MM`) is enforced to prevent sensor artifacts from distorting seedling mortality simulations.
+   - *Market Prices*: Based on UN WFP monthly wholesale maize prices for Bodija Market in Ibadan. Daily price movements between monthly observations are linearly interpolated, and seasonality curves are detrended using a 12-month centred moving average (CMA).
+   - *Nominal Currency*: Storage economics and price comparisons are expressed in nominal Nigerian Naira (₦) and do not account for general consumer price index (CPI) inflation.
+4. **Yoruba Linguistic Validation**: Yoruba prompts, tone marks, and responses follow standard orthography and automated checks, but have not yet undergone formal field testing with native smallholder farmers.
+5. **Nightshift Dependency in Live Mode**: Live mode requires a running local instance of the Meterless Nightshift desktop application with NVIDIA credentials. If Nightshift is unavailable, the agent automatically falls back to deterministic pre-verified templates.
 
-- **Routing & Credentials**: All chat completion requests route to `METERLESS_BASE_URL` with bearer token `METERLESS_RUNTIME_TOKEN` and header `meterless-app: ikore-ai`. No NVIDIA keys or direct NVIDIA endpoints are accessed by application code.
-- **Model Attribution**: The model that actually answers is read directly from the response's `model` field, logged in a structured call log, and added as proof to the `Decision.evidence` panel (`[ev_explanation_model]`).
-- **Thinking Tokens**: `chat_template_kwargs { enable_thinking: false }` is dynamically passed exclusively to Nemotron models to minimize latency.
-- **Offline / Sample Mode**: Setting `SAMPLE_MODE=true` disables all Nightshift network calls and immediately serves verified deterministic templates.
+---
+
+## Pre-Existing Work Declaration
+
+In accordance with the hackathon cutoff (**2026-10-22T00:00:00Z**), the following work existed prior to the build window:
+
+1. **Specification & Documentation Pack (Prepared 2026-10-21)**:
+   - Initial specification docs: `PROJECT.md`, `DESIGN.md`, `DATA.md`, `INSTRUCTIONS.md`, `AGENTS.md`.
+   - Cursor guidance rules: `.cursor/rules/oko.mdc`.
+   - Seed datasets: `data/crop_calendar_maize_ng.csv`, `data/farms_seed.csv`, `data/storage_loss.csv`.
+2. **Meterless Starter Scaffold (Apache-2.0, Third-Party)**:
+   - Base repository scaffold from `agentathon-starter` (`.gitignore`, `images/notebook-loop.svg`, `notebook.ts`, `seed/example-session.txt`, initial stub files).
+3. **Vendored Reference Engine (Apache-2.0, Third-Party)**:
+   - `@meterless/hmem-reference` located in `vendor/hmem/` providing underlying memory mining, retrieval, and ledger mechanics.
+
+**Built During the Hackathon Event Window**:
+All subsequent code—including the pure simulation engines (`simulatePlanting`, `simulateSelling`), the Zetaris `DataGateway` and SQL queries, H-MEM farm integration and deduplication, Meterless Nightshift provider client, NVIDIA Nemotron prompt pipelines, multilingual number and attribution validators, REST judge API, JSONL run tracer, and the entire 122-test automated test suite—was developed from scratch during the hackathon.
+
+---
+
+## AI Tools Declaration
+
+This codebase was developed using AI coding assistants (initially Cursor, followed by Google Antigravity). All architectural decisions, mathematical formulas, data integration contracts, and code changes were directed, reviewed, audited, and tested by the author (Bonnke Olaitan).
+
+---
+
+## Licence
+
+The repository does not currently contain a root `LICENSE` file. Third-party vendored code in `vendor/hmem/` retains its original Apache-2.0 licence.

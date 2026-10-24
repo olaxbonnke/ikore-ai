@@ -1,0 +1,39 @@
+{
+  "name": "Ikore AI",
+  "tagline": "Maize planting and selling decision agent for Oyo State smallholders, delivering grounded recommendations in English, Yoruba, and Nigerian Pidgin.",
+  "track": "Track 3: Reasoning Architecture",
+  "team": "ARAZAKA",
+  "repo": "https://github.com/olaxbonnke/ikore-ai",
+  "languages": ["en", "yo", "pcm"],
+  "sponsors": [
+    {
+      "name": "Zetaris",
+      "role": "Data layer providing federated SQL queries over the oko_pg catalog (rain_daily, nimet_onset, and price tables) executed read-only per run via DataGateway."
+    },
+    {
+      "name": "Meterless H-MEM",
+      "role": "Per-farm long-term memory layer that recalls farm context before deciding, stores each question and advice run, and directly answers 'remind me' recall queries."
+    },
+    {
+      "name": "Meterless Nightshift",
+      "role": "Primary AI provider exposing an OpenAI-compatible service through which all LLM calls route without application-side API keys."
+    },
+    {
+      "name": "NVIDIA Nemotron",
+      "role": "Model (nvidia/nemotron-3.5-lightning-30b-a3b) serving the understand and explain pipeline steps via Nightshift with thinking disabled, logging the responding model per request.",
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b"
+    }
+  ],
+  "api": {
+    "run": "POST /api/run",
+    "health": "GET /api/health"
+  },
+  "sample_mode": true,
+  "traces": "logs/trace-<run_id>.jsonl",
+  "ai_coding_tools": ["Cursor", "Google Antigravity"],
+  "pre_existing": [
+    "Meterless agentathon-starter scaffold (Apache-2.0, third-party): initial project scaffolding (.gitignore, images/notebook-loop.svg, notebook.ts, seed/example-session.txt, and initial config/engine/llm stubs committed 2026-10-22)",
+    "@meterless/hmem-reference (Apache-2.0, third-party): vendored reference engine in vendor/hmem providing H-MEM memory mining, retrieval, and trust ledger services",
+    "Spec pack documentation and seed datasets prepared on 2026-10-21 prior to the 2026-10-22 cutoff (PROJECT.md, DESIGN.md, DATA.md, INSTRUCTIONS.md, AGENTS.md, .cursor/rules/oko.mdc, data/crop_calendar_maize_ng.csv, data/farms_seed.csv, data/storage_loss.csv)"
+  ]
+}
