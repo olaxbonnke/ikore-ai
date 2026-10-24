@@ -3,6 +3,7 @@
   "tagline": "Maize planting and selling decision agent for Oyo State smallholders, delivering grounded recommendations in English, Yoruba, and Nigerian Pidgin.",
   "track": "Track 3: Reasoning Architecture",
   "team": "ARAZAKA",
+  "license": "Apache-2.0",
   "repo": "https://github.com/olaxbonnke/ikore-ai",
   "languages": ["en", "yo", "pcm"],
   "sponsors": [

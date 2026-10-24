@@ -274,4 +274,4 @@ This codebase was developed using AI coding assistants (initially Cursor, follow
 
 ## Licence
 
-The repository does not currently contain a root `LICENSE` file. Third-party vendored code in `vendor/hmem/` retains its original Apache-2.0 licence.
+Licensed under Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Third-party vendored code in `vendor/hmem/` retains its original Apache-2.0 licence.
