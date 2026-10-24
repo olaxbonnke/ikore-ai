@@ -36,14 +36,17 @@ Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
 7. yo (plant): "Ìgbà wo ni kí n gbìn àgbàdo mi?"
 {"intent":"plant_timing","language":"yo","slots":{},"missing":[]}
 
-8. yo (recall): "Rántí mi, ìgbà wo ni o sọ pé kí n gbìn?"
+8. yo (recall): "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?"
 {"intent":"recall_previous","language":"yo","slots":{},"missing":[]}
 
-9. yo (sell): "Mo ní àpò 20, ẹnìkan fẹ́ rà ní ₦45,000 fún àpò kọ̀ọ̀kan. Ṣé kí n tà á báyìí?"
+9. yo (recall): "Rántí mi, ìgbà wo ni o sọ pé kí n gbìn?"
+{"intent":"recall_previous","language":"yo","slots":{},"missing":[]}
+
+10. yo (sell): "Mo ní àpò 20, ẹnìkan fẹ́ rà ní ₦45,000 fún àpò kọ̀ọ̀kan. Ṣé kí n tà á báyìí?"
 {"intent":"sell_or_store","language":"yo","slots":{"bags":20,"pricePerBagNgn":45000},"missing":[]}
 
-10. ha (plant): "Yaushe zan shuka masara ta a wannan shekara?"
+11. ha (plant): "Yaushe zan shuka masara ta a wannan shekara?"
 {"intent":"plant_timing","language":"ha","slots":{},"missing":[]}
 
-11. ha (sell): "Ina da buhu 20, farashin buhu daya 45k ne. Zan sayar ko in ajiye?"
+12. ha (sell): "Ina da buhu 20, farashin buhu daya 45k ne. Zan sayar ko in ajiye?"
 {"intent":"sell_or_store","language":"ha","slots":{"bags":20,"pricePerBagNgn":45000},"missing":[]}

@@ -713,6 +713,14 @@ export async function explain(
   }
 }
 
+export const RecallOutputSchema = z.object({
+  reply: z.string().optional(),
+  headline: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+export type RecallOutput = z.infer<typeof RecallOutputSchema>;
+
 /**
  * Explain previous advice recalled from H-MEM for "remind me" queries.
  */
@@ -745,70 +753,101 @@ export async function explainRecall(params: {
 
   try {
     const langName = LANG_NAMES[params.lang] || params.lang;
+    const groundedMemory = params.adviceContent.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (iso) =>
+      formatGroundedDate(iso, params.lang)
+    );
+
     const systemPrompt = `You are Ikore AI, a farm assistant in Nigeria. The farmer is asking you to remind them of advice previously given.
 Language: ${langName} (${params.lang}).
 Recorded memory of past advice:
 """
-${params.adviceContent}
+${groundedMemory}
 """
 
 Rules:
-1. Write a direct, polite reminder quoting the past advice and its date from the memory above.
-2. NO percentages ("%"). Never use "%" or the word "percent".
-3. Strictly quote ONLY numbers, dates, and recommendations present in the recorded memory. Never invent or hallucinate new facts.
-4. Output JSON matching schema:
+1. Write 1 or 2 short sentences in ${langName} directly reminding the farmer of the advice and date from the memory above.
+2. Example: "On 10 April I told you to wait a week and plant around 17 April."
+3. Do NOT output any title, heading, or label like "Planting advice reminder" or "Advice Reminder". Start directly with the sentence.
+4. NO percentages ("%"). Never use "%" or the word "percent".
+5. Never use ISO dates like YYYY-MM-DD or 2026-04-10. Always use farmer-friendly dates like "${formatGroundedDate("2026-04-10", params.lang)}" and "${formatGroundedDate("2026-04-17", params.lang)}".
+6. Strictly quote ONLY numbers and recommendations present in the recorded memory. Never invent or hallucinate new facts.
+7. Output JSON matching schema:
 {
-  "headline": "<max 12 words summary>",
-  "reason": "<1-2 short sentences reminding the farmer of the advice and date>"
+  "reply": "<1-2 short sentences directly reminding the farmer>"
 }`;
 
     const userPrompt = JSON.stringify({
       question: params.question,
-      adviceMemory: params.adviceContent,
+      adviceMemory: groundedMemory,
     });
 
-    let response: ExplainOutput;
+    let response: RecallOutput;
     let respondedModel = "unknown";
 
     if (typeof (activeProvider as any).completeWithMeta === "function") {
       const meta = await (activeProvider as any).completeWithMeta({
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
-        json: ExplainOutputSchema,
+        json: RecallOutputSchema,
         temperature: 0.2,
         stepName: "explain",
       });
       response = meta.content;
       respondedModel = meta.model;
     } else {
-      response = await activeProvider.complete<ExplainOutput>({
+      response = await activeProvider.complete<RecallOutput>({
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
-        json: ExplainOutputSchema,
+        json: RecallOutputSchema,
         temperature: 0.2,
         stepName: "explain",
       });
       respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
     }
 
-    // Validation
-    const headlinePctCheck = validateNoPercentages(response.headline);
-    if (!headlinePctCheck.valid) {
-      throw new Error(headlinePctCheck.reason);
-    }
-    const reasonPctCheck = validateNoPercentages(response.reason);
-    if (!reasonPctCheck.valid) {
-      throw new Error(reasonPctCheck.reason);
+    let replyText = (response.reply || response.reason || response.headline || "").trim();
+
+    // Drop any heading like "Planting advice reminder", "Advice reminder:", etc.
+    replyText = replyText.replace(/^(?:(?:planting|selling|farm)?\s*(?:advice\s*)?reminder[:\s-]*)+/i, "").trim();
+    if (replyText.includes("\n\n")) {
+      const parts = replyText.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 1 && parts[0].length < 35 && !/[.!?]$/.test(parts[0])) {
+        replyText = parts.slice(1).join("\n\n");
+      }
     }
 
-    // Check that numeric tokens are in the memory content
-    const fullText = `${response.headline}\n\n${response.reason}`;
-    const tokens = findNumericTokens(fullText);
+    // 1. Percentage check
+    const pctCheck = validateNoPercentages(replyText);
+    if (!pctCheck.valid) {
+      throw new Error(pctCheck.reason);
+    }
+
+    // 2. Reject ISO dates (YYYY-MM-DD)
+    if (/\b\d{4}-\d{2}-\d{2}\b/.test(replyText)) {
+      throw new Error(`Recall reply must not contain ISO dates (YYYY-MM-DD): "${replyText}"`);
+    }
+
+    // 3. Number validation
+    const memoryNumbers = new Set<string>();
+    for (const t of findNumericTokens(params.adviceContent)) {
+      memoryNumbers.add(t.replace(/[₦,]/g, "").trim());
+    }
+    const dateMatches = params.adviceContent.matchAll(/\b\d{4}-\d{2}-(\d{2})\b/g);
+    for (const dm of dateMatches) {
+      memoryNumbers.add(String(parseInt(dm[1], 10)));
+      memoryNumbers.add(dm[1]);
+    }
+    const offsetMatches = params.adviceContent.matchAll(/(?:wait_|store_)(\d+)/g);
+    for (const om of offsetMatches) {
+      memoryNumbers.add(om[1]);
+    }
+
+    const tokens = findNumericTokens(replyText);
     for (const token of tokens) {
       const cleaned = token.replace(/[₦,]/g, "").trim();
       const numVal = parseFloat(cleaned);
       if (Number.isFinite(numVal)) {
-        if (!params.adviceContent.includes(cleaned) && !params.adviceContent.includes(token)) {
+        if (!memoryNumbers.has(cleaned) && !params.adviceContent.includes(cleaned) && !params.adviceContent.includes(token)) {
           throw new Error(`Numeric token ${token} does not appear in recorded advice memory`);
         }
       }
@@ -816,7 +855,7 @@ Rules:
 
     const latencyMs = Math.round(performance.now() - t0);
     return {
-      text: fullText,
+      text: replyText,
       path: "llm",
       model: respondedModel,
       latencyMs,

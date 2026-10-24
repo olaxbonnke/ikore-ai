@@ -33,24 +33,95 @@ export type UnderstandResult = z.infer<typeof UnderstandSchema> & {
 };
 
 /**
+ * Detects if a farmer's message is asking to recall past advice (DESIGN.md Step 1 & Day 4.2 Follow-up).
+ * Checks both NFC-normalized text and a diacritic-stripped form (NFD without combining marks).
+ */
+export function isRecallQuery(text: string): boolean {
+  if (!text) return false;
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+
+  // Yoruba patterns (NFC)
+  const yorubaPatterns = [
+    /k[ií]\s+lo\s+s[oọ]/iu,
+    /k[ií]\s+ni\s+o\s+s[oọ]/iu,
+    /r[aá]nt[ií]/iu,
+    /ṣ[eé]\s+o\s+r[aá]nt[ií]/iu,
+    /ìm[oọ̀òó]\s*r[aàá]n\s+t[ií]\s+o\s+f[uú]n\s+mi/iu,
+    /s[oọ]\s+f[uú]n\s+mi/iu,
+  ];
+
+  // Pidgin patterns
+  const pidginPatterns = [
+    /wetin\s+you\s+(?:talk|tell(?:\s+me)?|say)/iu,
+    /which\s+advice\s+you\s+give/iu,
+  ];
+
+  // English & general patterns
+  const englishPatterns = [
+    /remind\s+(?:me|us)/iu,
+    /what\s+did\s+you\s+(?:tell(?:\s+me)?|say|advise)/iu,
+    /when\s+did\s+you\s+say/iu,
+    /what\s+was\s+(?:your\s+)?advice/iu,
+    /previous\s+advice/iu,
+    /earlier\s+advice/iu,
+  ];
+
+  // Diacritic-stripped patterns for typed Yoruba
+  const strippedPatterns = [
+    /ki\s+lo\s+so/iu,
+    /ki\s+ni\s+o\s+so/iu,
+    /ranti/iu,
+    /se\s+o\s+ranti/iu,
+    /imoran\s+ti\s+o\s+fun\s+mi/iu,
+    /so\s+fun\s+mi/iu,
+  ];
+
+  for (const pat of [...yorubaPatterns, ...pidginPatterns, ...englishPatterns]) {
+    if (pat.test(nfc)) return true;
+  }
+
+  for (const pat of strippedPatterns) {
+    if (pat.test(stripped)) return true;
+  }
+
+  return false;
+}
+
+/**
  * Deterministic rule-based extractor (fast, offline, zero-network fallback).
  */
 export function extractRules(text: string): UnderstandResult {
   const lower = text.toLowerCase();
+  const nfc = text.normalize("NFC").toLowerCase();
+  const stripped = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
 
   // 1. Language detection
   let language: Lang = "en";
-  if (/(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà|rántí|ranti|ìmọ̀ràn|imoran|kí lo|kí ni|sọ fún)(?=\P{L}|$)/iu.test(lower)) {
+  if (
+    /(?<=^|\P{L})(?:gbìn|àgbàdo|ọjọ́|ìgbà|ẹni|kí n|báyìí|ṣé|ní|mo ní|bóyá|owo|fún|kọ̀ọ̀kan|dúró|díẹ̀|tà|tọ́jú|àpò|fẹ́|rà|rántí|ranti|ìmọ̀ràn|imoran|kí lo|kí ni|sọ fún|ṣé o|nípa|màá)(?=\P{L}|$)/iu.test(nfc) ||
+    /(?<=^|\P{L})(?:gbin|agbado|ojo|igba|eni|ki n|bayii|se|mo ni|boya|owo|fun|kookan|duro|die|ta|toju|apo|fe|ra|ranti|imoran|ki lo|ki ni|so fun|se o|nipa|maa)(?=\P{L}|$)/iu.test(stripped)
+  ) {
     language = "yo";
-  } else if (/(?<=^|\P{L})(?:don|make|dey|wetin|na|fit|abeg|corn|keep am|i get|how much|talk|bin talk)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (
+    /(?<=^|\P{L})(?:don|make|dey|wetin|na|fit|abeg|corn|keep am|i get|how much|talk|bin talk)(?=\P{L}|$)/iu.test(nfc)
+  ) {
     language = "pcm";
-  } else if (/(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye|tuna)(?=\P{L}|$)/iu.test(lower)) {
+  } else if (
+    /(?<=^|\P{L})(?:yaushe|ina|shuka|masara|buhu|jira|sayar|ajiye|tuna)(?=\P{L}|$)/iu.test(nfc)
+  ) {
     language = "ha";
   }
 
   // 2. Intent detection
   let intent: UnderstandResult["intent"] = "unknown";
-  if (/(?:remind\s+(?:me|us)|what\s+did\s+you\s+(?:tell|say|advise)|what\s+was\s+your\s+advice|previous\s+advice|earlier\s+advice|wetin\s+you\s+(?:talk|tell|say)|which\s+advice\s+you\s+give|r[aá]nt[ií]\s+mi|k[ií]\s+(?:l[oọ]|ni\s+o)\s+s[oọ]|ìmọ̀ràn\s+t[ií]\s+o\s+fún\s+mi|when\s+did\s+you\s+say)/iu.test(lower)) {
+  if (isRecallQuery(text)) {
     intent = "recall_previous";
   } else if (/(?<=^|\P{L})(?:why|wetin make|kilode|me ya sa)(?=\P{L}|$)/iu.test(lower)) {
     intent = "why";
@@ -168,6 +239,22 @@ export async function understand(
   _farmId?: string,
   provider?: LLMProvider
 ): Promise<UnderstandResult> {
+  // Make rule-based recall check run BEFORE the LLM classifier and take precedence when it matches
+  if (isRecallQuery(text)) {
+    const rules = extractRules(text);
+    rules.intent = "recall_previous";
+    return {
+      ...rules,
+      meta: {
+        usedLlm: false,
+        provider: "rules",
+        requestedModel: "none",
+        respondedModel: "none",
+        latencyMs: 0,
+      },
+    };
+  }
+
   const config = getNightshiftConfig();
 
   // SAMPLE_MODE=true: use deterministic extraction and log sample

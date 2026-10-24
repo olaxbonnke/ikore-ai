@@ -130,7 +130,7 @@ export function templateNoPreviousAdvice(lang: Lang = "en"): string {
   return "I do not have any previous advice recorded yet for this farm.";
 }
 
-/** Pre-written grounded reminder quoting previous stored advice. */
+/** Pre-written grounded reminder quoting previous stored advice (DESIGN.md Step 7 & Day 4.2 Polish). */
 export function templateRecallAdvice(content: string, lang: Lang = "en"): string {
   // Extract date if present (e.g. "Planting advice for 2026-04-10" or "for 2026-04-10")
   const dateMatch = content.match(/advice for (\d{4}-\d{2}-\d{2})/i) || content.match(/(\d{4}-\d{2}-\d{2})/);
@@ -151,26 +151,26 @@ export function templateRecallAdvice(content: string, lang: Lang = "en"): string
 
     if (lang === "yo") {
       if (verdict === "wait_7" || verdict === "wait_14") {
-        const days = verdict === "wait_14" ? "14" : "7";
-        return `Ní ọjọ́ ${formattedDate}, mo gbà ọ́ nímọ̀ràn láti dúró fún ọjọ́ ${days} kí o tó gbìn (kí ó tó di ${plantDate}).${risk ? ` Ewu àtún-gbìn sì jẹ́ ${risk}.` : ""}`;
+        const weeksText = verdict === "wait_14" ? "ọ̀sẹ̀ méjì" : "ọ̀sẹ̀ kan";
+        return `Ní ${formattedDate} mo sọ fún ọ pé kí o dúró fún ${weeksText} kí o sì gbìn ní nǹkan bí ${plantDate}.${risk ? ` Ewu àtún-gbìn sì jẹ́ ${risk}.` : ""}`;
       }
-      return `Ní ọjọ́ ${formattedDate}, mo gbà ọ́ nímọ̀ràn láti gbìn báyìí (kí ó tó di ${plantDate}).${risk ? ` Ewu àtún-gbìn fẹ́rẹ́ kò ṣẹlẹ̀ rárá.` : ""}`;
+      return `Ní ${formattedDate} mo sọ fún ọ pé kí o gbìn báyìí (kí ó tó di ${plantDate}).${risk ? ` Ewu àtún-gbìn sì fẹ́rẹ́ kò ṣẹlẹ̀ rárá.` : ""}`;
     }
 
     if (lang === "pcm") {
       if (verdict === "wait_7" || verdict === "wait_14") {
-        const days = verdict === "wait_14" ? "14" : "7";
-        return `For ${formattedDate}, I tell you make you wait ${days} days before you plant (around ${plantDate}).${risk ? ` Replant risk na ${risk}.` : ""}`;
+        const weeksText = verdict === "wait_14" ? "two weeks" : "a week";
+        return `For ${formattedDate} I tell you say make you wait ${weeksText} and plant around ${plantDate}.${risk ? ` Replant risk na ${risk}.` : ""}`;
       }
-      return `For ${formattedDate}, I tell you make you plant now (around ${plantDate}).${risk ? ` Replant risk almost never happen.` : ""}`;
+      return `For ${formattedDate} I tell you say make you plant now (around ${plantDate}).${risk ? ` Replant risk almost never happen.` : ""}`;
     }
 
     // Default English
     if (verdict === "wait_7" || verdict === "wait_14") {
-      const days = verdict === "wait_14" ? "14" : "7";
-      return `On ${formattedDate}, I advised you to wait ${days} days before planting (around ${plantDate}).${risk ? ` Replant risk is ${risk}.` : ""}`;
+      const weeksText = verdict === "wait_14" ? "two weeks" : "a week";
+      return `On ${formattedDate} I told you to wait ${weeksText} and plant around ${plantDate}.${risk ? ` Replant risk is ${risk}.` : ""}`;
     }
-    return `On ${formattedDate}, I advised you to plant now (by ${plantDate}).${risk ? ` Replant risk is ${risk}.` : ""}`;
+    return `On ${formattedDate} I told you to plant now (by ${plantDate}).${risk ? ` Replant risk is ${risk}.` : ""}`;
   }
 
   if (isSelling) {
@@ -181,31 +181,32 @@ export function templateRecallAdvice(content: string, lang: Lang = "en"): string
 
     if (lang === "yo") {
       if (verdict === "sell_now") {
-        return `Ní ọjọ́ ${formattedDate}, mo gbà ọ́ nímọ̀ràn láti tà àgbàdo rẹ báyìí${offered ? ` ní ${offered}` : ""}.`;
+        return `Ní ${formattedDate} mo sọ fún ọ pé kí o tà báyìí${offered ? ` ní ${offered}` : ""}.`;
       }
-      return `Ní ọjọ́ ${formattedDate}, mo gbà ọ́ nímọ̀ràn láti tọ́jú àgbàdo rẹ kí o sì dúró de iye owó tó ga jù.`;
+      return `Ní ${formattedDate} mo sọ fún ọ pé kí o tọ́jú àgbàdo rẹ kí o sì dúró de ìgbà tí owó yóò ga.`;
     }
 
     if (lang === "pcm") {
       if (verdict === "sell_now") {
-        return `For ${formattedDate}, I tell you make you sell your corn now${offered ? ` for ${offered}` : ""}.`;
+        return `For ${formattedDate} I tell you say make you sell now${offered ? ` for ${offered}` : ""}.`;
       }
-      return `For ${formattedDate}, I tell you make you keep your corn for store make price go up.`;
+      return `For ${formattedDate} I tell you say make you keep your corn for store make price go up.`;
     }
 
     // Default English
     if (verdict === "sell_now") {
-      return `On ${formattedDate}, I advised you to sell now${offered ? ` at ${offered}` : ""}.`;
+      return `On ${formattedDate} I told you to sell now${offered ? ` at ${offered}` : ""}.`;
     }
-    return `On ${formattedDate}, I advised you to store your maize and wait for better market prices.`;
+    return `On ${formattedDate} I told you to store your maize and wait for higher market prices.`;
   }
 
-  // Generic fallback
+  // Generic fallback with no ISO dates
+  const safeContent = content.replace(/\b\d{4}-\d{2}-\d{2}\b/g, (iso) => formatGroundedDate(iso, lang));
   if (lang === "yo") {
-    return `Ìmọ̀ràn tí a gbà sílẹ̀: ${content.trim()}`;
+    return `Ìmọ̀ràn tí a gbà sílẹ̀: ${safeContent.trim()}`;
   }
   if (lang === "pcm") {
-    return `Advice wey dey ground: ${content.trim()}`;
+    return `Advice wey dey ground: ${safeContent.trim()}`;
   }
-  return `Previous advice on record: ${content.trim()}`;
+  return `Previous advice on record: ${safeContent.trim()}`;
 }

@@ -393,7 +393,83 @@ describe("JSON API: /api/health and /api/run", () => {
       const jsonYo = await resYo.json();
       expect(jsonYo.intent).toBe("recall_previous");
       expect(jsonYo.zetaris.queries_run).toEqual([]);
-      expect(jsonYo.reply).toMatch(/gbà ọ́ nímọ̀ràn|gbìn/i);
+      expect(jsonYo.reply).toMatch(/sọ fún ọ|gbà ọ́ nímọ̀ràn|gbìn/i);
+      expect(jsonYo.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+      expect(jsonYo.reply).not.toMatch(/Planting advice reminder/i);
+    });
+
+    it("classifies exact YO question 'Kí lo sọ fún mi nípa ìgbà tí màá gbìn?' as recall_previous in both NFC and NFD encodings", async () => {
+      const { understand } = await import("../src/llm/understand.ts");
+      const yoQuestion = "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?";
+
+      // NFC
+      const nfcQuestion = yoQuestion.normalize("NFC");
+      const resNFC = await understand(nfcQuestion);
+      expect(resNFC.intent).toBe("recall_previous");
+      expect(resNFC.language).toBe("yo");
+
+      // NFD (decomposed combining characters)
+      const nfdQuestion = yoQuestion.normalize("NFD");
+      const resNFD = await understand(nfdQuestion);
+      expect(resNFD.intent).toBe("recall_previous");
+      expect(resNFD.language).toBe("yo");
+
+      // Test end-to-end via /api/run with NFC and NFD
+      const reqNFC = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: nfcQuestion,
+          farm_id: "farm_bisi_ogbomoso",
+        }),
+      });
+      const apiResNFC = await runPost(reqNFC);
+      const apiJsonNFC = await apiResNFC.json();
+      expect(apiJsonNFC.intent).toBe("recall_previous");
+      expect(apiJsonNFC.zetaris.queries_run).toEqual([]);
+      expect(apiJsonNFC.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+      expect(apiJsonNFC.reply).not.toMatch(/Planting advice reminder/i);
+
+      const reqNFD = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: nfdQuestion,
+          farm_id: "farm_bisi_ogbomoso",
+        }),
+      });
+      const apiResNFD = await runPost(reqNFD);
+      const apiJsonNFD = await apiResNFD.json();
+      expect(apiJsonNFD.intent).toBe("recall_previous");
+      expect(apiJsonNFD.zetaris.queries_run).toEqual([]);
+      expect(apiJsonNFD.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+      expect(apiJsonNFD.reply).not.toMatch(/Planting advice reminder/i);
+    });
+
+    it("ensures recall replies across en, pcm, and yo never contain YYYY-MM-DD or reminder headings", async () => {
+      const questions = [
+        { text: "Remind me, when did you say I should plant?", lang: "en" as const },
+        { text: "Wetin you tell me about planting?", lang: "pcm" as const },
+        { text: "Kí lo sọ fún mi nípa ìgbà tí màá gbìn?", lang: "yo" as const },
+      ];
+
+      for (const q of questions) {
+        const req = new Request("http://localhost:3000/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q.text,
+            farm_id: "farm_bisi_ogbomoso",
+            lang: q.lang,
+          }),
+        });
+        const res = await runPost(req);
+        const json = await res.json();
+        expect(json.intent).toBe("recall_previous");
+        expect(json.reply).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+        expect(json.reply).not.toMatch(/Planting advice reminder/i);
+        expect(json.reply).not.toMatch(/Advice reminder/i);
+      }
     });
   });
 });
