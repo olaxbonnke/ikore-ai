@@ -1,5 +1,5 @@
 /**
- * Grounded explanation + number validator + structure + attribution checks (DESIGN.md section 8.3 & step 7).
+ * Grounded explanation + number validator + structure + attribution + no-percentage checks (DESIGN.md section 8.3 & Day 4.2 Polish).
  */
 export {
   ExplainOutputSchema,
@@ -10,6 +10,7 @@ export {
   findNumericTokens,
   getAllowedNumericSet,
   getAllowedNumericSets,
+  validateNoPercentages,
   validateOptionAttribution,
   validateOutputStructure,
   validateYoruba,

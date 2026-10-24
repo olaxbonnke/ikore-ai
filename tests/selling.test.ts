@@ -300,7 +300,8 @@ describe("Orchestrator sell_or_store end-to-end", () => {
     expect(seasonEv?.statistic).toContain("Seasonal pattern: WFP Ibadan wholesale white maize, 2010 to 2023");
 
     // Reply text contains honest explanation with count-based wording
-    expect(reply.text.toLowerCase()).toContain("sell now for ₦900,000");
-    expect(reply.text.toLowerCase()).toContain("cheaper a month after august");
+    expect(reply.text.toLowerCase()).toContain("sell now");
+    expect(reply.text.toLowerCase()).toContain("₦900,000");
+    expect(reply.text.toLowerCase()).toContain("8 out of 9 past years");
   });
 });

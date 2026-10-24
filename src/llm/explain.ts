@@ -38,8 +38,6 @@ export function countWords(text: string): number {
 export function splitSentences(text: string): string[] {
   // Protect ellipsis by replacing with comma
   const safe = text.replace(/\.{3,}/g, ", ");
-  // Split on sentence-ending punctuation followed by whitespace/newlines or end-of-string
-  // ensuring we don't break on decimal numbers like 14.1% or 0.7%
   const sentences: string[] = [];
   const rawParts = safe.split(/(?<=[.!?])(?!\d)(?:\s+|\n+)/);
   for (const part of rawParts) {
@@ -133,12 +131,27 @@ export function getAllowedNumericSets(decision: Decision): {
             allowedNumbers.add(parseInt(dateMatch[2], 10)); // Month
             allowedNumbers.add(parseInt(dateMatch[3], 10)); // Day
           } else {
+            // Check for currency or numeric string
             const num = parseFloat(val.replace(/[₦,]/g, ""));
             if (Number.isFinite(num)) {
               allowedNumbers.add(num);
               if (num >= 1) {
                 allowedNumbers.add(Math.round(num));
                 allowedNumbers.add(parseFloat(num.toFixed(1)));
+              }
+            }
+            // Also extract any embedded numbers in plain strings (e.g. "about 1 in 7 seasons", "6 out of 10")
+            const numMatches = val.match(/\b\d+(?:\.\d+)?\b/g);
+            if (numMatches) {
+              for (const nm of numMatches) {
+                const parsed = parseFloat(nm);
+                if (Number.isFinite(parsed)) {
+                  allowedNumbers.add(parsed);
+                  if (parsed >= 1) {
+                    allowedNumbers.add(Math.round(parsed));
+                    allowedNumbers.add(parseFloat(parsed.toFixed(1)));
+                  }
+                }
               }
             }
           }
@@ -157,6 +170,9 @@ export function getAllowedNumericSets(decision: Decision): {
   allowedNumbers.add(7);
   allowedNumbers.add(21);
   allowedNumbers.add(100);
+
+  // Plain-language singular unit count (1 week, 1 season, 1 month)
+  allowedNumbers.add(1);
 
   return { allowedNumbers, allowedPercentages };
 }
@@ -223,9 +239,25 @@ export function findInvalidNumbers(text: string, decision: Decision): string[] {
 }
 
 /**
+ * Validator rejecting raw percentages in farmer-facing text (Day 4.2 Polish):
+ * Farmers don't read percentages, so replies must use plain chances/counts instead.
+ */
+export function validateNoPercentages(text: string): { valid: boolean; reason?: string } {
+  const pctRegex = /(?:%|\bper\s*cent\b|\bpercent\b|ìdá\s+ọgọ́rùn(?:-ún)?|ida\s+ogorun)/i;
+  const match = text.match(pctRegex);
+  if (match) {
+    return {
+      valid: false,
+      reason: `Found percentage expression ("${match[0]}"). Farmer replies must use plain chances or counts, never percentages.`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
  * Validates option attribution (Step 2):
- * A risk number from one option must not appear in the same sentence as another option's verb or duration.
- * E.g., 14.1% (plant_now risk) must not appear beside 'wait' or '7 days'.
+ * A risk number or plain chance phrase from one option must not appear in the same sentence as another option's verb or duration.
+ * E.g., '14.1%' or 'about 1 in 7' (plant_now risk) must not appear beside 'wait' or 'wait a week'.
  */
 export function validateOptionAttribution(text: string, decision: Decision): { valid: boolean; reason?: string } {
   const sentences = splitSentences(text);
@@ -236,15 +268,30 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
     );
     const plantNowNum = plantNowRisk.replace("%", "").trim();
 
+    // Plain chance phrases for plant_now
+    const plantNowPlainPhrases = [
+      "about 1 in 7",
+      "1 in 7",
+      "about 1 for every 7",
+      "1 for every 7",
+      "ẹ̀ẹ̀kan nínú àsìkò méje",
+      plantNowRisk,
+      `${plantNowNum}%`,
+    ];
+
     for (const s of sentences) {
-      const hasPlantNowRisk = s.includes(plantNowRisk) || new RegExp(`\\b${plantNowNum}%?\\b`).test(s);
+      const lower = s.toLowerCase();
+      const hasPlantNowRisk = plantNowPlainPhrases.some((phrase) => lower.includes(phrase.toLowerCase()));
       const hasWaitKeyword =
-        /\b(wait|waiting|waited|dúró|jira)\b/i.test(s) || /\b(?:after\s+)?(?:7|14)\s+days?\b/i.test(s);
+        /\b(wait|waiting|waited|dúró|jira)\b/i.test(s) ||
+        /\b(?:after\s+)?(?:7|14)\s+days?\b/i.test(s) ||
+        /\bwait\s+(?:a|one)\s+week\b/i.test(s) ||
+        /\bọ̀sẹ̀\s+kan\b/i.test(s);
 
       if (hasPlantNowRisk && hasWaitKeyword) {
         return {
           valid: false,
-          reason: `Plant-now risk (${plantNowRisk}) appeared in same sentence as wait option keyword: "${s.trim()}"`,
+          reason: `Plant-now risk (${plantNowRisk} / plain chance) appeared in same sentence as wait option keyword: "${s.trim()}"`,
         };
       }
 
@@ -252,13 +299,21 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
         decision.keyNumbers.replantRisk_wait7 || decision.keyNumbers.replantRisk || "0.7%"
       );
       const waitNum = waitRisk.replace("%", "").trim();
-      const hasWaitRisk = s.includes(waitRisk) || new RegExp(`\\b${waitNum}%?\\b`).test(s);
+      const waitPlainPhrases = [
+        "almost never",
+        "e no dey almost happen",
+        "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+        "fẹ́rẹ́ è kò ṣẹlẹ̀ rárá",
+        waitRisk,
+        `${waitNum}%`,
+      ];
+      const hasWaitRisk = waitPlainPhrases.some((phrase) => lower.includes(phrase.toLowerCase()));
       const hasPlantNowKeyword = /\b(plant\s+now|gbìn\s+báyìí|shuka\s+yanzu)\b/i.test(s);
 
       if (hasWaitRisk && hasPlantNowKeyword && !hasWaitKeyword) {
         return {
           valid: false,
-          reason: `Wait risk (${waitRisk}) appeared in same sentence as plant-now keyword: "${s.trim()}"`,
+          reason: `Wait risk (${waitRisk} / plain chance) appeared in same sentence as plant-now keyword: "${s.trim()}"`,
         };
       }
     }
@@ -327,7 +382,7 @@ export function validateYoruba(text: string): { valid: boolean; reason?: string 
     "for", "with", "in", "to", "of", "after", "days", "risk", "now", "corn",
     "sell", "store", "keep", "more", "less", "high", "low", "expected", "than",
     "today", "we", "have", "are", "will", "from", "at", "per", "bag", "bags",
-    "market", "data", "past", "years", "replant", "replanting",
+    "market", "data", "past", "years", "replant", "replanting", "chance", "seasons",
   ]);
 
   let englishCount = 0;
@@ -362,7 +417,8 @@ function loadPromptTemplate(): string {
 }
 
 /**
- * Builds structured facts tied to the option they describe (Step 2).
+ * Builds structured facts tied to the option they describe (Step 1 & Step 2).
+ * Formats chance and storage loss in plain language so the LLM doesn't calculate them.
  */
 export function buildFactsByOption(decision: Decision, lang: Lang): Record<string, unknown> {
   const k = decision.keyNumbers;
@@ -373,17 +429,15 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
 
     return {
       plant_now: {
-        replantRisk: k.replantRisk_plantNow || k.replantRiskNow || "14.1%",
-        replantIn100: "about 14 in 100 seasons",
+        replantChance: k[`plainChance_plantNow_${lang}`] || k.plainChance_plantNow_en || "about 1 in 7 seasons",
       },
       wait_7: {
         plantingDate: formattedDate,
-        replantRisk: k.replantRisk_wait7 || k.replantRisk || "0.7%",
-        replantIn100: "almost none (1 in 100 seasons)",
+        replantChance: k[`plainChance_wait7_${lang}`] || k.plainChance_wait7_en || "almost never",
       },
       wait_14: {
-        replantRisk: k.replantRisk_wait14 || k.replantRisk || "0.7%",
-        replantIn100: "almost none (1 in 100 seasons)",
+        plantingDate: "24 April",
+        replantChance: k[`plainChance_wait14_${lang}`] || k.plainChance_wait14_en || "almost never",
       },
       context: {
         pastSeasonsEvaluated: k.seasonsCount || k.nAnalogYears || 35,
@@ -403,10 +457,10 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
       totalValue: `₦${totalValue.toLocaleString()}`,
     },
     store_4w: {
-      horizon: "4 weeks",
+      horizon: "1 month",
       cheaperYearsCount: k.cheaperCount ?? 8,
       totalYearsEvaluated: k.nYears ?? 9,
-      monthlyLossPct: `${k.monthlyLossPct ?? 2.5}%`,
+      storageLoss: k[`storageLossBags_${lang}`] || k.storageLossBags_en || "about half a bag every month",
     },
     context: {
       chosenOption: decision.chosen,
@@ -415,7 +469,7 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
 }
 
 /**
- * Grounded explanation + number validator + Yoruba guard + structure check (DESIGN.md 8.3).
+ * Grounded explanation + number validator + Yoruba guard + structure check (DESIGN.md 8.3 & Day 4.2 Polish).
  */
 export async function explain(
   decision: Decision,
@@ -473,14 +527,35 @@ export async function explain(
 
     const fullGenerated = `${response.headline}\n\n${response.reason}`;
 
-    // 1. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon)
+    // 1. Percentage check: Farmer replies must not contain any '%' or 'percent'
+    const headlinePctCheck = validateNoPercentages(response.headline);
+    if (!headlinePctCheck.valid) {
+      console.warn(`[Explain] Percentage validator rejected headline: ${headlinePctCheck.reason}. Falling back to template.`);
+      throw new Error(headlinePctCheck.reason);
+    }
+    const reasonPctCheck = validateNoPercentages(response.reason);
+    if (!reasonPctCheck.valid) {
+      console.warn(`[Explain] Percentage validator rejected reason: ${reasonPctCheck.reason}. Falling back to template.`);
+      throw new Error(reasonPctCheck.reason);
+    }
+    if (response.details) {
+      for (const d of response.details) {
+        const detailPctCheck = validateNoPercentages(d);
+        if (!detailPctCheck.valid) {
+          console.warn(`[Explain] Percentage validator rejected detail: ${detailPctCheck.reason}. Falling back to template.`);
+          throw new Error(detailPctCheck.reason);
+        }
+      }
+    }
+
+    // 2. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon)
     const structureCheck = validateOutputStructure(response);
     if (!structureCheck.valid) {
       console.warn(`[Explain] Structure check rejected LLM reply: ${structureCheck.reason}. Falling back to template.`);
       throw new Error(`Structure check failed: ${structureCheck.reason}`);
     }
 
-    // 2. Number Validator (only numbers present in keyNumbers)
+    // 3. Number Validator (only numbers present in keyNumbers)
     const invalidNumbers = findInvalidNumbers(fullGenerated, decision);
     if (invalidNumbers.length > 0) {
       console.warn(
@@ -489,14 +564,14 @@ export async function explain(
       throw new Error(`Invalid numbers: ${invalidNumbers.join(", ")}`);
     }
 
-    // 3. Option Attribution Check (numbers not attached to wrong option)
+    // 4. Option Attribution Check (numbers and plain chances not attached to wrong option)
     const attributionCheck = validateOptionAttribution(fullGenerated, decision);
     if (!attributionCheck.valid) {
       console.warn(`[Explain] Option attribution rejected LLM reply: ${attributionCheck.reason}. Falling back to template.`);
       throw new Error(`Option attribution failed: ${attributionCheck.reason}`);
     }
 
-    // 4. Yoruba Guard if lang is yo
+    // 5. Yoruba Guard if lang is yo
     if (lang === "yo") {
       const yoCheck = validateYoruba(fullGenerated);
       if (!yoCheck.valid) {

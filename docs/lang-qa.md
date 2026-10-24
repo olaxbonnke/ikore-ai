@@ -4,12 +4,12 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 
 | # | Intent | Language | Prompt | Path | Latency | Fallback Reason | Advisor Reply | Native Speaker Check |
 |---|---|---|---|---|---|---|---|---|
-| 1 | plant_timing | en | "When should I plant my maize?" | **llm** | 1493ms | - | Wait 7 days to plant around 17 April.<br>If you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% with enough rain across 35 past seasons.<br>• 35 past seasons evaluated |  |
-| 2 | plant_timing | pcm | "When I go plant my corn this season?" | **template** | 1246ms | Structure check failed: Reason has 4 numbers (max 3 allowed: 14.1%, 7, 0.7%, 35) | Wait small to plant around 17 April.<br>If you plant now, danger to replant na 14.1%. If you wait, e go drop well well to 0.7% with enough rain across 35 past seasons. |  |
-| 3 | plant_timing | yo | "Ìgbà wo ni kí n gbìn àgbàdo mi ní àsìkò yìí?" | **llm** | 1557ms | - | Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.<br>Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ 14.1%. Tí o bá dúró, ewu dínkù sí 0.7% pẹ̀lú òjò tó tó láti ọdún 35 sẹ́yìn.<br>• A wo àkọsílẹ̀ ọdún 35 sẹ́yìn |  |
-| 4 | sell_or_store | en | "I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Should I sell now or store?" | **llm** | 1616ms | - | Sell now for ₦900,000 (20 bags at ₦45,000 per bag).<br>For 8 out of 9 past years with data, Ibadan wholesale maize was cheaper a month after August than in August. With plain sacks losing 2.5% weight monthly, waiting carries high risk of earning less than selling today.<br>• Assumed 2.5% monthly weight loss in plain sacks |  |
-| 5 | sell_or_store | pcm | "I get 20 bags, price na 45k per bag. Make I sell now or keep am?" | **llm** | 1425ms | - | Sell now for ₦900,000 (20 bags at ₦45,000 per bag).<br>For 8 out of 9 past years with data, Ibadan wholesale corn cheaper pass a month after August than in August. With plain sacks losing 2.5% weight monthly, danger say you go make less money pass today.<br>• We assume 2.5% weight loss every month inside plain sacks |  |
-| 6 | sell_or_store | yo | "Mo ní àpò 20, ẹnìkan fẹ́ rà ní ₦45,000 fún àpò kọ̀ọ̀kan. Ṣé kí n tà á báyìí tàbí kí n tọ́jú rẹ̀?" | **llm** | 2895ms | - | Tà á báyìí fún ₦900,000 (àpò 20 ní ₦45,000 fún àpò kọ̀ọ̀kan).<br>Ní 8 nínú ọdún 9 sẹ́yìn tí a ní àkọsílẹ̀ rẹ̀, àgbàdo lórí Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Pẹ̀lú àdánù ìwọ̀n 2.5% lórí oṣù kọ̀ọ̀kan nínú àpò lásán, tí o bá tọ́jú rẹ̀ ewu wà pé owó tí wàá rí yóò dínkù.<br>• A fi sí 2.5% àdánù ìwọ̀n oṣooṣù fún àpò lásán |  |
+| 1 | plant_timing | en | "When should I plant my maize?" | **llm** | 1458ms | - | Wait a week. Plant around 17 April.<br>If you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in 35 past seasons.<br>• 35 past seasons evaluated |  |
+| 2 | plant_timing | pcm | "When I go plant my corn this season?" | **llm** | 1894ms | - | Wait small. Plant around 17 April.<br>If you plant now, about 1 for every 7 seasons, people don plant am again. If you wait one week, e no dey almost happen.<br>• We look 35 past seasons for this advice |  |
+| 3 | plant_timing | yo | "Ìgbà wo ni kí n gbìn àgbàdo mi ní àsìkò yìí?" | **llm** | 2364ms | - | Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.<br>Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.<br>• A wo àkọsílẹ̀ ọdún 35 sẹ́yìn |  |
+| 4 | sell_or_store | en | "I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Should I sell now or store?" | **llm** | 1452ms | - | Sell now for ₦900,000.<br>In 8 out of 9 past years, Ibadan maize price fell after August. Your 20 bags would also lose about half a bag every month in plain sacks.<br>• Plain sacks lose about half a bag every month |  |
+| 5 | sell_or_store | pcm | "I get 20 bags, price na 45k per bag. Make I sell now or keep am?" | **llm** | 1125ms | - | Sell now, you go get ₦900,000.<br>For 8 out of 9 past years, Ibadan maize price fall after August. Your 20 bags go still lose about half bag every month inside ordinary sack.<br>• 20 bags go lose about half bag every month inside ordinary sack |  |
+| 6 | sell_or_store | yo | "Mo ní àpò 20, ẹnìkan fẹ́ rà ní ₦45,000 fún àpò kọ̀ọ̀kan. Ṣé kí n tà á báyìí tàbí kí n tọ́jú rẹ̀?" | **llm** | 3645ms | - | Tà á báyìí fún ₦900,000 (àpò 20 ní ₦45,000 fún àpò kọ̀ọ̀kan).<br>Ní 8 nínú ọdún 9 sẹ́yìn, àgbàdo ní ọjà Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Àwọn àpò 20 rẹ yóò tún pàdánù ní nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan nínú àpò lásán.<br>• Àdánù ìtọ́jú jẹ́ nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan |  |
 
 
 ## Detailed Replies
@@ -19,14 +19,14 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 - **asOf:** `2026-04-10`
 - **Prompt:** "When should I plant my maize?"
 - **Path:** **llm**
-- **Latency:** 1493ms
+- **Latency:** 1458ms
 - **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
-> Wait 7 days to plant around 17 April.
+> Wait a week. Plant around 17 April.
 > 
-> If you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% with enough rain across 35 past seasons.
+> If you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in 35 past seasons.
 > 
 > • 35 past seasons evaluated
 
@@ -39,15 +39,17 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 
 - **asOf:** `2026-04-10`
 - **Prompt:** "When I go plant my corn this season?"
-- **Path:** **template**
-- **Latency:** 1246ms
-- **Fallback Reason:** `Structure check failed: Reason has 4 numbers (max 3 allowed: 14.1%, 7, 0.7%, 35)`
+- **Path:** **llm**
+- **Latency:** 1894ms
+- **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
-> Wait small to plant around 17 April.
+> Wait small. Plant around 17 April.
 > 
-> If you plant now, danger to replant na 14.1%. If you wait, e go drop well well to 0.7% with enough rain across 35 past seasons.
+> If you plant now, about 1 for every 7 seasons, people don plant am again. If you wait one week, e no dey almost happen.
+> 
+> • We look 35 past seasons for this advice
 
 **Native speaker check:**
 
@@ -59,14 +61,14 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 - **asOf:** `2026-04-10`
 - **Prompt:** "Ìgbà wo ni kí n gbìn àgbàdo mi ní àsìkò yìí?"
 - **Path:** **llm**
-- **Latency:** 1557ms
+- **Latency:** 2364ms
 - **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
 > Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.
 > 
-> Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ 14.1%. Tí o bá dúró, ewu dínkù sí 0.7% pẹ̀lú òjò tó tó láti ọdún 35 sẹ́yìn.
+> Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.
 > 
 > • A wo àkọsílẹ̀ ọdún 35 sẹ́yìn
 
@@ -80,16 +82,16 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 - **asOf:** `2026-08-20`
 - **Prompt:** "I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Should I sell now or store?"
 - **Path:** **llm**
-- **Latency:** 1616ms
+- **Latency:** 1452ms
 - **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
-> Sell now for ₦900,000 (20 bags at ₦45,000 per bag).
+> Sell now for ₦900,000.
 > 
-> For 8 out of 9 past years with data, Ibadan wholesale maize was cheaper a month after August than in August. With plain sacks losing 2.5% weight monthly, waiting carries high risk of earning less than selling today.
+> In 8 out of 9 past years, Ibadan maize price fell after August. Your 20 bags would also lose about half a bag every month in plain sacks.
 > 
-> • Assumed 2.5% monthly weight loss in plain sacks
+> • Plain sacks lose about half a bag every month
 
 **Native speaker check:**
 
@@ -101,16 +103,16 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 - **asOf:** `2026-08-20`
 - **Prompt:** "I get 20 bags, price na 45k per bag. Make I sell now or keep am?"
 - **Path:** **llm**
-- **Latency:** 1425ms
+- **Latency:** 1125ms
 - **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
-> Sell now for ₦900,000 (20 bags at ₦45,000 per bag).
+> Sell now, you go get ₦900,000.
 > 
-> For 8 out of 9 past years with data, Ibadan wholesale corn cheaper pass a month after August than in August. With plain sacks losing 2.5% weight monthly, danger say you go make less money pass today.
+> For 8 out of 9 past years, Ibadan maize price fall after August. Your 20 bags go still lose about half bag every month inside ordinary sack.
 > 
-> • We assume 2.5% weight loss every month inside plain sacks
+> • 20 bags go lose about half bag every month inside ordinary sack
 
 **Native speaker check:**
 
@@ -122,16 +124,16 @@ Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM 
 - **asOf:** `2026-08-20`
 - **Prompt:** "Mo ní àpò 20, ẹnìkan fẹ́ rà ní ₦45,000 fún àpò kọ̀ọ̀kan. Ṣé kí n tà á báyìí tàbí kí n tọ́jú rẹ̀?"
 - **Path:** **llm**
-- **Latency:** 2895ms
+- **Latency:** 3645ms
 - **Fallback Reason:** None (Accepted LLM generation)
 
 **Reply:**
 
 > Tà á báyìí fún ₦900,000 (àpò 20 ní ₦45,000 fún àpò kọ̀ọ̀kan).
 > 
-> Ní 8 nínú ọdún 9 sẹ́yìn tí a ní àkọsílẹ̀ rẹ̀, àgbàdo lórí Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Pẹ̀lú àdánù ìwọ̀n 2.5% lórí oṣù kọ̀ọ̀kan nínú àpò lásán, tí o bá tọ́jú rẹ̀ ewu wà pé owó tí wàá rí yóò dínkù.
+> Ní 8 nínú ọdún 9 sẹ́yìn, àgbàdo ní ọjà Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Àwọn àpò 20 rẹ yóò tún pàdánù ní nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan nínú àpò lásán.
 > 
-> • A fi sí 2.5% àdánù ìwọ̀n oṣooṣù fún àpò lásán
+> • Àdánù ìtọ́jú jẹ́ nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan
 
 **Native speaker check:**
 

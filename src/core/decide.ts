@@ -34,6 +34,100 @@ export interface DecideParams {
   monthlyLossPct?: number;
 }
 
+/**
+ * Deterministic plain-language formatting helpers (Day 4.2 Polish)
+ * Computes plain 'chance' phrases and bag loss descriptions so LLMs and templates never compute them.
+ */
+export function formatPlainChance(prob: number): {
+  en: string;
+  pcm: string;
+  yo: string;
+  n?: number;
+} {
+  const pct = prob * 100;
+  if (pct < 2.0) {
+    return {
+      en: "almost never",
+      pcm: "e no dey almost happen",
+      yo: "fẹ́rẹ́ kò ṣẹlẹ̀ rárá",
+      n: 0,
+    };
+  }
+  if (pct <= 50.0) {
+    const n = Math.round(100 / pct);
+    const yoNumberWords: Record<number, string> = {
+      2: "méjì",
+      3: "mẹ́ta",
+      4: "mẹ́rin",
+      5: "márùn-ún",
+      6: "mẹ́fà",
+      7: "méje",
+      8: "mẹ́jọ",
+      9: "mẹ̀sán",
+      10: "mẹ́wàá",
+    };
+    const yoN = yoNumberWords[n] || `${n}`;
+    return {
+      n,
+      en: `about 1 in ${n} seasons`,
+      pcm: `about 1 for every ${n} seasons`,
+      yo: `ẹ̀ẹ̀kan nínú àsìkò ${yoN}`,
+    };
+  }
+  const x = Math.round(pct / 10);
+  return {
+    n: x,
+    en: `about ${x} out of 10 seasons`,
+    pcm: `about ${x} for every 10 seasons`,
+    yo: `ní nǹkan bí ${x} nínú àsìkò mẹ́wàá`,
+  };
+}
+
+export function formatStorageLossBags(bags: number, monthlyLossPct: number, pricePerBag?: number): {
+  lossBags: number;
+  lossValueNgn?: number;
+  en: string;
+  pcm: string;
+  yo: string;
+} {
+  const rawLoss = bags * (monthlyLossPct / 100);
+  if (rawLoss < 0.25) {
+    return {
+      lossBags: rawLoss,
+      en: "a small amount",
+      pcm: "small amount",
+      yo: "iye díẹ̀",
+    };
+  }
+  const rounded = Math.round(rawLoss * 2) / 2;
+  const lossValueNgn = pricePerBag ? Math.round(rounded * pricePerBag) : undefined;
+  if (rounded === 0.5) {
+    return {
+      lossBags: 0.5,
+      lossValueNgn,
+      en: "about half a bag every month",
+      pcm: "about half bag every month",
+      yo: "ní nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan",
+    };
+  }
+  if (rounded === 1) {
+    return {
+      lossBags: 1,
+      lossValueNgn,
+      en: "about 1 bag every month",
+      pcm: "about 1 bag every month",
+      yo: "ní nǹkan bí àpò kan lórí oṣù kọ̀ọ̀kan",
+    };
+  }
+  return {
+    lossBags: rounded,
+    lossValueNgn,
+    en: `about ${rounded} bags every month`,
+    pcm: `about ${rounded} bags every month`,
+    yo: `ní nǹkan bí àpò ${rounded} lórí oṣù kọ̀ọ̀kan`,
+  };
+}
+
 export function decide(
   options: OptionResult[],
   params: DecideParams,
@@ -216,6 +310,17 @@ export function decide(
         keyNumbers.cashGeneratedNow = matchingSelling.cashGeneratedNow;
       }
     }
+    const bagsCount = params.bags || 20;
+    const lossPct = matchingSelling?.assumptions.monthlyLossPct ?? 2.5;
+    const currentPrice = params.currentPricePerBag || 45000;
+    const lossInfo = formatStorageLossBags(bagsCount, lossPct, currentPrice);
+    keyNumbers.storageLossBags_en = lossInfo.en;
+    keyNumbers.storageLossBags_pcm = lossInfo.pcm;
+    keyNumbers.storageLossBags_yo = lossInfo.yo;
+    keyNumbers.lossBags = lossInfo.lossBags;
+    if (lossInfo.lossValueNgn) {
+      keyNumbers.lossValueNgn = lossInfo.lossValueNgn;
+    }
   } else {
     keyNumbers.replantRisk = `${(chosenRisk * 100).toFixed(1)}%`;
     keyNumbers.replantProbability = chosenRisk;
@@ -233,17 +338,38 @@ export function decide(
       keyNumbers.replantProbabilityNow = plantNowPlanting.replantProbability;
       keyNumbers.replantRisk_plantNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
       keyNumbers.replantIn100_plantNow = Math.round(plantNowPlanting.replantProbability * 100);
+
+      const plainPlantNow = formatPlainChance(plantNowPlanting.replantProbability);
+      keyNumbers.plainChance_plantNow_en = plainPlantNow.en;
+      keyNumbers.plainChance_plantNow_pcm = plainPlantNow.pcm;
+      keyNumbers.plainChance_plantNow_yo = plainPlantNow.yo;
+      if (plainPlantNow.n) keyNumbers.plantNow_n = plainPlantNow.n;
     }
     const wait7Opt = params.plantingOptions?.find((p) => p.option === "wait_7");
     const wait14Opt = params.plantingOptions?.find((p) => p.option === "wait_14");
     if (wait7Opt) {
       keyNumbers.replantRisk_wait7 = `${(wait7Opt.replantProbability * 100).toFixed(1)}%`;
       keyNumbers.replantIn100_wait7 = Math.round(wait7Opt.replantProbability * 100);
+
+      const plainWait7 = formatPlainChance(wait7Opt.replantProbability);
+      keyNumbers.plainChance_wait7_en = plainWait7.en;
+      keyNumbers.plainChance_wait7_pcm = plainWait7.pcm;
+      keyNumbers.plainChance_wait7_yo = plainWait7.yo;
     }
     if (wait14Opt) {
       keyNumbers.replantRisk_wait14 = `${(wait14Opt.replantProbability * 100).toFixed(1)}%`;
       keyNumbers.replantIn100_wait14 = Math.round(wait14Opt.replantProbability * 100);
+
+      const plainWait14 = formatPlainChance(wait14Opt.replantProbability);
+      keyNumbers.plainChance_wait14_en = plainWait14.en;
+      keyNumbers.plainChance_wait14_pcm = plainWait14.pcm;
+      keyNumbers.plainChance_wait14_yo = plainWait14.yo;
     }
+    const plainChosen = formatPlainChance(chosenRisk);
+    keyNumbers.plainChance_chosen_en = plainChosen.en;
+    keyNumbers.plainChance_chosen_pcm = plainChosen.pcm;
+    keyNumbers.plainChance_chosen_yo = plainChosen.yo;
+
     keyNumbers.replantIn100_chosen = Math.round(chosenRisk * 100);
     keyNumbers.in100 = 100;
     keyNumbers.seasonsCount = n;

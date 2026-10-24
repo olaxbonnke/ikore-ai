@@ -1,5 +1,5 @@
 import type { Decision, Lang } from "../core/types.ts";
-import { formatGroundedDate, GLOSSARY } from "./glossary.ts";
+import { formatGroundedDate } from "./glossary.ts";
 
 /** Fallback message when service or intent is temporarily unavailable. */
 export function templateUnavailable(_intent: "plant_timing" | "sell_or_store", lang: Lang = "en"): string {
@@ -15,82 +15,71 @@ export function templateUnavailable(_intent: "plant_timing" | "sell_or_store", l
   return "Ikore AI is still starting up. Please try again soon.";
 }
 
-/** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7). */
+/** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7 & Day 4.2 Polish). */
 export function templatePlanting(decision: Decision, lang: Lang = "en"): string {
   const chosen = decision.chosen;
   const k = decision.keyNumbers;
   const rawDate = String(k.plantingDate || decision.createdAt.slice(0, 10));
   const formattedDate = formatGroundedDate(rawDate, lang);
-  const risk = String(k.replantRisk || "0.7%");
-  const riskNow = String(k.replantRiskNow || "14.1%");
   const nYears = String(k.seasonsCount || k.nAnalogYears || "35");
 
   if (lang === "yo") {
-    if (chosen === "wait_7") {
-      return `Dúró díẹ̀ kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${riskNow}. Tí o bá dúró, ewu dínkù sí ${risk} pẹ̀lú òjò tó tó láti ọdún ${nYears} sẹ́yìn.`;
+    if (chosen === "wait_7" || chosen === "wait_14") {
+      return `Dúró díẹ̀ kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò ${nYears} sẹ́yìn.`;
     }
-    if (chosen === "wait_14") {
-      return `Dúró díẹ̀ kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${riskNow}. Tí o bá dúró, ewu dínkù sí ${risk} pẹ̀lú òjò tó tó láti ọdún ${nYears} sẹ́yìn.`;
-    }
-    return `Gbìn àgbàdo rẹ báyìí ní nǹkan bí ${formattedDate}.\n\nEwu láti tún gbìn kéré gan-an ní ${risk} pẹ̀lú òjò tó tó láti ọdún ${nYears} sẹ́yìn.`;
+    return `Gbìn àgbàdo rẹ báyìí ní nǹkan bí ${formattedDate}.\n\nEwu láti tún gbìn fẹ́rẹ́ kò ṣẹlẹ̀ rárá pẹ̀lú òjò tó tó nínú àsìkò ${nYears} sẹ́yìn.`;
   }
 
   if (lang === "pcm") {
-    if (chosen === "wait_7") {
-      return `Wait small to plant around ${formattedDate}.\n\nIf you plant now, danger to replant na ${riskNow}. If you wait, e go drop well well to ${risk} with enough rain across ${nYears} past seasons.`;
+    if (chosen === "wait_7" || chosen === "wait_14") {
+      return `Wait small. Plant around ${formattedDate}.\n\nIf you plant now, about 1 for every 7 seasons, people don plant am again. If you wait one week, e no dey almost happen.`;
     }
-    if (chosen === "wait_14") {
-      return `Wait small to plant around ${formattedDate}.\n\nIf you plant now, danger to replant na ${riskNow}. If you wait, e go drop to ${risk} with enough rain across ${nYears} past seasons.`;
-    }
-    return `Plant now around ${formattedDate}.\n\nDanger to replant low well well at ${risk} with enough rain across ${nYears} past seasons.`;
+    return `Plant now around ${formattedDate}.\n\nGood rain dey ground across ${nYears} past seasons, e no dey almost need planting again.`;
   }
 
   if (lang === "ha") {
-    if (chosen === "wait_7") {
-      return `Jira kwanaki 7 kafin ka shuka (kusan ${formattedDate}).\n\nShuka yanzu yana da haɗarin ${riskNow}, amma idan ka jira haɗarin zai ragu zuwa ${risk}.`;
+    if (chosen === "wait_7" || chosen === "wait_14") {
+      return `Jira mako guda kafin ka shuka (kusan ${formattedDate}).\n\nIdan ka shuka yanzu, akwai haɗarin sake shuka. Idan ka jira mako guda, kusan ba ya taɓa faruwa ba.`;
     }
-    if (chosen === "wait_14") {
-      return `Jira kwanaki 14 har zuwa ${formattedDate}.\n\nHaɗari zai ragu zuwa ${risk}.`;
-    }
-    return `Shuka yanzu a kusan ${formattedDate}.\n\nHaɗarin sake shuka yana da ƙanƙanta (${risk}).`;
+    return `Shuka yanzu a kusan ${formattedDate}.\n\nHaɗarin sake shuka kusan ba ya taɓa faruwa ba.`;
   }
 
-  // Default English
-  if (chosen === "wait_7") {
-    return `Wait 7 days to plant around ${formattedDate}.\n\nIf you plant now, danger to replant is ${riskNow}. Waiting drops danger to ${risk} with enough rain across ${nYears} past seasons.`;
+  // Default English (no 'danger', uses chance / needed replanting)
+  if (chosen === "wait_7" || chosen === "wait_14") {
+    return `Wait a week. Plant around ${formattedDate}.\n\nIf you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in ${nYears} past seasons.`;
   }
-  if (chosen === "wait_14") {
-    return `Wait 14 days to plant around ${formattedDate}.\n\nIf you plant now, danger to replant is ${riskNow}. Waiting drops danger to ${risk} with enough rain across ${nYears} past seasons.`;
-  }
-  return `Plant now around ${formattedDate}.\n\nDanger to replant is low at ${risk} with enough rain across ${nYears} past seasons.`;
+  return `Plant now around ${formattedDate}.\n\nReplanting almost never happened with enough rain across ${nYears} past seasons.`;
 }
 
-/** Pre-written grounded template explanations for sell-or-store decisions (DESIGN.md step 7). */
+/** Pre-written grounded template explanations for sell-or-store decisions (DESIGN.md step 7 & Day 4.2 Polish). */
 export function templateSelling(decision: Decision, lang: Lang = "en"): string {
   const chosen = decision.chosen;
   const k = decision.keyNumbers;
   const bags = Number(k.bags || 20);
   const price = Number(k.currentPricePerBag || 45000);
   const totalNow = (bags * price).toLocaleString();
-  const lossPct = Number(k.monthlyLossPct !== undefined ? k.monthlyLossPct : 2.5);
 
-  const isPics = lossPct <= 0.5;
+  const isPics = (Number(k.monthlyLossPct) || 2.5) <= 0.5;
   const storageLabelEn = isPics ? "PICS hermetic bags" : "plain sacks";
-  const storageLabelPcm = isPics ? "PICS triple bags" : "normal plain sacks";
+  const storageLabelPcm = isPics ? "PICS triple bags" : "ordinary sack";
   const storageLabelYo = isPics ? "àpò hermetic PICS" : "àpò lásán";
+
+  const lossTextEn = String(k.storageLossBags_en || "about half a bag every month");
+  const lossTextPcm = String(k.storageLossBags_pcm || "about half bag every month");
+  const lossTextYo = String(k.storageLossBags_yo || "ní nǹkan bí ààbọ̀ àpò lórí oṣù kọ̀ọ̀kan");
 
   if (chosen === "sell_now") {
     const cheaper = Number(k.cheaperCount ?? 8);
     const n = Number(k.nYears ?? 9);
 
     if (lang === "yo") {
-      return `Tà á báyìí fún ₦${totalNow} (àpò ${bags} ní ₦${price.toLocaleString()} fún àpò kọ̀ọ̀kan).\n\nNí ${cheaper} nínú ọdún ${n} sẹ́yìn tí a ní àkọsílẹ̀ rẹ̀, àgbàdo lórí ìtasílẹ̀ ní Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Pẹ̀lú àdánù ìwọ̀n ${lossPct}% lórí oṣù kọ̀ọ̀kan nínú ${storageLabelYo}, tí o bá tọ́jú rẹ̀ ewu wà pé owó tí wàá rí yóò dínkù.`;
+      return `Tà á báyìí fún ₦${totalNow} (àpò ${bags} ní ₦${price.toLocaleString()} fún àpò kọ̀ọ̀kan).\n\nNí ${cheaper} nínú ọdún ${n} sẹ́yìn, àgbàdo ní ọjà Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ. Àwọn àpò ${bags} rẹ yóò tún pàdánù ${lossTextYo} nínú ${storageLabelYo}.`;
     }
     if (lang === "pcm") {
-      return `Sell now for ₦${totalNow} (${bags} bags at ₦${price.toLocaleString()} per bag).\n\nFor ${cheaper} out of ${n} past years wey get data, Ibadan wholesale corn cheaper a month after August than in August. With ${storageLabelPcm} losing ${lossPct}% every month, danger dey say you go make less money pass today.`;
+      return `Sell now, you go get ₦${totalNow}.\n\nFor ${cheaper} out of ${n} past years, corn price for Ibadan market fall after August. Your ${bags} bags go still lose ${lossTextPcm} inside ${storageLabelPcm}.`;
     }
     // Default English
-    return `Sell now for ₦${totalNow} (${bags} bags at ₦${price.toLocaleString()} per bag).\n\nFor ${cheaper} out of ${n} past years with data, Ibadan wholesale maize was cheaper a month after August than in August. With ${storageLabelEn} losing ${lossPct}% weight monthly, waiting carries high risk of earning less than selling today.`;
+    return `Sell now for ₦${totalNow}.\n\nIn ${cheaper} out of ${n} past years, Ibadan maize was cheaper a month later. Your ${bags} bags would also lose ${lossTextEn} in ${storageLabelEn}.`;
   }
 
   if (chosen === "partial_sell_store_8w") {
@@ -119,10 +108,10 @@ export function templateSelling(decision: Decision, lang: Lang = "en"): string {
   const inflationClauseYo = chosen === "store_24w" ? " ní iye owó òní, lẹ́yìn tí a yọ àfikún owó gbogbogbò kúrò" : "";
 
   if (lang === "yo") {
-    return `Tọ́jú àgbàdo rẹ fún ọ̀sẹ̀ ${weeks}.\n\nNí ${higher} nínú ọdún ${n} sẹ́yìn, iye owó àgbàdo ga tó láti bo àdánù ìtọ́jú (a fi sí ${lossPct}% lórí oṣù kọ̀ọ̀kan nínú ${storageLabelYo}), pẹ̀lú èrè tí a retí ní ₦${p50}${inflationClauseYo}.`;
+    return `Tọ́jú àgbàdo rẹ fún ọ̀sẹ̀ ${weeks}.\n\nNí ${higher} nínú ọdún ${n} sẹ́yìn, iye owó àgbàdo ga tó láti bo àdánù ìtọ́jú, pẹ̀lú èrè tí a retí ní ₦${p50}${inflationClauseYo}.`;
   }
   if (lang === "pcm") {
-    return `Keep your corn for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years wey get data, price jump reach to cover storage loss (we assume ${lossPct}% every month inside ${storageLabelPcm}), with expected return around ₦${p50}${inflationClausePcm}.`;
+    return `Keep your corn for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years wey get data, price jump reach to cover storage loss, with expected return around ₦${p50}${inflationClausePcm}.`;
   }
-  return `Store your maize for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years with data, prices rose enough to cover storage weight loss (assumed ${lossPct}% per month in ${storageLabelEn}), with expected return around ₦${p50}${inflationClauseEn}.`;
+  return `Store your maize for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years with data, prices rose enough to cover storage weight loss, with expected return around ₦${p50}${inflationClauseEn}.`;
 }

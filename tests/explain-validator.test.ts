@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   explain,
   findInvalidNumbers,
+  validateNoPercentages,
   validateOptionAttribution,
   validateOutputStructure,
   validateYoruba,
@@ -139,13 +140,15 @@ describe("explain() integration with validation & fallback (src/core/explain.ts)
       replantRiskNow: "14.1%",
       rainP50Mm: 159.2,
       nAnalogYears: 35,
+      plainChance_plantNow_en: "about 1 in 7 seasons",
+      plainChance_wait7_en: "almost never",
     },
   };
 
   it("falls back to deterministic template when LLM generates a hallucinated number", async () => {
     const mockBadOutput: ExplainOutput = {
-      headline: "Wait 7 days to plant.",
-      reason: "Replanting risk drops to 25% across 50 analog years.", // 25% and 50 are invalid!
+      headline: "Wait a week to plant.",
+      reason: "Replanting risk drops to almost never across 50 analog years.", // 50 is invalid!
       details: [],
       followUpQuestion: null,
     };
@@ -156,6 +159,21 @@ describe("explain() integration with validation & fallback (src/core/explain.ts)
     expect(reply.text).toBe(templatePlanting(mockDecision, "en"));
   });
 
+  it("falls back to deterministic template when LLM generates a percentage (Day 4.2 Polish)", async () => {
+    const mockBadOutput: ExplainOutput = {
+      headline: "Wait a week to plant around 17 April.",
+      reason: "If you plant now, replant risk is 14.1%. Waiting drops risk to 0.7%.", // percentages rejected!
+      details: [],
+      followUpQuestion: null,
+    };
+    const provider = new MockLLMProvider(mockBadOutput);
+
+    const reply = await explain(mockDecision, "en", provider);
+    expect(reply.text).toBe(templatePlanting(mockDecision, "en"));
+    expect(reply.path).toBe("template");
+    expect(reply.fallbackReason).toContain("Found percentage expression");
+  });
+
   it("falls back to deterministic template when LLM provider throws or fails", async () => {
     const provider = new MockLLMProvider({} as any, true);
     const reply = await explain(mockDecision, "en", provider);
@@ -164,16 +182,16 @@ describe("explain() integration with validation & fallback (src/core/explain.ts)
 
   it("accepts valid grounded LLM output when all numbers match", async () => {
     const mockGoodOutput: ExplainOutput = {
-      headline: "Wait 7 days to plant around 17 April.",
-      reason: "If you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% across 35 past seasons.",
+      headline: "Wait a week. Plant around 17 April.",
+      reason: "If you plant now, about 1 in 7 seasons needed replanting. Waiting drops replanting risk to almost never across 35 past seasons.",
       details: ["Evaluated across 35 past seasons."],
       followUpQuestion: null,
     };
     const provider = new MockLLMProvider(mockGoodOutput);
 
     const reply = await explain(mockDecision, "en", provider);
-    expect(reply.text).toContain("Wait 7 days to plant around 17 April.");
-    expect(reply.text).toContain("danger to replant is 14.1%");
+    expect(reply.text).toContain("Wait a week. Plant around 17 April.");
+    expect(reply.text).toContain("about 1 in 7 seasons");
     expect(reply.path).toBe("llm");
   });
 });
@@ -196,6 +214,28 @@ describe("Yoruba Guard (src/core/explain.ts)", () => {
   it("accepts authentic Yoruba text with tone marks and proper vocabulary", () => {
     const yoText = "Dúró díẹ̀. Gbìn ní nǹkan bí 17 April. Ewu láti tún gbìn jẹ́ 0.7% pẹ̀lú 159.2 mm òjò.";
     const check = validateYoruba(yoText);
+    expect(check.valid).toBe(true);
+  });
+});
+
+describe("Percentage Validator (src/core/explain.ts)", () => {
+  it("golden test: rejects a reply with '14.1%'", () => {
+    const text = "Wait a week to plant. Planting now has 14.1% replant risk.";
+    const check = validateNoPercentages(text);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("Found percentage expression");
+  });
+
+  it("rejects replies with 'percent', 'per cent', or Yoruba 'ìdá ọgọ́rùn-ún'", () => {
+    expect(validateNoPercentages("Risk is 5 percent").valid).toBe(false);
+    expect(validateNoPercentages("Ewu jẹ́ ìdá ọgọ́rùn-ún márùn-ún").valid).toBe(false);
+    expect(validateNoPercentages("Risk is 10 per cent").valid).toBe(false);
+  });
+
+  it("accepts replies using plain language chances and counts", () => {
+    const text =
+      "Wait a week. Plant around 17 April.\n\nIf you plant now, about 1 in 7 seasons needed replanting. Waiting drops risk to almost never across 35 past seasons.";
+    const check = validateNoPercentages(text);
     expect(check.valid).toBe(true);
   });
 });
@@ -223,6 +263,20 @@ describe("Option Attribution Validator (src/core/explain.ts)", () => {
       nAnalogYears: 35,
     },
   };
+
+  it("golden test: 'about 1 in 7 seasons' attached to plant_now passes", () => {
+    const text =
+      "Wait a week to plant around 17 April.\n\nIf you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened across 35 past seasons.";
+    const check = validateOptionAttribution(text, mockDecision);
+    expect(check.valid).toBe(true);
+  });
+
+  it("golden test: 'about 1 in 7 seasons' attached to wait_7 is rejected", () => {
+    const text = "Wait a week to plant around 17 April because waiting has about 1 in 7 seasons replanting risk.";
+    const check = validateOptionAttribution(text, mockDecision);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("appeared in same sentence as wait");
+  });
 
   it("golden test: rejects 'Wait 7 days... replant risk is 14.1%'", () => {
     const text = "Wait 7 days... replant risk is 14.1%";

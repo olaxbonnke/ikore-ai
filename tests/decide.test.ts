@@ -160,7 +160,7 @@ describe("Orchestrator plant_timing end-to-end (snapshot mode)", () => {
     expect(spikeEv).toBeDefined();
 
     // Reply text contains advice
-    expect(reply.text.toLowerCase()).toContain("wait 7 days");
+    expect(reply.text.toLowerCase()).toContain("wait a week");
     expect(reply.memoryIdsUsed.length).toBeGreaterThan(0);
 
     // NiMet benchmark evidence item
