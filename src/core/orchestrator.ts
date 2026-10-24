@@ -218,6 +218,9 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       decision,
       askedQuestion: false,
       memoryIdsUsed,
+      path: explanation.path,
+      fallbackReason: explanation.fallbackReason,
+      latencyMs: explanation.latencyMs,
     };
   }
 
@@ -329,5 +332,8 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     decision,
     askedQuestion: false,
     memoryIdsUsed,
+    path: explanation.path,
+    fallbackReason: explanation.fallbackReason,
+    latencyMs: explanation.latencyMs,
   };
 }

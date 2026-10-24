@@ -62,7 +62,7 @@ Nightly: `npm run nightshift` ─► for each farm: Observe ─► Simulate ─�
 | Charts | Recharts | Simple line/area/bar charts for evidence |
 | Memory | **Meterless H-MEM** (vendored by the starter's `npm run setup`) | Required sponsor tech; persistent local memory with ledger and sleep cycle |
 | Data | **Zetaris Cloud** via REST (`/api/v1.0`), plus Zetaris MCP in Cursor during development | Required sponsor tech; federated read-only SQL |
-| LLM (reasoning and language) | **NVIDIA Nemotron** via NVIDIA's OpenAI-compatible API (build.nvidia.com) | Nemotron prize; strong reasoning |
+| LLM (reasoning and language) | **NVIDIA Nemotron** via NVIDIA's API (build.nvidia.com, OpenAI-compatible format) | Nemotron prize; strong reasoning |
 | LLM (local / fallback) | **Meterless Runtime** OpenAI-compatible provider (`http://127.0.0.1:8088/v1`, model `meterless/auto`) | Local-first; extra sponsor depth |
 | Overnight jobs | `scripts/nightshift.ts`, run by Meterless Nightshift if available on your OS, otherwise Windows Task Scheduler or cron, recorded as a Meterless job | Overnight re-planning |
 | Tests | Vitest | Fast, TS-native |
@@ -383,7 +383,7 @@ Create these views so the agent's SQL stays simple:
 
 ### 8.1 Providers
 - `LLMProvider.complete({system, messages, json?: ZodSchema, temperature})`.
-- `NvidiaProvider`: OpenAI-compatible endpoint from build.nvidia.com (`NVIDIA_BASE_URL`, `NVIDIA_API_KEY`, `NVIDIA_MODEL`). Pick a current Nemotron model from the NVIDIA catalog on Day 1 and put its exact ID in `.env`.
+- `NvidiaProvider`: NVIDIA Nemotron via NVIDIA's API (build.nvidia.com, OpenAI-compatible format) using `NVIDIA_BASE_URL`, `NVIDIA_API_KEY`, `NVIDIA_MODEL`. Pick a current Nemotron model from the NVIDIA catalog on Day 1 and put its exact ID in `.env`.
 - `MeterlessProvider`: base `http://127.0.0.1:8088/v1` (normalise pasted URLs to `<host>/v1`, never `/v1/v1`). `Authorization: Bearer <token from <stateDir>/proxy-token>` (`rt-local` is rejected). Header `meterless-app: oko` on every request, and `meterless-scope: user` on chat. Model IDs are routing modes such as `meterless/auto`. Status: `GET /v1/models` (401/403 = unauthorized, 200 = online, anything else = offline). 180-second timeout.
 - Routing: `understand` and `explain` use Nemotron by default. If NVIDIA isn't reachable, fall back to Meterless; if that fails too, use template explanations. Log which provider answered in the evidence ("Explained by Nemotron <model>").
 

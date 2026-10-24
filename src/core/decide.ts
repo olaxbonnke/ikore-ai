@@ -231,7 +231,22 @@ export function decide(
     if (plantNowPlanting) {
       keyNumbers.replantRiskNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
       keyNumbers.replantProbabilityNow = plantNowPlanting.replantProbability;
+      keyNumbers.replantRisk_plantNow = `${(plantNowPlanting.replantProbability * 100).toFixed(1)}%`;
+      keyNumbers.replantIn100_plantNow = Math.round(plantNowPlanting.replantProbability * 100);
     }
+    const wait7Opt = params.plantingOptions?.find((p) => p.option === "wait_7");
+    const wait14Opt = params.plantingOptions?.find((p) => p.option === "wait_14");
+    if (wait7Opt) {
+      keyNumbers.replantRisk_wait7 = `${(wait7Opt.replantProbability * 100).toFixed(1)}%`;
+      keyNumbers.replantIn100_wait7 = Math.round(wait7Opt.replantProbability * 100);
+    }
+    if (wait14Opt) {
+      keyNumbers.replantRisk_wait14 = `${(wait14Opt.replantProbability * 100).toFixed(1)}%`;
+      keyNumbers.replantIn100_wait14 = Math.round(wait14Opt.replantProbability * 100);
+    }
+    keyNumbers.replantIn100_chosen = Math.round(chosenRisk * 100);
+    keyNumbers.in100 = 100;
+    keyNumbers.seasonsCount = n;
   }
 
   // 7. Build Decision.evidence

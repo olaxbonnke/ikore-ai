@@ -2,7 +2,7 @@
 //   retrieval-only (default): the answer is assembled from retrieved
 //     memories; zero network access, zero keys.
 //   model mode: when NVIDIA_API_KEY is set, queries NVIDIA Nemotron via
-//     the OpenAI-compatible chat/completions endpoint using the openai package.
+//     NVIDIA's API (build.nvidia.com, OpenAI-compatible format) using the openai package.
 
 import dotenv from "dotenv";
 import OpenAI from "openai";

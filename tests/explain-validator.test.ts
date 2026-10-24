@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { explain, findInvalidNumbers, validateYoruba, type ExplainOutput } from "../src/core/explain.ts";
+import {
+  explain,
+  findInvalidNumbers,
+  validateOptionAttribution,
+  validateOutputStructure,
+  validateYoruba,
+  type ExplainOutput,
+} from "../src/core/explain.ts";
 import type { Decision, Lang } from "../src/core/types.ts";
 import { templatePlanting, templateSelling } from "../src/i18n/templates.ts";
 import { extractRules, understand } from "../src/llm/understand.ts";
@@ -157,16 +164,17 @@ describe("explain() integration with validation & fallback (src/core/explain.ts)
 
   it("accepts valid grounded LLM output when all numbers match", async () => {
     const mockGoodOutput: ExplainOutput = {
-      headline: "Wait 7 days to plant.",
-      reason: "Planting around 17 April drops replant risk from 14.1% to 0.7% with 159.2 mm rain.",
-      details: ["Evaluated across 35 analog years."],
+      headline: "Wait 7 days to plant around 17 April.",
+      reason: "If you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% across 35 past seasons.",
+      details: ["Evaluated across 35 past seasons."],
       followUpQuestion: null,
     };
     const provider = new MockLLMProvider(mockGoodOutput);
 
     const reply = await explain(mockDecision, "en", provider);
-    expect(reply.text).toContain("Wait 7 days to plant.");
-    expect(reply.text).toContain("drops replant risk from 14.1% to 0.7%");
+    expect(reply.text).toContain("Wait 7 days to plant around 17 April.");
+    expect(reply.text).toContain("danger to replant is 14.1%");
+    expect(reply.path).toBe("llm");
   });
 });
 
@@ -188,6 +196,125 @@ describe("Yoruba Guard (src/core/explain.ts)", () => {
   it("accepts authentic Yoruba text with tone marks and proper vocabulary", () => {
     const yoText = "Dúró díẹ̀. Gbìn ní nǹkan bí 17 April. Ewu láti tún gbìn jẹ́ 0.7% pẹ̀lú 159.2 mm òjò.";
     const check = validateYoruba(yoText);
+    expect(check.valid).toBe(true);
+  });
+});
+
+describe("Option Attribution Validator (src/core/explain.ts)", () => {
+  const mockDecision: Decision = {
+    id: "dec_plant_test",
+    farmId: "farm_bisi_ogbomoso",
+    intent: "plant_timing",
+    createdAt: "2026-04-10T08:00:00Z",
+    chosen: "wait_7",
+    runnerUp: "wait_14",
+    confidence: "high",
+    riskBadge: "green",
+    dataMode: "snapshot",
+    assumptions: [],
+    evidence: [],
+    options: [],
+    keyNumbers: {
+      plantingDate: "2026-04-17",
+      replantRisk_plantNow: "14.1%",
+      replantRiskNow: "14.1%",
+      replantRisk_wait7: "0.7%",
+      replantRisk: "0.7%",
+      nAnalogYears: 35,
+    },
+  };
+
+  it("golden test: rejects 'Wait 7 days... replant risk is 14.1%'", () => {
+    const text = "Wait 7 days... replant risk is 14.1%";
+    const check = validateOptionAttribution(text, mockDecision);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("appeared in same sentence as wait");
+  });
+
+  it("golden test: rejects real failure attaching 14.1% to planting after 7 days", () => {
+    const text =
+      "Wait 7 days to plant around 2026-04-17.\n\nWith 35 past seasons median rain is 159.2 mm and replant risk is 14.1%, planting after 7 days gives a solid start.";
+    const check = validateOptionAttribution(text, mockDecision);
+    expect(check.valid).toBe(false);
+  });
+
+  it("passes when risk numbers are properly attributed to their respective options", () => {
+    const text =
+      "Wait 7 days to plant around 17 April.\n\nIf you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% with enough rain across 35 past seasons.";
+    const check = validateOptionAttribution(text, mockDecision);
+    expect(check.valid).toBe(true);
+  });
+});
+
+describe("Output Structure Validator (src/core/explain.ts)", () => {
+  it("rejects headline with more than 12 words", () => {
+    const output: ExplainOutput = {
+      headline: "You should definitely wait at least seven days before planting your maize on your farm", // 14 words
+      reason: "Danger drops to 0.7% across 35 past seasons.",
+      details: [],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("max 12 allowed");
+  });
+
+  it("rejects reason with more than 2 sentences", () => {
+    const output: ExplainOutput = {
+      headline: "Wait 7 days to plant around 17 April.",
+      reason: "If you plant now danger is 14.1%. Waiting drops danger to 0.7%. Rainfall will be adequate.",
+      details: [],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("max 2 allowed");
+  });
+
+  it("rejects reason with more than 3 numbers", () => {
+    const output: ExplainOutput = {
+      headline: "Wait 7 days to plant around 17 April.",
+      reason: "Planting on 10 April has 14.1% risk, but waiting until 17 April drops risk to 0.7% across 35 seasons.", // 5 numbers: 10, 14.1%, 17, 0.7%, 35
+      details: [],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("max 3 allowed");
+  });
+
+  it("rejects reason with technical jargon (analog years, median, mm)", () => {
+    const output: ExplainOutput = {
+      headline: "Wait 7 days to plant around 17 April.",
+      reason: "Median establishment rain is 159.2 mm across 35 analog years.",
+      details: [],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("technical jargon");
+  });
+
+  it("rejects reason containing ISO dates", () => {
+    const output: ExplainOutput = {
+      headline: "Wait 7 days to plant.",
+      reason: "Do not plant until 2026-04-17 because risk is high.",
+      details: [],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("ISO date format");
+  });
+
+  it("accepts output meeting all DESIGN.md 8.3 constraints", () => {
+    const output: ExplainOutput = {
+      headline: "Wait 7 days to plant around 17 April.",
+      reason: "If you plant now, danger to replant is 14.1%. Waiting drops danger to 0.7% with enough rain across 35 past seasons.",
+      details: ["35 past seasons evaluated"],
+      followUpQuestion: null,
+    };
+    const check = validateOutputStructure(output);
     expect(check.valid).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ export interface NvidiaProviderConfig {
   model?: string;
 }
 
-/** NVIDIA Nemotron via OpenAI-compatible API (build.nvidia.com) - DESIGN.md section 8.1 */
+/** NVIDIA Nemotron via NVIDIA's API (build.nvidia.com, OpenAI-compatible format) - DESIGN.md section 8.1 */
 export class NvidiaProvider implements LLMProvider {
   readonly name = "nvidia";
   private readonly baseUrl: string;
@@ -33,7 +33,8 @@ export class NvidiaProvider implements LLMProvider {
       model: this.model,
       messages,
       temperature: params.temperature ?? 0.2,
-      max_tokens: 8192,
+      max_tokens: 600,
+      chat_template_kwargs: { enable_thinking: false },
     };
 
     if (params.json) {
@@ -41,10 +42,10 @@ export class NvidiaProvider implements LLMProvider {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+      let res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,6 +55,20 @@ export class NvidiaProvider implements LLMProvider {
         signal: controller.signal,
       });
 
+      if (res.status === 502 || res.status === 503) {
+        console.warn(`[NvidiaProvider] Received HTTP ${res.status}, retrying once in 500ms...`);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        res = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      }
+
       if (!res.ok) {
         const status = res.status;
         const errText = await res.text().catch(() => "");
@@ -61,7 +76,15 @@ export class NvidiaProvider implements LLMProvider {
       }
 
       const data = (await res.json()) as any;
-      const content = data.choices?.[0]?.message?.content;
+      const choice = data.choices?.[0];
+      const reasoning = choice?.message?.reasoning_content;
+      if (reasoning) {
+        console.warn("[NvidiaProvider] Notice: reasoning_content present in response despite enable_thinking: false");
+      } else {
+        console.log("[NvidiaProvider] Confirmed: response has no reasoning content (enable_thinking: false)");
+      }
+
+      const content = choice?.message?.content;
       if (typeof content !== "string") {
         throw new Error("NvidiaProvider returned empty content");
       }

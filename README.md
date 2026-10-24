@@ -16,7 +16,7 @@ Ikore AI combines deterministic agronomic modeling with modern agent infrastruct
 
 - **Data Layer (Zetaris)**: Federated, read-only data access over 35+ years of daily climate history (NASA POWER PRECTOTCORR), 16-day weather forecasts (Open-Meteo), WFP monthly market prices, and crop calendars via `DataGateway` (`ZetarisGateway` in live mode, `SnapshotGateway` for offline reproducible evaluation).
 - **Farm Memory & Ledger (Meterless H-MEM)**: Multi-session, auditable memory per farm using real Meterless H-MEM services (`MemoryMiningService`, `MemoryRetrievalService`, `TrustLedgerService`, `SleepCycleService`).
-- **Explanation Layer (NVIDIA Nemotron)**: Explains decisions in plain, local language (English, Nigerian Pidgin, Yoruba, and Hausa). Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
+- **Explanation Layer (NVIDIA Nemotron)**: Powered by NVIDIA Nemotron via NVIDIA's API (build.nvidia.com, OpenAI-compatible format) to explain decisions in plain, local language (English, Nigerian Pidgin, Yoruba, and Hausa). No OpenAI models or accounts are used. Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
 - **Pure Simulation Engine**: 100% deterministic, pure functions taking explicit `asOf` dates (Africa/Lagos timezone) with zero unseeded randomness or ungrounded heuristics.
 
 ---

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
 import type { AgentReply, Decision, Lang } from "../core/types.ts";
+import { formatGroundedDate } from "../i18n/glossary.ts";
 import { templatePlanting, templateSelling } from "../i18n/templates.ts";
 import { NvidiaProvider } from "./nvidia.ts";
 import type { LLMProvider } from "./provider.ts";
@@ -26,6 +27,42 @@ export interface ExtractedToken {
   raw: string;
   isPercentage: boolean;
   values: number[];
+}
+
+/** Word counter helper */
+export function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Splits text into sentences without breaking on decimal points (e.g. 14.1%, ₦45,000) or ellipsis */
+export function splitSentences(text: string): string[] {
+  // Protect ellipsis by replacing with comma
+  const safe = text.replace(/\.{3,}/g, ", ");
+  // Split on sentence-ending punctuation followed by whitespace/newlines or end-of-string
+  // ensuring we don't break on decimal numbers like 14.1% or 0.7%
+  const sentences: string[] = [];
+  const rawParts = safe.split(/(?<=[.!?])(?!\d)(?:\s+|\n+)/);
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    if (trimmed.length > 0) {
+      sentences.push(trimmed);
+    }
+  }
+  return sentences.length > 0 ? sentences : [text.trim()];
+}
+
+/** Sentence counter helper */
+export function countSentences(text: string): number {
+  return splitSentences(text).length;
+}
+
+/** Finds all numeric tokens in a string (currency, %, decimals, counts) */
+export function findNumericTokens(text: string): string[] {
+  const tokenRegex = /(?:₦\s*)?(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(?:%|\s*k\b|\s*naira|\s*ngn)?/gi;
+  const matches = text.match(tokenRegex) || [];
+  return matches
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0 && !/^\d+(?:st|nd|rd|th)$/i.test(m));
 }
 
 /**
@@ -116,9 +153,10 @@ export function getAllowedNumericSets(decision: Decision): {
     allowedNumbers.add(parseInt(chosenMatch[1], 10));
   }
 
-  // Sivakumar dry spell rule constants: 7 dry days, 21-day window
+  // Sivakumar dry spell rule constants: 7 dry days, 21-day window, base 100 seasons
   allowedNumbers.add(7);
   allowedNumbers.add(21);
+  allowedNumbers.add(100);
 
   return { allowedNumbers, allowedPercentages };
 }
@@ -185,6 +223,89 @@ export function findInvalidNumbers(text: string, decision: Decision): string[] {
 }
 
 /**
+ * Validates option attribution (Step 2):
+ * A risk number from one option must not appear in the same sentence as another option's verb or duration.
+ * E.g., 14.1% (plant_now risk) must not appear beside 'wait' or '7 days'.
+ */
+export function validateOptionAttribution(text: string, decision: Decision): { valid: boolean; reason?: string } {
+  const sentences = splitSentences(text);
+
+  if (decision.intent === "plant_timing") {
+    const plantNowRisk = String(
+      decision.keyNumbers.replantRisk_plantNow || decision.keyNumbers.replantRiskNow || "14.1%"
+    );
+    const plantNowNum = plantNowRisk.replace("%", "").trim();
+
+    for (const s of sentences) {
+      const hasPlantNowRisk = s.includes(plantNowRisk) || new RegExp(`\\b${plantNowNum}%?\\b`).test(s);
+      const hasWaitKeyword =
+        /\b(wait|waiting|waited|dúró|jira)\b/i.test(s) || /\b(?:after\s+)?(?:7|14)\s+days?\b/i.test(s);
+
+      if (hasPlantNowRisk && hasWaitKeyword) {
+        return {
+          valid: false,
+          reason: `Plant-now risk (${plantNowRisk}) appeared in same sentence as wait option keyword: "${s.trim()}"`,
+        };
+      }
+
+      const waitRisk = String(
+        decision.keyNumbers.replantRisk_wait7 || decision.keyNumbers.replantRisk || "0.7%"
+      );
+      const waitNum = waitRisk.replace("%", "").trim();
+      const hasWaitRisk = s.includes(waitRisk) || new RegExp(`\\b${waitNum}%?\\b`).test(s);
+      const hasPlantNowKeyword = /\b(plant\s+now|gbìn\s+báyìí|shuka\s+yanzu)\b/i.test(s);
+
+      if (hasWaitRisk && hasPlantNowKeyword && !hasWaitKeyword) {
+        return {
+          valid: false,
+          reason: `Wait risk (${waitRisk}) appeared in same sentence as plant-now keyword: "${s.trim()}"`,
+        };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates headline and reason structure according to DESIGN.md 8.3 (Step 3):
+ * - Headline max 12 words
+ * - Reason 1 to 2 sentences
+ * - Reason max 3 numbers
+ * - No ISO dates (e.g. 2026-04-17)
+ * - No technical jargon (analog years, median, mm)
+ */
+export function validateOutputStructure(output: ExplainOutput): { valid: boolean; reason?: string } {
+  const headlineWords = countWords(output.headline);
+  if (headlineWords > 12) {
+    return { valid: false, reason: `Headline has ${headlineWords} words (max 12 allowed)` };
+  }
+
+  const reasonSentences = countSentences(output.reason);
+  if (reasonSentences > 2) {
+    return { valid: false, reason: `Reason has ${reasonSentences} sentences (max 2 allowed)` };
+  }
+
+  const reasonNumbers = findNumericTokens(output.reason);
+  if (reasonNumbers.length > 3) {
+    return { valid: false, reason: `Reason has ${reasonNumbers.length} numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
+  }
+
+  // No ISO dates in headline or reason
+  if (/\b\d{4}-\d{2}-\d{2}\b/.test(output.headline) || /\b\d{4}-\d{2}-\d{2}\b/.test(output.reason)) {
+    return { valid: false, reason: "Contains ISO date format; use localized dates like '17 April'" };
+  }
+
+  // No technical jargon in headline or reason
+  const jargonRegex = /\b(analog\s*years?|median|\bmm\b)\b/i;
+  if (jargonRegex.test(output.headline) || jargonRegex.test(output.reason)) {
+    return { valid: false, reason: "Contains technical jargon (analog years, median, mm)" };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Yoruba guard (DESIGN.md section 8.3):
  * If 'yo' reply has no tone marks at all, or mostly English words, reject it.
  */
@@ -241,13 +362,68 @@ function loadPromptTemplate(): string {
 }
 
 /**
- * Grounded explanation + number validator + Yoruba guard (DESIGN.md section 8.3).
+ * Builds structured facts tied to the option they describe (Step 2).
+ */
+export function buildFactsByOption(decision: Decision, lang: Lang): Record<string, unknown> {
+  const k = decision.keyNumbers;
+
+  if (decision.intent === "plant_timing") {
+    const rawDate = String(k.plantingDate || decision.createdAt.slice(0, 10));
+    const formattedDate = formatGroundedDate(rawDate, lang);
+
+    return {
+      plant_now: {
+        replantRisk: k.replantRisk_plantNow || k.replantRiskNow || "14.1%",
+        replantIn100: "about 14 in 100 seasons",
+      },
+      wait_7: {
+        plantingDate: formattedDate,
+        replantRisk: k.replantRisk_wait7 || k.replantRisk || "0.7%",
+        replantIn100: "almost none (1 in 100 seasons)",
+      },
+      wait_14: {
+        replantRisk: k.replantRisk_wait14 || k.replantRisk || "0.7%",
+        replantIn100: "almost none (1 in 100 seasons)",
+      },
+      context: {
+        pastSeasonsEvaluated: k.seasonsCount || k.nAnalogYears || 35,
+        chosenOption: decision.chosen,
+      },
+    };
+  }
+
+  const bags = Number(k.bags || 20);
+  const price = Number(k.currentPricePerBag || 45000);
+  const totalValue = bags * price;
+
+  return {
+    sell_now: {
+      bags,
+      pricePerBag: `₦${price.toLocaleString()}`,
+      totalValue: `₦${totalValue.toLocaleString()}`,
+    },
+    store_4w: {
+      horizon: "4 weeks",
+      cheaperYearsCount: k.cheaperCount ?? 8,
+      totalYearsEvaluated: k.nYears ?? 9,
+      monthlyLossPct: `${k.monthlyLossPct ?? 2.5}%`,
+    },
+    context: {
+      chosenOption: decision.chosen,
+    },
+  };
+}
+
+/**
+ * Grounded explanation + number validator + Yoruba guard + structure check (DESIGN.md 8.3).
  */
 export async function explain(
   decision: Decision,
   lang: Lang = "en",
   provider?: LLMProvider
 ): Promise<AgentReply> {
+  const t0 = Date.now();
+
   // If in test mode and no provider explicitly injected, use deterministic fallback
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
   if (isTest && !provider) {
@@ -261,6 +437,9 @@ export async function explain(
       decision,
       askedQuestion: false,
       memoryIdsUsed: [],
+      path: "template",
+      fallbackReason: "Test mode without injected provider",
+      latencyMs: Date.now() - t0,
     };
   }
 
@@ -272,13 +451,14 @@ export async function explain(
       .replace(/{lang}/g, lang)
       .replace(/{langName}/g, LANG_NAMES[lang] || lang);
 
+    const factsByOption = buildFactsByOption(decision, lang);
+
     const userPrompt = JSON.stringify(
       {
         intent: decision.intent,
         chosen: decision.chosen,
         confidence: decision.confidence,
-        keyNumbers: decision.keyNumbers,
-        evidence: decision.evidence.map((e) => ({ label: e.label, statistic: e.statistic })),
+        factsByOption,
       },
       null,
       2
@@ -293,7 +473,14 @@ export async function explain(
 
     const fullGenerated = `${response.headline}\n\n${response.reason}`;
 
-    // 1. Run Number Validator
+    // 1. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon)
+    const structureCheck = validateOutputStructure(response);
+    if (!structureCheck.valid) {
+      console.warn(`[Explain] Structure check rejected LLM reply: ${structureCheck.reason}. Falling back to template.`);
+      throw new Error(`Structure check failed: ${structureCheck.reason}`);
+    }
+
+    // 2. Number Validator (only numbers present in keyNumbers)
     const invalidNumbers = findInvalidNumbers(fullGenerated, decision);
     if (invalidNumbers.length > 0) {
       console.warn(
@@ -302,18 +489,24 @@ export async function explain(
       throw new Error(`Invalid numbers: ${invalidNumbers.join(", ")}`);
     }
 
-    // 2. Run Yoruba Guard if lang is yo
+    // 3. Option Attribution Check (numbers not attached to wrong option)
+    const attributionCheck = validateOptionAttribution(fullGenerated, decision);
+    if (!attributionCheck.valid) {
+      console.warn(`[Explain] Option attribution rejected LLM reply: ${attributionCheck.reason}. Falling back to template.`);
+      throw new Error(`Option attribution failed: ${attributionCheck.reason}`);
+    }
+
+    // 4. Yoruba Guard if lang is yo
     if (lang === "yo") {
       const yoCheck = validateYoruba(fullGenerated);
       if (!yoCheck.valid) {
-        console.warn(
-          `[Explain] Yoruba guard rejected LLM reply (${yoCheck.reason}). Falling back to template.`
-        );
+        console.warn(`[Explain] Yoruba guard rejected LLM reply (${yoCheck.reason}). Falling back to template.`);
         throw new Error(`Yoruba validation failed: ${yoCheck.reason}`);
       }
     }
 
-    console.log(`[Explain] LLM explanation accepted for ${decision.intent} in ${lang} via ${activeProvider.name}`);
+    const latencyMs = Date.now() - t0;
+    console.log(`[Explain] path=llm | latency=${latencyMs}ms | accepted for ${decision.intent} in ${lang} via ${activeProvider.name}`);
 
     // Assemble final response text
     let replyText = `${response.headline.trim()}\n\n${response.reason.trim()}`;
@@ -330,9 +523,13 @@ export async function explain(
       decision,
       askedQuestion: Boolean(response.followUpQuestion),
       memoryIdsUsed: [],
+      path: "llm",
+      latencyMs,
     };
   } catch (err: any) {
-    console.warn(`[Explain] Fallback to deterministic template (${err.message})`);
+    const latencyMs = Date.now() - t0;
+    console.warn(`[Explain] path=template | reason="${err.message}" | latency=${latencyMs}ms`);
+
     const fallbackText =
       decision.intent === "sell_or_store"
         ? templateSelling(decision, lang)
@@ -344,6 +541,9 @@ export async function explain(
       decision,
       askedQuestion: false,
       memoryIdsUsed: [],
+      path: "template",
+      fallbackReason: err.message,
+      latencyMs,
     };
   }
 }

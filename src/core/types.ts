@@ -78,6 +78,9 @@ export interface AgentReply {
   decision?: Decision;
   askedQuestion?: boolean;
   memoryIdsUsed: string[];
+  path?: "llm" | "template";
+  fallbackReason?: string;
+  latencyMs?: number;
 }
 
 /** User message into the orchestrator (DESIGN.md section 4). */
