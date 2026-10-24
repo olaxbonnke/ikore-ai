@@ -221,6 +221,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       path: explanation.path,
       fallbackReason: explanation.fallbackReason,
       latencyMs: explanation.latencyMs,
+      model: explanation.model,
     };
   }
 
@@ -335,5 +336,6 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     path: explanation.path,
     fallbackReason: explanation.fallbackReason,
     latencyMs: explanation.latencyMs,
+    model: explanation.model,
   };
 }

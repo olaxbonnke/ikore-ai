@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AgentReply, Decision, Lang } from "../core/types.ts";
 import { formatGroundedDate } from "../i18n/glossary.ts";
 import { templatePlanting, templateSelling } from "../i18n/templates.ts";
-import { NvidiaProvider } from "./nvidia.ts";
+import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 
 export const ExplainOutputSchema = z.object({
@@ -477,14 +477,66 @@ export async function explain(
   provider?: LLMProvider
 ): Promise<AgentReply> {
   const t0 = Date.now();
+  const config = getNightshiftConfig();
 
-  // If in test mode and no provider explicitly injected, use deterministic fallback
+  // 1. SAMPLE_MODE=true: No network call to Nightshift. Use existing templates.
+  if (config.sampleMode) {
+    logLLMCall({
+      timestamp: new Date().toISOString(),
+      runId: `run_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      step: "explain",
+      provider: "sample",
+      requestedModel: "none",
+      respondedModel: "none",
+      latencyMs: 0,
+      status: "ok",
+      fallbackUsed: true,
+    });
+
+    const fallbackText =
+      decision.intent === "sell_or_store"
+        ? templateSelling(decision, lang)
+        : templatePlanting(decision, lang);
+
+    decision.evidence.push({
+      id: "ev_explanation_model",
+      kind: "assumption",
+      label: "Explanation Model",
+      source: "Sample Mode",
+      statistic: "Written by sample template (SAMPLE_MODE=true)",
+      value: "none",
+    });
+
+    return {
+      text: fallbackText,
+      lang,
+      decision,
+      askedQuestion: false,
+      memoryIdsUsed: [],
+      path: "template",
+      fallbackReason: "SAMPLE_MODE=true",
+      latencyMs: 0,
+      model: "none",
+    };
+  }
+
+  // 2. If in test mode and no provider explicitly injected, use deterministic fallback
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
   if (isTest && !provider) {
     const fallbackText =
       decision.intent === "sell_or_store"
         ? templateSelling(decision, lang)
         : templatePlanting(decision, lang);
+
+    decision.evidence.push({
+      id: "ev_explanation_model",
+      kind: "assumption",
+      label: "Explanation Model",
+      source: "Deterministic Template",
+      statistic: "Written by deterministic template (test mode)",
+      value: "template",
+    });
+
     return {
       text: fallbackText,
       lang,
@@ -494,10 +546,12 @@ export async function explain(
       path: "template",
       fallbackReason: "Test mode without injected provider",
       latencyMs: Date.now() - t0,
+      model: "template",
     };
   }
 
-  const activeProvider = provider || new NvidiaProvider();
+  const activeProvider = provider || new NightshiftProvider();
+  let respondedModel = activeProvider.name;
 
   try {
     const rawTemplate = loadPromptTemplate();
@@ -518,12 +572,27 @@ export async function explain(
       2
     );
 
-    const response = await activeProvider.complete<ExplainOutput>({
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-      json: ExplainOutputSchema,
-      temperature: 0.2,
-    });
+    let response: ExplainOutput;
+    if (typeof (activeProvider as any).completeWithMeta === "function") {
+      const meta = await (activeProvider as any).completeWithMeta({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        json: ExplainOutputSchema,
+        temperature: 0.2,
+        stepName: "explain",
+      });
+      response = meta.content;
+      respondedModel = meta.model;
+    } else {
+      response = await activeProvider.complete<ExplainOutput>({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        json: ExplainOutputSchema,
+        temperature: 0.2,
+        stepName: "explain",
+      });
+      respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
+    }
 
     const fullGenerated = `${response.headline}\n\n${response.reason}`;
 
@@ -592,6 +661,16 @@ export async function explain(
       replyText += `\n\n${response.followUpQuestion.trim()}`;
     }
 
+    // Show the responded model in the Decision/evidence panel next to the explanation
+    decision.evidence.push({
+      id: "ev_explanation_model",
+      kind: "assumption",
+      label: "Explanation Model",
+      source: "Meterless Nightshift",
+      statistic: `Written by ${respondedModel} via Meterless Nightshift`,
+      value: respondedModel,
+    });
+
     return {
       text: replyText,
       lang,
@@ -600,6 +679,7 @@ export async function explain(
       memoryIdsUsed: [],
       path: "llm",
       latencyMs,
+      model: respondedModel,
     };
   } catch (err: any) {
     const latencyMs = Date.now() - t0;
@@ -610,6 +690,15 @@ export async function explain(
         ? templateSelling(decision, lang)
         : templatePlanting(decision, lang);
 
+    decision.evidence.push({
+      id: "ev_explanation_model",
+      kind: "assumption",
+      label: "Explanation Model",
+      source: "Meterless Nightshift (fallback)",
+      statistic: `Fallback template used (${err.message})`,
+      value: "template",
+    });
+
     return {
       text: fallbackText,
       lang,
@@ -619,6 +708,7 @@ export async function explain(
       path: "template",
       fallbackReason: err.message,
       latencyMs,
+      model: "template",
     };
   }
 }

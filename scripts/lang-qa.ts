@@ -94,7 +94,7 @@ async function main() {
 
   // Generate docs/lang-qa.md
   let md = `# Multilingual Explanation QA (Day 4.2)\n\n`;
-  md += `Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM (\`nvidia/nemotron-3.5-lightning-30b-a3b\` via build.nvidia.com) with \`chat_template_kwargs: { enable_thinking: false }\`, grounded number validation, and Yoruba diacritic guards.\n\n`;
+  md += `Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM (\`nvidia/nemotron-3.5-lightning-30b-a3b\` via Meterless Nightshift) with \`chat_template_kwargs: { enable_thinking: false }\`, grounded number validation, and Yoruba diacritic guards.\n\n`;
   md += `| # | Intent | Language | Prompt | Path | Latency | Fallback Reason | Advisor Reply | Native Speaker Check |\n`;
   md += `|---|---|---|---|---|---|---|---|---|\n`;
 

@@ -1,6 +1,6 @@
 # Multilingual Explanation QA (Day 4.2)
 
-Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM (`nvidia/nemotron-3.5-lightning-30b-a3b` via build.nvidia.com) with `chat_template_kwargs: { enable_thinking: false }`, grounded number validation, and Yoruba diacritic guards.
+Evaluated on **farm_bisi_ogbomoso** in **snapshot** mode with live Nemotron LLM (`nvidia/nemotron-3.5-lightning-30b-a3b` via Meterless Nightshift) with `chat_template_kwargs: { enable_thinking: false }`, grounded number validation, and Yoruba diacritic guards.
 
 | # | Intent | Language | Prompt | Path | Latency | Fallback Reason | Advisor Reply | Native Speaker Check |
 |---|---|---|---|---|---|---|---|---|

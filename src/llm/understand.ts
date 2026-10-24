@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
 import type { Lang } from "../core/types.ts";
-import { NvidiaProvider } from "./nvidia.ts";
+import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 
 export const UnderstandSchema = z.object({
@@ -156,14 +156,32 @@ export async function understand(
   _farmId?: string,
   provider?: LLMProvider
 ): Promise<UnderstandResult> {
+  const config = getNightshiftConfig();
+
+  // SAMPLE_MODE=true: use deterministic extraction and log sample
+  if (config.sampleMode) {
+    logLLMCall({
+      timestamp: new Date().toISOString(),
+      runId: `run_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      step: "understand",
+      provider: "sample",
+      requestedModel: "none",
+      respondedModel: "none",
+      latencyMs: 0,
+      status: "ok",
+      fallbackUsed: true,
+    });
+    return extractRules(text);
+  }
+
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-  // In test mode without an explicit provider, or if no API key is available, use fast rules
+  // In test mode without an explicit provider, use fast rules
   if (isTest && !provider) {
     return extractRules(text);
   }
 
-  const activeProvider = provider || new NvidiaProvider();
+  const activeProvider = provider || new NightshiftProvider();
 
   try {
     const system = loadUnderstandPrompt();
@@ -172,6 +190,7 @@ export async function understand(
       messages: [{ role: "user", content: text }],
       json: UnderstandSchema,
       temperature: 0.1,
+      stepName: "understand",
     });
 
     // Mirror slot alias for backward compatibility (pricePerBagNgn <-> pricePerBag)

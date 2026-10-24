@@ -16,7 +16,7 @@ Ikore AI combines deterministic agronomic modeling with modern agent infrastruct
 
 - **Data Layer (Zetaris)**: Federated, read-only data access over 35+ years of daily climate history (NASA POWER PRECTOTCORR), 16-day weather forecasts (Open-Meteo), WFP monthly market prices, and crop calendars via `DataGateway` (`ZetarisGateway` in live mode, `SnapshotGateway` for offline reproducible evaluation).
 - **Farm Memory & Ledger (Meterless H-MEM)**: Multi-session, auditable memory per farm using real Meterless H-MEM services (`MemoryMiningService`, `MemoryRetrievalService`, `TrustLedgerService`, `SleepCycleService`).
-- **Explanation Layer (NVIDIA Nemotron)**: Powered by NVIDIA Nemotron via NVIDIA's API (build.nvidia.com, OpenAI-compatible format) to explain decisions in plain, local language (English, Nigerian Pidgin, Yoruba, and Hausa). No OpenAI models or accounts are used. Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
+- **Explanation Layer (NVIDIA Nemotron via Nightshift)**: Models run through Meterless Nightshift (primary AI provider). NVIDIA Nemotron writes the farmer-facing explanations in English, Nigerian Pidgin and Yoruba. The NVIDIA key is stored in Nightshift's Providers tab, not in this project. Crucially, **the language model never invents or alters numbers**; all figures originate strictly from pure simulation code.
 - **Pure Simulation Engine**: 100% deterministic, pure functions taking explicit `asOf` dates (Africa/Lagos timezone) with zero unseeded randomness or ungrounded heuristics.
 
 ---
@@ -58,3 +58,16 @@ npm run demo         # Runs snapshot-backed demo with seeded farm memories
 - `npm run zetaris:verify`: Test connectivity to live Zetaris or offline fallback.
 - `npm run zetaris:load`: Ingest tables into PostgreSQL container and register JDBC datasource in Zetaris.
 - `npm run snapshots:fetch`: Fetch live NASA POWER and Open-Meteo climate data with sanity bounds.
+- `npx tsx scripts/nightshift-models.ts`: Inspect available model IDs registered in Meterless Nightshift.
+- `npx tsx scripts/nightshift-smoke.ts`: Send a test decision explanation through Nightshift and verify model attribution.
+
+---
+
+## AI and Model Usage
+
+Models run through Meterless Nightshift (primary AI provider). NVIDIA Nemotron [exact id] writes the farmer-facing explanations in English, Nigerian Pidgin and Yoruba. The NVIDIA key is stored in Nightshift's Providers tab, not in this project.
+
+- **Routing & Credentials**: All chat completion requests route to `METERLESS_BASE_URL` with bearer token `METERLESS_RUNTIME_TOKEN` and header `meterless-app: ikore-ai`. No NVIDIA keys or direct NVIDIA endpoints are accessed by application code.
+- **Model Attribution**: The model that actually answers is read directly from the response's `model` field, logged in a structured call log, and added as proof to the `Decision.evidence` panel (`[ev_explanation_model]`).
+- **Thinking Tokens**: `chat_template_kwargs { enable_thinking: false }` is dynamically passed exclusively to Nemotron models to minimize latency.
+- **Offline / Sample Mode**: Setting `SAMPLE_MODE=true` disables all Nightshift network calls and immediately serves verified deterministic templates.

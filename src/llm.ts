@@ -1,11 +1,12 @@
-// Answer path. Two labeled modes:
+// Answer path via Meterless Nightshift (Primary AI Provider)
+// Two labeled modes:
 //   retrieval-only (default): the answer is assembled from retrieved
 //     memories; zero network access, zero keys.
-//   model mode: when NVIDIA_API_KEY is set, queries NVIDIA Nemotron via
-//     NVIDIA's API (build.nvidia.com, OpenAI-compatible format) using the openai package.
+//   model mode: queries OpenAI-compatible endpoint via Meterless Nightshift.
+//     The NVIDIA key is managed in Nightshift's Providers tab, not in this project.
 
 import dotenv from "dotenv";
-import OpenAI from "openai";
+import { completeChat, getNightshiftConfig } from "./core/nightshift.ts";
 import { LLMError } from "./core/errors.ts";
 
 dotenv.config();
@@ -13,61 +14,45 @@ dotenv.config();
 export interface AnswerResult {
   mode: "retrieval-only" | "model";
   text: string;
+  model?: string;
 }
-
-type NemotronChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
-  chat_template_kwargs?: {
-    enable_thinking?: boolean;
-  };
-};
 
 export async function answer(
   question: string,
   memoryContext: string,
   memories: { relevance: number; content: string }[]
 ): Promise<AnswerResult> {
-  const apiKey = process.env.NVIDIA_API_KEY?.trim();
-  if (!apiKey) {
+  const config = getNightshiftConfig();
+
+  // In SAMPLE_MODE or when no token is present, fall back to retrieval-only
+  if (config.sampleMode || !config.token) {
     return { mode: "retrieval-only", text: retrievalOnly(question, memories) };
   }
 
-  const baseURL = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "");
-  const model = process.env.NEMOTRON_MODEL?.trim() || "nvidia/nemotron-3.5-lightning-30b-a3b";
-
-  const client = new OpenAI({
-    apiKey,
-    baseURL,
-  });
-
   try {
-    const params: NemotronChatCompletionParams = {
-      model,
+    const result = await completeChat({
+      system:
+        "You are an assistant answering questions strictly using the provided memory context. " +
+        "Answer ONLY from the memory context and cite memory ids inline (e.g. mem-1). " +
+        "Do not invent facts or use outside knowledge.",
       messages: [
-        {
-          role: "system",
-          content:
-            "You are an assistant answering questions strictly using the provided memory context. " +
-            "Answer ONLY from the memory context and cite memory ids inline (e.g. mem-1). " +
-            "Do not invent facts or use outside knowledge.",
-        },
         {
           role: "user",
           content: `${memoryContext}\n\nAnswer using ONLY the memory context above. Cite memory ids inline.\n\nQuestion: ${question}`,
         },
       ],
       temperature: 0.2,
-      max_tokens: 400,
-      chat_template_kwargs: { enable_thinking: false },
-    };
+      stepName: "answer",
+    });
 
-    const response = await client.chat.completions.create(params);
-    const text = response.choices[0]?.message?.content?.trim() ?? "";
-    return { mode: "model", text };
-  } catch (err) {
+    const text = result.rawText.trim();
+    return { mode: "model", text, model: result.model };
+  } catch (err: any) {
     if (err instanceof LLMError) {
       throw err;
     }
-    throw new LLMError("Failed to query NVIDIA Nemotron model", { cause: err });
+    // Safe fallback to retrievalOnly on failure
+    return { mode: "retrieval-only", text: retrievalOnly(question, memories) };
   }
 }
 

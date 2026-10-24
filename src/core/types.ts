@@ -81,6 +81,7 @@ export interface AgentReply {
   path?: "llm" | "template";
   fallbackReason?: string;
   latencyMs?: number;
+  model?: string;
 }
 
 /** User message into the orchestrator (DESIGN.md section 4). */
