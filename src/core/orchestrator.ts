@@ -15,7 +15,7 @@
 import { getConfig } from "../config.ts";
 import { getGateway } from "../data/gateway.ts";
 import { nimetOnset, priceSeasonality, rainDaily } from "../data/queries.ts";
-import { templatePlanting, templateSelling, templateUnavailable, templateNoPreviousAdvice, templateOutOfScope } from "../i18n/templates.ts";
+import { templatePlanting, templateSelling, templateUnavailable, templateNoPreviousAdvice, templateOutOfScope, templateAgronomyFallback } from "../i18n/templates.ts";
 import { ask, remember, getFarmHMEM, deduplicateMemories } from "../memory/hmem.ts";
 import { decide } from "./decide.ts";
 import { ZetarisError, LLMError } from "./errors.ts";
@@ -26,7 +26,7 @@ import { loadRainDaily, loadRecentRain } from "./observe.ts";
 import { listOptions } from "./options.ts";
 import { DEFAULT_PLANTING_ECONOMICS, simulatePlanting } from "./simulate/planting.ts";
 import { simulateSelling, type CashNeed, type MonthlyPriceRecord } from "./simulate/selling.ts";
-import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult } from "./types.ts";
+import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult, Lang } from "./types.ts";
 import { RunTracer } from "./tracer.ts";
 import { understand } from "./understand.ts";
 import { isWateringOrHarvestQuery, explainAgronomy } from "../llm/agronomy.ts";
@@ -80,6 +80,78 @@ export function formatNiMetBenchmarkEvidence(
     statistic,
     value: isInside ? "inside" : "outside",
   };
+}
+
+function getAgronomyTransition(topic?: string, lang: Lang = "en"): string {
+  if (lang === "yo") {
+    switch (topic) {
+      case "watering":
+        return "Nípa bíbomi rin àgbàdo:";
+      case "fertilizer":
+        return "Nípa ajilẹ̀:";
+      case "pests":
+        return "Nípa àwọn kòkòrò:";
+      case "weeding":
+        return "Nípa ìtulẹ̀ àti koríko:";
+      case "spacing":
+        return "Nípa ààyè àti ìwọ̀n gbígbìn:";
+      case "land_prep":
+        return "Nípa ìmúrasílẹ̀ ilẹ̀:";
+      case "harvest":
+        return "Nípa ìkórè àgbàdo:";
+      case "drying":
+      case "storage":
+        return "Nípa ìtọ́jú àti lílọ àgbàdo:";
+      default:
+        return "Nípa iṣẹ́ àgbàdo rẹ:";
+    }
+  } else if (lang === "pcm") {
+    switch (topic) {
+      case "watering":
+        return "For wetting/watering your corn:";
+      case "fertilizer":
+        return "For fertilizer:";
+      case "pests":
+        return "For worms and insects:";
+      case "weeding":
+        return "For clearing grass:";
+      case "spacing":
+        return "For spacing and how to plant seed:";
+      case "land_prep":
+        return "For preparing the land:";
+      case "harvest":
+        return "For harvesting your corn:";
+      case "drying":
+      case "storage":
+        return "For drying and keeping your corn:";
+      default:
+        return "On your corn farming:";
+    }
+  } else {
+    // English default
+    switch (topic) {
+      case "watering":
+        return "On watering:";
+      case "fertilizer":
+        return "On fertiliser:";
+      case "pests":
+        return "On pests and diseases:";
+      case "weeding":
+        return "On weeding:";
+      case "spacing":
+        return "On spacing and planting depth:";
+      case "land_prep":
+        return "On land preparation:";
+      case "harvest":
+        return "On harvesting:";
+      case "drying":
+        return "On drying:";
+      case "storage":
+        return "On storage:";
+      default:
+        return "On maize management:";
+    }
+  }
 }
 
 export async function handle(message: IncomingMessage): Promise<AgentReply> {
@@ -155,6 +227,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       memoryIdsUsed: [],
       recalledMemories: [],
       path: "template",
+      fallbackReason: "out_of_scope",
       model: "template",
       runId,
       traceFile,
@@ -243,6 +316,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         memoryIdsUsed: [],
         recalledMemories: [],
         path: "template",
+        fallbackReason: "no_previous_advice",
         model: "template",
         runId,
         traceFile,
@@ -893,8 +967,76 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     });
   }
 
+  // If this was a compound question with a secondary maize_agronomy part, run and join it
+  const secondaryPart = Array.isArray(understood.intents)
+    ? understood.intents.find((p: any) => p.intent === "maize_agronomy")
+    : undefined;
+
+  let finalReplyText = text;
+  let replyParts: any[] | undefined = undefined;
+
+  if (secondaryPart) {
+    const tAgStart = performance.now();
+    let agronomyRes: any;
+    try {
+      agronomyRes = await explainAgronomy({
+        question: message.text,
+        farm,
+        lang,
+        asOf,
+        recentRain: undefined,
+        recalledMemories,
+      });
+    } catch (agErr: any) {
+      console.warn("[Compound] Agronomy secondary step failed:", agErr.message);
+      agronomyRes = {
+        text: templateAgronomyFallback(lang),
+        path: "template",
+        model: "template",
+        fallbackReason: `llm_error: ${agErr.message}`,
+      };
+    }
+
+    tracer.log({
+      step: "explain",
+      component: agronomyRes.path === "model" ? "nightshift" : "orchestrator",
+      input_summary: `part=secondary intent=maize_agronomy topic=${secondaryPart.topic || "general"} farm_id=${farmId} lang=${lang}`,
+      output_summary: `path=${agronomyRes.path} model=${agronomyRes.model} words=${agronomyRes.text.split(/\s+/).length}`,
+      latency_ms: Math.round(performance.now() - tAgStart),
+      requested_model: agronomyRes.requestedModel,
+      responded_model: agronomyRes.respondedModel,
+      status: "ok",
+    });
+
+    tracer.log({
+      step: "validate",
+      component: "validator",
+      input_summary: `part=secondary text_length=${agronomyRes.text.length}`,
+      output_summary: agronomyRes.fallbackReason ? `status=fallback reason="${agronomyRes.fallbackReason}"` : "status=valid",
+      latency_ms: 1,
+      status: "ok",
+    });
+
+    const transitionLine = getAgronomyTransition(secondaryPart.topic, lang);
+    finalReplyText = `${text}\n\n${transitionLine}\n${agronomyRes.text}`;
+
+    replyParts = [
+      {
+        intent: "plant_timing",
+        kind: "decision",
+        reply: text,
+      },
+      {
+        intent: "maize_agronomy",
+        kind: "guidance",
+        topic: secondaryPart.topic,
+        reply: agronomyRes.text,
+      },
+    ];
+  }
+
   return {
-    text,
+    text: finalReplyText,
     lang,
     decision,
     guidance_type: "decision",
@@ -910,5 +1052,6 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     rowCounts,
     recalledMemories: deduplicateMemories(recalledMemories.map((c) => ({ content: c }))).map((x) => x.content),
     storedMemoryId,
+    parts: replyParts,
   };
 }

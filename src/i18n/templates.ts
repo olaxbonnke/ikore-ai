@@ -310,7 +310,10 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
 
   // Default English (no 'danger', uses chance / needed replanting)
   if (offsetDays === 0) {
-    return `Plant now around ${formattedDate}.\n\nReplanting ${waitChance} with enough rain across ${nYears} past seasons.`;
+    const chanceClause = waitChance.includes("never") || waitChance === "almost never"
+      ? "was almost never needed"
+      : `was needed in ${waitChance}`;
+    return `Plant now around ${formattedDate}.\n\nReplanting ${chanceClause} with enough rain across ${nYears} past seasons.`;
   }
   const waitHeadline =
     offsetDays === 7
@@ -325,7 +328,11 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
       ? "If you wait two weeks"
       : `If you wait ${offsetDays} days`;
 
-  return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance} needed replanting. ${waitReason}, it ${waitChance} in ${nYears} past seasons.`;
+  const waitChanceClause = waitChance.includes("never") || waitChance === "almost never"
+    ? "replanting was almost never needed"
+    : `replanting was needed in ${waitChance}`;
+
+  return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance} needed replanting. ${waitReason}, ${waitChanceClause} in ${nYears} past seasons.`;
 }
 
 /** Pre-written grounded template explanations for sell-or-store decisions (DESIGN.md step 7 & Day 4.2 Polish). */
@@ -378,19 +385,19 @@ export function templateSelling(decision: Decision, lang: Lang = "en"): string {
   const p50 = Number(k.valueP50Ngn || k.expectedValueNgn || 0).toLocaleString();
   const n = Number(k.nYears || 10);
   const cheaper = Number(k.cheaperCount ?? 0);
-  const higher = Math.max(0, n - cheaper);
+  const higher = Number(k.countEarnedMore ?? Math.max(0, n - cheaper));
 
   const inflationClauseEn = chosen === "store_24w" ? " in today's money, after allowing for general price rises" : "";
   const inflationClausePcm = chosen === "store_24w" ? " for today money, after we remove general price increase" : "";
   const inflationClauseYo = chosen === "store_24w" ? " ní iye owó òní, lẹ́yìn tí a yọ àfikún owó gbogbogbò kúrò" : "";
 
   if (lang === "yo") {
-    return `Tọ́jú àgbàdo rẹ fún ọ̀sẹ̀ ${weeks}.\n\nNí ${higher} nínú ọdún ${n} sẹ́yìn, iye owó àgbàdo ga tó láti bo àdánù ìtọ́jú, pẹ̀lú èrè tí a retí ní ₦${p50}${inflationClauseYo}.`;
+    return `Tọ́jú àgbàdo rẹ fún ọ̀sẹ̀ ${weeks}.\n\nNí ${higher} nínú ọdún ${n} sẹ́yìn, iye owó àgbàdo ga tó láti bo àdánù ìtọ́jú (${lossTextYo} nínú ${storageLabelYo}), pẹ̀lú èrè tí a retí ní ₦${p50}${inflationClauseYo}.`;
   }
   if (lang === "pcm") {
-    return `Keep your corn for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years wey get data, price jump reach to cover storage loss, with expected return around ₦${p50}${inflationClausePcm}.`;
+    return `Keep your corn for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years wey get data, price jump reach to cover storage loss (${lossTextPcm} inside ${storageLabelPcm}), with expected return around ₦${p50}${inflationClausePcm}.`;
   }
-  return `Store your maize for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years with data, prices rose enough to cover storage weight loss, with expected return around ₦${p50}${inflationClauseEn}.`;
+  return `Store your maize for ${weeks} weeks.\n\nFor ${higher} out of ${n} past years with data, prices rose enough to cover storage weight loss (${lossTextEn} in ${storageLabelEn}), with expected return around ₦${p50}${inflationClauseEn}.`;
 }
 
 /** Fallback reply when no previous advice has been recorded for a farm. */

@@ -28,8 +28,8 @@ export function isWateringOrHarvestQuery(text: string): boolean {
     .replace(/\p{M}/gu, "")
     .toLowerCase();
   return (
-    /\b(?:water|watering|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa|rain|recent\s*rain|[oòó]j[oòó]|harvest|harvesting|k[oóọ̀]r[eéè]|ikore|ìkórè|dry|drying|moisture|shell|shelling|girbi)\b/iu.test(nfc) ||
-    /\b(?:water|watering|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa|rain|recent\s*rain|ojo|harvest|harvesting|kore|ikore|dry|drying|moisture|shell|shelling|girbi)\b/iu.test(stripped)
+    /\b(?:wet|water|watering|pour\s+water|irrigate|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa|rain|recent\s*rain|[oòó]j[oòó]|harvest|harvesting|k[oóọ̀]r[eéè]|ikore|ìkórè|dry|drying|moisture|shell|shelling|girbi)\b/iu.test(nfc) ||
+    /\b(?:wet|water|watering|pour\s+water|irrigate|irrigation|irigeshon|bomi|bomirin|rin\s*omi|ruwa|rain|recent\s*rain|ojo|harvest|harvesting|kore|ikore|dry|drying|moisture|shell|shelling|girbi)\b/iu.test(stripped)
   );
 }
 

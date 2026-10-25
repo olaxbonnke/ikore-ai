@@ -116,14 +116,17 @@ export async function POST(req: Request) {
       guidance_type: reply.guidance_type || (reply.decision ? "decision" : "general"),
       decision: reply.decision || null,
       reply: reply.text,
+      ...(reply.parts && reply.parts.length > 0 ? { parts: reply.parts } : {}),
       evidence: reply.decision?.keyNumbers || {},
       llm: {
         provider: isSample ? "sample" : (reply.path === "llm" || reply.path === "model" ? "nightshift" : "template"),
         requested_model: isSample ? "none" : (reply.requestedModel || process.env.METERLESS_MODEL || "meterless/auto"),
         responded_model: isSample ? "template" : (reply.respondedModel || reply.model || "template"),
         latency_ms: reply.latencyMs ?? 0,
-        fallback_used: reply.path === "template",
-        ...(reply.fallbackReason && !isSample ? { fallback_reason: reply.fallbackReason } : {}),
+        fallback_used: reply.path === "template" || isSample,
+        ...(!isSample && (reply.path === "template" || reply.fallbackReason)
+          ? { fallback_reason: reply.fallbackReason || "template_by_design" }
+          : {}),
       },
       zetaris: {
         queries_run: reply.queriesRun || [],

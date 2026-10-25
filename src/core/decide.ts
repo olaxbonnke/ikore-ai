@@ -280,23 +280,13 @@ export function decide(
     if (store12w) keyNumbers.nStore12w = store12w.outcome.n;
     if (store24w) keyNumbers.nStore24w = store24w.outcome.n;
 
-    // Reference storage option for count-based explanation (prefer store_4w)
-    const refStorage = store4w || storeOptions[0];
-    if (refStorage) {
-      keyNumbers.cheaperCount = refStorage.outcome.cheaperPriceCount ?? 8;
-      keyNumbers.nYears = refStorage.outcome.n ?? 9;
-      keyNumbers.countEarnedLess = refStorage.outcome.countEarnedLess ?? 8;
-    }
-
-    if (params.currentPricePerBag) {
-      keyNumbers.currentPricePerBag = params.currentPricePerBag;
-    }
-    if (params.bags) {
-      keyNumbers.bags = params.bags;
-      keyNumbers.valueSellNowNgn = params.bags * (params.currentPricePerBag ?? 0);
-    }
     const matchingSelling = params.sellingOptions?.find((s) => s.option === chosenOpt.option);
-    if (matchingSelling) {
+    if (matchingSelling && chosenOpt.option !== "sell_now") {
+      keyNumbers.nYears = matchingSelling.outcome.n;
+      keyNumbers.cheaperCount = matchingSelling.outcome.cheaperPriceCount ?? 0;
+      keyNumbers.countEarnedLess = matchingSelling.outcome.countEarnedLess ?? 0;
+      keyNumbers.countEarnedMore = matchingSelling.outcome.n - (matchingSelling.outcome.countEarnedLess ?? 0);
+      keyNumbers.higherPriceCount = matchingSelling.outcome.n - (matchingSelling.outcome.cheaperPriceCount ?? 0);
       keyNumbers.horizonWeeks = matchingSelling.horizonWeeks;
       keyNumbers.horizonMonths = matchingSelling.horizonMonths;
       keyNumbers.monthlyLossPct = matchingSelling.assumptions.monthlyLossPct;
@@ -309,9 +299,28 @@ export function decide(
       if (matchingSelling.cashGeneratedNow !== undefined) {
         keyNumbers.cashGeneratedNow = matchingSelling.cashGeneratedNow;
       }
+    } else {
+      // Reference storage option for count-based explanation (prefer store_4w)
+      const refStorage = store4w || storeOptions[0];
+      if (refStorage) {
+        keyNumbers.nYears = refStorage.outcome.n ?? 9;
+        keyNumbers.cheaperCount = refStorage.outcome.cheaperPriceCount ?? 8;
+        keyNumbers.countEarnedLess = refStorage.outcome.countEarnedLess ?? 8;
+        keyNumbers.countEarnedMore = refStorage.outcome.n - (refStorage.outcome.countEarnedLess ?? 0);
+        keyNumbers.higherPriceCount = refStorage.outcome.n - (refStorage.outcome.cheaperPriceCount ?? 0);
+      }
     }
+
+    if (params.currentPricePerBag) {
+      keyNumbers.currentPricePerBag = params.currentPricePerBag;
+    }
+    if (params.bags) {
+      keyNumbers.bags = params.bags;
+      keyNumbers.valueSellNowNgn = params.bags * (params.currentPricePerBag ?? 0);
+    }
+
     const bagsCount = params.bags || 20;
-    const lossPct = matchingSelling?.assumptions.monthlyLossPct ?? 2.5;
+    const lossPct = matchingSelling?.assumptions.monthlyLossPct ?? (params.storageMethod === "pics" ? 0.3 : 2.5);
     const currentPrice = params.currentPricePerBag || 45000;
     const lossInfo = formatStorageLossBags(bagsCount, lossPct, currentPrice);
     keyNumbers.storageLossBags_en = lossInfo.en;
@@ -321,6 +330,12 @@ export function decide(
     if (lossInfo.lossValueNgn) {
       keyNumbers.lossValueNgn = lossInfo.lossValueNgn;
     }
+
+    const isPics = lossPct <= 0.5 || params.storageMethod === "pics";
+    keyNumbers.isPics = isPics ? 1 : 0;
+    keyNumbers.storageBagType_en = isPics ? "PICS hermetic bags" : "plain sacks";
+    keyNumbers.storageBagType_pcm = isPics ? "PICS triple bags" : "ordinary sack";
+    keyNumbers.storageBagType_yo = isPics ? "àpò hermetic PICS" : "àpò lásán";
   } else {
     keyNumbers.replantRisk = `${(chosenRisk * 100).toFixed(1)}%`;
     keyNumbers.replantProbability = chosenRisk;

@@ -387,12 +387,20 @@ export function validateOutputStructure(
   focus?: string,
   expectedMedianMm?: number
 ): { valid: boolean; reason?: string } {
+  // If the model repeated the headline at the beginning of the reason, strip it cleanly
+  const trimmedHeadline = output.headline.trim();
+  let cleanReason = output.reason.trim();
+  if (cleanReason.toLowerCase().startsWith(trimmedHeadline.toLowerCase())) {
+    cleanReason = cleanReason.slice(trimmedHeadline.length).trim().replace(/^[:.-]\s*/, "");
+    output.reason = cleanReason;
+  }
+
   const headlineWords = countWords(output.headline);
   if (headlineWords > 12) {
     return { valid: false, reason: `Headline has ${headlineWords} words (max 12 allowed)` };
   }
 
-  const reasonSentences = countSentences(output.reason);
+  const reasonSentences = countSentences(cleanReason);
   const maxSentences = focus === "rain_adequacy" ? 4 : 2;
   if (reasonSentences > maxSentences) {
     return { valid: false, reason: `Reason has ${reasonSentences} sentences (max ${maxSentences} allowed)` };
@@ -497,6 +505,150 @@ export function validateYoruba(text: string): { valid: boolean; reason?: string 
 /**
  * Load system prompt template from file.
  */
+/**
+ * Validator specifically for sell_or_store decisions:
+ * - Count pairs: any "X out of Y" / "X of Y" / "X for every Y" / "X ninu Y" must match allowed (count, n) for chosen option
+ * - Direction check: store rejects price decline words when cheaperCount < n/2; sell_now rejects price increase words when cheaperCount >= n/2
+ * - Bag type & loss check: PICS rejects plain sacks; lossBags < 0.25 rejects half a bag
+ */
+export function validateSellingOutput(
+  text: string,
+  decision: Decision
+): { valid: boolean; reason?: string } {
+  if (decision.intent !== "sell_or_store") {
+    return { valid: true };
+  }
+
+  const k = decision.keyNumbers;
+  const chosen = decision.chosen;
+  const n = Number(k.nYears ?? 0);
+  const cheaperCount = Number(k.cheaperCount ?? 0);
+  const countEarnedMore = Number(k.countEarnedMore ?? Math.max(0, n - cheaperCount));
+  const countEarnedLess = Number(k.countEarnedLess ?? cheaperCount);
+  const higherPriceCount = Number(k.higherPriceCount ?? Math.max(0, n - cheaperCount));
+  const isPics = Boolean(k.isPics === 1 || k.isPics === "1" || k.isPics === "true" || ((Number(k.monthlyLossPct) || 2.5) <= 0.5));
+  const lossBags = Number(k.lossBags ?? 0);
+
+  // 3a. Count pairs check
+  const pairRegex = /(?:(\d+)\s*(?:out\s+of|of|for\s+every)\s*(\d+)|(\d+)\s*(?:nínú|ninu)(?:\s+ọdún)?\s*(\d+)|(\d+)\s*cikin\s*(\d+))/gi;
+  let match: RegExpExecArray | null;
+
+  const allowedPairs = new Set<string>();
+  if (n > 0) {
+    if (chosen.startsWith("store_")) {
+      allowedPairs.add(`${countEarnedMore}/${n}`);
+      allowedPairs.add(`${higherPriceCount}/${n}`);
+      allowedPairs.add(`${countEarnedLess}/${n}`);
+      allowedPairs.add(`${cheaperCount}/${n}`);
+    } else if (chosen === "sell_now") {
+      allowedPairs.add(`${cheaperCount}/${n}`);
+      allowedPairs.add(`${countEarnedLess}/${n}`);
+      allowedPairs.add(`${n - cheaperCount}/${n}`);
+      allowedPairs.add(`${countEarnedMore}/${n}`);
+    } else {
+      allowedPairs.add(`${countEarnedMore}/${n}`);
+      allowedPairs.add(`${cheaperCount}/${n}`);
+    }
+  }
+
+  while ((match = pairRegex.exec(text)) !== null) {
+    const x = parseInt(match[1] || match[3] || match[5], 10);
+    const y = parseInt(match[2] || match[4] || match[6], 10);
+
+    if (y >= 3) {
+      if (!allowedPairs.has(`${x}/${y}`)) {
+        return {
+          valid: false,
+          reason: `Count pair (${x}, ${y}) is not allowed for option ${chosen} (expected n=${n}). Allowed pairs: ${Array.from(allowedPairs).join(", ")}`,
+        };
+      }
+    }
+  }
+
+  // 3b. Direction check
+  const lower = text.toLowerCase();
+
+  const priceDeclinePatterns = [
+    /\bcheaper\b/i,
+    /\b(?:prices?\s+)?(?:fell|fall|fallen|drop|dropped|dropping|decreased?|declined?)\b/i,
+    /\blower\s+prices?\b/i,
+    /\bdín\s+owó\s+kù\b/i,
+    /\bdin\s+owo\s+ku\b/i,
+    /\bwọ́lẹ̀\b/i,
+    /\bwole\b/i,
+    /\bdín\s+kù\b/i,
+    /\bdin\s+ku\b/i,
+  ];
+
+  const priceIncreasePatterns = [
+    /\b(?:prices?\s+)?(?:rose|rise|rising|jump|jumped|increased?)\b/i,
+    /\bhigher(?:\s+prices?)?\b/i,
+    /\bearned\s+more\b/i,
+    /\bgain(?:ed)?\s+value\b/i,
+    /\bmore\s+expensive\b/i,
+    /\bprice\s+(?:jump|rise)\b/i,
+    /\bearn\s+pass\b/i,
+    /\bgain\s+pass\b/i,
+    /\bga\s+tó\b/i,
+    /\bga\s+to\b/i,
+    /\bní\s+èrè\b/i,
+    /\bni\s+ere\b/i,
+    /\bju\s+títà\b/i,
+    /\bju\s+tita\b/i,
+  ];
+
+  if (chosen.startsWith("store_")) {
+    if (cheaperCount < n / 2) {
+      for (const p of priceDeclinePatterns) {
+        const m = lower.match(p);
+        if (m) {
+          return {
+            valid: false,
+            reason: `Direction check failed: option ${chosen} is recommended because storing is profitable (cheaper in ${cheaperCount} of ${n} years), but text claims prices fell/were cheaper ("${m[0]}")`,
+          };
+        }
+      }
+    }
+  } else if (chosen === "sell_now") {
+    if (cheaperCount >= n / 2) {
+      for (const p of priceIncreasePatterns) {
+        const m = lower.match(p);
+        if (m) {
+          return {
+            valid: false,
+            reason: `Direction check failed: option sell_now is recommended because storing lost value (cheaper in ${cheaperCount} of ${n} years), but text claims prices rose/earned more ("${m[0]}")`,
+          };
+        }
+      }
+    }
+  }
+
+  // 3c. Bag type and loss checks
+  if (isPics) {
+    const plainSackPattern = /\b(?:plain|ordinary)\s+sacks?\b|\b(?:plain|ordinary)\s+bags?\b|\b(?:àpò|apo)\s+(?:lásán|lasan)\b/i;
+    const m = text.match(plainSackPattern);
+    if (m) {
+      return {
+        valid: false,
+        reason: `Bag type check failed: storage assumption is PICS hermetic bags, but text mentions plain or ordinary sacks ("${m[0]}")`,
+      };
+    }
+  }
+
+  if (lossBags < 0.25) {
+    const halfBagPattern = /\bhalf\s+(?:a\s+)?bag\b|\bààbọ̀\s+àpò\b|\baabo\s+apo\b/i;
+    const m = text.match(halfBagPattern);
+    if (m) {
+      return {
+        valid: false,
+        reason: `Storage loss check failed: storage loss is ${lossBags} bags (< 0.25), but text claims "half a bag" ("${m[0]}")`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 function loadPromptTemplate(): string {
   const pathsToTry = [
     path.resolve(process.cwd(), "prompts", "explain.md"),
@@ -585,21 +737,100 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
   const bags = Number(k.bags || 20);
   const price = Number(k.currentPricePerBag || 45000);
   const totalValue = bags * price;
+  const isPics = Boolean(k.isPics === 1 || k.isPics === "1" || k.isPics === "true" || ((Number(k.monthlyLossPct) || 2.5) <= 0.5));
+  const bagType =
+    lang === "yo"
+      ? (k.storageBagType_yo as string || (isPics ? "àpò hermetic PICS" : "àpò lásán"))
+      : lang === "pcm"
+      ? (k.storageBagType_pcm as string || (isPics ? "PICS triple bags" : "ordinary sack"))
+      : (k.storageBagType_en as string || (isPics ? "PICS hermetic bags" : "plain sacks"));
+
+  const lossText =
+    lang === "yo"
+      ? String(k.storageLossBags_yo || "a small amount")
+      : lang === "pcm"
+      ? String(k.storageLossBags_pcm || "small small")
+      : String(k.storageLossBags_en || "a small amount");
+
+  const chosen = decision.chosen;
+  const nYears = Number(k.nYears ?? 8);
+  const cheaperCount = Number(k.cheaperCount ?? 0);
+  const countEarnedMore = Number(k.countEarnedMore ?? Math.max(0, nYears - cheaperCount));
+  const horizonWeeks = Number(k.horizonWeeks ?? (chosen === "store_4w" ? 4 : chosen === "store_8w" ? 8 : chosen === "store_12w" ? 12 : 24));
+
+  const evidenceSentences: string[] = [];
+
+  if (chosen.startsWith("store_")) {
+    if (lang === "yo") {
+      evidenceSentences.push(
+        `Ní ${countEarnedMore} nínú ọdún ${nYears} sẹ́yìn, títọ́jú fún ọ̀sẹ̀ ${horizonWeeks} ní èrè ju títà báyìí lọ.`,
+        `Àdánù ìtọ́jú nínú ${bagType} jẹ́ ${lossText}.`
+      );
+    } else if (lang === "pcm") {
+      evidenceSentences.push(
+        `For ${countEarnedMore} out of ${nYears} past years, to keep corn for ${horizonWeeks} weeks earn pass to sell now.`,
+        `Storage loss inside ${bagType} na ${lossText}.`
+      );
+    } else {
+      evidenceSentences.push(
+        `In ${countEarnedMore} of ${nYears} past years, storing ${horizonWeeks} weeks earned more than selling now.`,
+        `Storage loss in ${bagType} is ${lossText}.`
+      );
+    }
+  } else if (chosen === "sell_now") {
+    if (lang === "yo") {
+      evidenceSentences.push(
+        `Ní ${cheaperCount} nínú ọdún ${nYears} sẹ́yìn, àgbàdo ní ọjà Ìbàdàn dín owó kù lẹ́yìn oṣù kẹjọ.`,
+        `Àwọn àpò ${bags} rẹ yóò tún pàdánù ${lossText} nínú ${bagType}.`
+      );
+    } else if (lang === "pcm") {
+      evidenceSentences.push(
+        `For ${cheaperCount} out of ${nYears} past years, corn price for Ibadan market fall after August.`,
+        `Your ${bags} bags go still lose ${lossText} inside ${bagType}.`
+      );
+    } else {
+      evidenceSentences.push(
+        `In ${cheaperCount} out of ${nYears} past years, Ibadan maize was cheaper a month later.`,
+        `Your ${bags} bags would also lose ${lossText} in ${bagType}.`
+      );
+    }
+  } else {
+    // partial_sell_store_8w
+    const soldNow = Number(k.bagsSoldNow ?? Math.ceil(bags / 2));
+    const stored = Number(k.bagsStored ?? bags - soldNow);
+    const cashNow = Number(k.cashGeneratedNow ?? soldNow * price);
+    if (lang === "yo") {
+      evidenceSentences.push(
+        `Tà àpò ${soldNow} báyìí fún ₦${cashNow.toLocaleString()}.`,
+        `Tọ́jú àpò ${stored} tó kù fún ọ̀sẹ̀ 8.`
+      );
+    } else if (lang === "pcm") {
+      evidenceSentences.push(
+        `Sell ${soldNow} bags now for ₦${cashNow.toLocaleString()}.`,
+        `Keep ${stored} bags for 8 weeks.`
+      );
+    } else {
+      evidenceSentences.push(
+        `Sell ${soldNow} bags now for ₦${cashNow.toLocaleString()}.`,
+        `Store ${stored} bags for 8 weeks.`
+      );
+    }
+  }
 
   return {
-    sell_now: {
-      bags,
-      pricePerBag: `₦${price.toLocaleString()}`,
-      totalValue: `₦${totalValue.toLocaleString()}`,
-    },
-    store_4w: {
-      horizon: "1 month",
-      cheaperYearsCount: k.cheaperCount ?? 8,
-      totalYearsEvaluated: k.nYears ?? 9,
-      storageLoss: k[`storageLossBags_${lang}`] || k.storageLossBags_en || "about half a bag every month",
-    },
+    chosenOption: chosen,
+    bags,
+    pricePerBag: `₦${price.toLocaleString()}`,
+    totalValueSellNow: `₦${totalValue.toLocaleString()}`,
+    evidenceSentences,
+    instructions:
+      "Rephrase ONLY the evidence sentences above. Do NOT add any other counts, numbers, or assumptions. Use the exact bag type and storage loss given.",
     context: {
-      chosenOption: decision.chosen,
+      chosenOption: chosen,
+      nYears,
+      horizonWeeks,
+      storageBagType: bagType,
+      storageLoss: lossText,
     },
   };
 }
@@ -756,6 +987,14 @@ export async function explain(
         throw new Error(`Option attribution failed: ${attributionCheck.reason}`);
       }
 
+      // 5. Selling output validator
+      if (decision.intent === "sell_or_store") {
+        const sellingCheck = validateSellingOutput(fullText, decision);
+        if (!sellingCheck.valid) {
+          throw new Error(`Selling validation failed: ${sellingCheck.reason}`);
+        }
+      }
+
       // 5. Yoruba Guard if lang is yo
       if (lang === "yo") {
         const yoCheck = validateYoruba(fullText);
@@ -801,8 +1040,10 @@ export async function explain(
       validateReply(response);
     } catch (valErr: any) {
       console.warn(`[Explain] Attempt 1 validation rejected (${valErr.message}). Retrying once with correction prompt...`);
+      const sentenceLimitRule = `STRICT SENTENCE COUNT: Your "reason" field MUST be 1 or 2 sentences ONLY (maximum 2 sentences). Do NOT repeat the headline in the reason.`;
       const correctionPrompt = `Your previous response was rejected for the following reason: "${valErr.message}".
-${focus === "rain_adequacy" ? `STRICT RULE FOR RAIN ADEQUACY: You MUST start your reason with: "In ${decision.keyNumbers.seasonsCount || decision.keyNumbers.nAnalogYears || 35} similar past seasons, planting now recorded a median establishment rain of ${expectedMedianMm} mm (between ... and ... mm), which ${expectedMedianMm >= 100 ? "meets the 100 mm seedling threshold" : "is below the 100 mm seedling threshold"}." Then give the verdict, planting date, and replanting risk.` : `STRICT RULE: Fix the issue above. Adhere strictly to the required facts and rules.`}
+${sentenceLimitRule}
+${focus === "rain_adequacy" ? `STRICT RULE FOR RAIN ADEQUACY: You MUST start your reason with: "In ${decision.keyNumbers.seasonsCount || decision.keyNumbers.nAnalogYears || 35} similar past seasons, planting now recorded a median establishment rain of ${expectedMedianMm} mm (between ... and ... mm), which ${expectedMedianMm >= 100 ? "meets the 100 mm seedling threshold" : "is below the 100 mm seedling threshold"}." Then give the verdict, planting date, and replanting risk.` : decision.intent === "sell_or_store" ? `STRICT RULE FOR SELLING/STORING: Rephrase ONLY the evidence sentences given in factsByOption. Do NOT use ungrounded year counts, do NOT claim prices fell if storing is recommended, and quote the exact bag type and storage loss given.` : `STRICT RULE: Fix the issue above. Adhere strictly to the required facts and rules.`}
 Return valid JSON: { "headline": "...", "reason": "...", "details": [...], "followUpQuestion": null }`;
 
       const retryMsgs: typeof msgs = [
@@ -867,6 +1108,13 @@ Return valid JSON: { "headline": "...", "reason": "...", "details": [...], "foll
       value: "template",
     });
 
+    const formattedFallbackReason =
+      err.name === "AbortError" || /timeout/i.test(err.message)
+        ? "timeout"
+        : /failed|rejected|words|sentences|numbers|percentage|jargon|invalid|check/i.test(err.message)
+        ? `validation_failed: ${err.message}`
+        : `llm_error: ${err.message}`;
+
     return {
       text: fallbackText,
       lang,
@@ -874,7 +1122,7 @@ Return valid JSON: { "headline": "...", "reason": "...", "details": [...], "foll
       askedQuestion: false,
       memoryIdsUsed: [],
       path: "template",
-      fallbackReason: err.message,
+      fallbackReason: formattedFallbackReason,
       latencyMs,
       model: "template",
     };

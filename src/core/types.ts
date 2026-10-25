@@ -72,11 +72,19 @@ export interface Decision {
   dataMode: "live" | "snapshot";
 }
 
+export interface AgentReplyPart {
+  intent: string;
+  kind: "decision" | "guidance";
+  reply: string;
+  topic?: string;
+}
+
 export interface AgentReply {
   text: string;
   lang: Lang;
   decision?: Decision | null;
   intent?: string;
+  parts?: AgentReplyPart[];
   askedQuestion?: boolean;
   memoryIdsUsed: string[];
   path?: "llm" | "template" | "model";

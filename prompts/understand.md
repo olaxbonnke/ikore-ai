@@ -4,6 +4,7 @@ Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
 ### Schema fields:
 - intent: plant_timing (when to plant maize, or whether rain is adequate to plant), sell_or_store (sell now or keep harvested maize), maize_agronomy (any maize farming operation: watering/irrigation, land preparation, seed spacing/depth, fertiliser timing, weeding, pests and diseases, harvest timing and signs of maturity, drying, shelling, storage handling), recall_previous (farmer asks to recall or be reminded of earlier advice), why (asks for reason of earlier advice), briefing, profile_update (tells facts about farm), smalltalk, out_of_scope (questions about other crops like cassava/yam/rice or non-farming topics that Ikore cannot advise on), unknown.
 - language: the language the farmer mostly used (en|pcm|yo|ha).
+- intents: optional array for compound questions containing up to two parts, e.g. [{"intent":"plant_timing"},{"intent":"maize_agronomy","topic":"watering"}].
 - slots: key-value pairs of extracted facts.
   - focus: "rain_adequacy" for plant_timing queries asking if current rain is enough to plant or if rain has started properly.
   - bags: number of bags (e.g. 20)
@@ -65,3 +66,8 @@ Yoruba, or Hausa, often mixed. Output ONLY JSON matching the schema.
 
 16. en (out of scope - other crop): "When should I plant cassava?"
 {"intent":"out_of_scope","language":"en","slots":{},"missing":[]}
+17. en (compound - plant + watering): "when do i start planting and how should i wet my maize"
+{"intent":"plant_timing","intents":[{"intent":"plant_timing"},{"intent":"maize_agronomy","topic":"watering"}],"language":"en","slots":{},"missing":[]}
+
+18. yo (compound - plant + watering): "Ìgbà wo ni kí n gbìn àgbàdo mi, báwo sì ni kí n bomi rin ín?"
+{"intent":"plant_timing","intents":[{"intent":"plant_timing"},{"intent":"maize_agronomy","topic":"watering"}],"language":"yo","slots":{},"missing":[]}

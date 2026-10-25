@@ -9,7 +9,8 @@ import {
   simulateSelling,
   type MonthlyPriceRecord,
 } from "../src/core/simulate/selling.ts";
-import type { OptionResult } from "../src/core/types.ts";
+import type { OptionResult, Decision } from "../src/core/types.ts";
+import { validateSellingOutput } from "../src/llm/explain.ts";
 
 function loadPriceSnapshot(): MonthlyPriceRecord[] {
   const p = path.resolve(process.cwd(), "data", "snapshots", "price_monthly__oyo.json");
@@ -307,5 +308,95 @@ describe("Orchestrator sell_or_store end-to-end", () => {
     expect(reply.text.toLowerCase()).toContain("sell now");
     expect(reply.text.toLowerCase()).toContain("₦900,000");
     expect(reply.text.toLowerCase()).toContain("8 out of 9 past years");
+  });
+});
+
+describe("Regression: grounded sell_or_store explanation & validation (farm_ade_iseyin)", () => {
+  it("rejects bad ungrounded reply for store_8w and accepts grounded replies in en, pcm, and yo", () => {
+    // Exact repro decision fixture:
+    // Farm: farm_ade_iseyin, asOf: 2026-04-10, chosen: store_8w, bags: 20, price: 45000
+    // PICS bags: monthlyLossPct: 0.3, lossBags: 0.06, storageLossBags_en: "a small amount"
+    // store_8w outcome: n=8, cheaperPriceCount=0, countEarnedLess=0
+    const decision: Decision = {
+      id: "dec_repro_store8w",
+      farmId: "farm_ade_iseyin",
+      intent: "sell_or_store",
+      createdAt: "2026-04-10T08:00:00Z",
+      options: [
+        {
+          option: "store_8w",
+          label: "Store 8 weeks",
+          outcome: {
+            p10: 950000,
+            p50: 1050000,
+            p90: 1200000,
+            mean: 1060000,
+            riskMetric: 0.0,
+            riskLabel: "Low risk",
+            n: 8,
+          },
+          score: 1050000,
+          notes: ["in 8 of 8 past years, price gains exceeded storage losses"],
+        },
+      ],
+      chosen: "store_8w",
+      runnerUp: "store_12w",
+      confidence: "high",
+      riskBadge: "green",
+      keyNumbers: {
+        bags: 20,
+        currentPricePerBag: 45000,
+        valueSellNowNgn: 900000,
+        nYears: 8,
+        cheaperCount: 0,
+        countEarnedLess: 0,
+        countEarnedMore: 8,
+        higherPriceCount: 8,
+        horizonWeeks: 8,
+        horizonMonths: 2,
+        monthlyLossPct: 0.3,
+        lossBags: 0.06,
+        isPics: 1,
+        storageBagType_en: "PICS hermetic bags",
+        storageBagType_pcm: "PICS triple bags",
+        storageBagType_yo: "àpò hermetic PICS",
+        storageLossBags_en: "a small amount",
+        storageLossBags_pcm: "small small",
+        storageLossBags_yo: "a small amount",
+        nStore4w: 9,
+        nStore8w: 8,
+        nStore12w: 8,
+        nStore24w: 9,
+      },
+      evidence: [],
+      assumptions: [],
+      dataMode: "snapshot",
+    };
+
+    // The buggy/hallucinated reply from Nemotron
+    const badReply =
+      "Store 8 weeks. Keep 20 bags. In 8 out of 9 past years, Ibadan maize was cheaper after 8 weeks storage. Your 20 bags would also lose about half a bag every month in plain sacks.";
+
+    const badValidation = validateSellingOutput(badReply, decision);
+    expect(badValidation.valid).toBe(false);
+    expect(badValidation.reason).toBeDefined();
+
+    // Grounded English reply
+    const goodReplyEn =
+      "Store your maize for 8 weeks.\n\nIn 8 of 8 past years, storing 8 weeks earned more than selling now. Storage loss in PICS hermetic bags is a small amount.";
+    const goodValidationEn = validateSellingOutput(goodReplyEn, decision);
+    expect(goodValidationEn.valid).toBe(true);
+
+    // Grounded Nigerian Pidgin reply
+    const goodReplyPcm =
+      "Keep your corn for 8 weeks.\n\nFor 8 out of 8 past years, to keep corn for 8 weeks earn pass to sell now. Storage loss inside PICS triple bags na small small.";
+    const goodValidationPcm = validateSellingOutput(goodReplyPcm, decision);
+    expect(goodValidationPcm.valid).toBe(true);
+
+    // Grounded Yoruba reply
+    const goodReplyYo =
+      "Tọ́jú àgbàdo rẹ fún ọ̀sẹ̀ 8.\n\nNí 8 nínú ọdún 8 sẹ́yìn, títọ́jú fún ọ̀sẹ̀ 8 ní èrè ju títà báyìí lọ. Àdánù ìtọ́jú nínú àpò hermetic PICS kéré púpọ̀.";
+    const goodValidationYo = validateSellingOutput(goodReplyYo, decision);
+    expect(goodValidationYo.valid).toBe(true);
   });
 });
