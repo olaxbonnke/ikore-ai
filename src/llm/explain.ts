@@ -102,6 +102,9 @@ export function getAllowedNumericSets(decision: Decision): {
   const allowedNumbers = new Set<number>();
   const allowedPercentages = new Set<number>();
 
+  // Always allow standard establishment water requirement (100 mm)
+  allowedNumbers.add(100);
+
   if (decision.keyNumbers) {
     for (const [_key, val] of Object.entries(decision.keyNumbers)) {
       if (typeof val === "number" && Number.isFinite(val)) {
@@ -381,7 +384,8 @@ export function validateOptionAttribution(text: string, decision: Decision): { v
  */
 export function validateOutputStructure(
   output: ExplainOutput,
-  focus?: string
+  focus?: string,
+  expectedMedianMm?: number
 ): { valid: boolean; reason?: string } {
   const headlineWords = countWords(output.headline);
   if (headlineWords > 12) {
@@ -394,14 +398,13 @@ export function validateOutputStructure(
   }
 
   const reasonNumbers = findNumericTokens(output.reason);
-  if (reasonNumbers.length > 5) {
+  if (focus !== "rain_adequacy" && reasonNumbers.length > 5) {
     return { valid: false, reason: `Reason has ${reasonNumbers.length} numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
   }
-  if (reasonNumbers.length === 4 || reasonNumbers.length === 5) {
+  if (focus !== "rain_adequacy" && (reasonNumbers.length === 4 || reasonNumbers.length === 5)) {
     // If 4 or 5 numbers are present, only allow if they include horizons/units or rain mm figures
     const hasAllowedExtra = reasonNumbers.some((n) =>
-      ["1", "7", "14", "4", "8", "12", "24"].includes(n) ||
-      focus === "rain_adequacy"
+      ["1", "7", "14", "4", "8", "12", "24"].includes(n)
     );
     if (!hasAllowedExtra) {
       return { valid: false, reason: `Reason has too many numbers (max 3 allowed: ${reasonNumbers.join(", ")})` };
@@ -421,6 +424,24 @@ export function validateOutputStructure(
     }
     if (/\banalog\s*years?\b/i.test(output.headline) || /\banalog\s*years?\b/i.test(output.reason)) {
       return { valid: false, reason: "Contains technical jargon (analog years)" };
+    }
+
+    // Must contain median mm establishment rain figure
+    if (expectedMedianMm !== undefined) {
+      const medRegex = new RegExp(`\\b${expectedMedianMm}\\s*mm\\b`, "i");
+      if (!medRegex.test(output.reason) && !medRegex.test(output.headline)) {
+        return {
+          valid: false,
+          reason: `Rain adequacy explanation must contain the median establishment rain figure (${expectedMedianMm} mm)`,
+        };
+      }
+    } else {
+      if (!/\b\d+(?:\.\d+)?\s*mm\b/i.test(output.reason) && !/\b\d+(?:\.\d+)?\s*mm\b/i.test(output.headline)) {
+        return {
+          valid: false,
+          reason: "Rain adequacy explanation must contain an establishment rain figure in mm",
+        };
+      }
     }
   } else {
     const jargonRegex = /\b(analog\s*years?|median|\bmm\b)\b/i;
@@ -529,12 +550,19 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
     const wait14DateRaw = wait14Opt?.plantingDate || (decision.chosen === "wait_14" ? String(k.plantingDate || "") : undefined);
     const wait14Date = wait14DateRaw ? formatGroundedDate(wait14DateRaw, lang) : "24 April";
 
+    const rainP50 = Math.round(Number(k.plantNow_rainP50Mm ?? k.rainP50Mm ?? 95));
+    const rainP10 = Math.round(Number(k.plantNow_rainP10Mm ?? k.rainP10Mm ?? 45));
+    const rainP90 = Math.round(Number(k.plantNow_rainP90Mm ?? k.rainP90Mm ?? 160));
+    const meetsThreshold = rainP50 >= 100;
+
     return {
       plant_now: {
         replantChance: plantNowChance,
-        establishmentRainMmMedian: Math.round(Number(k.plantNow_rainP50Mm ?? k.rainP50Mm ?? 95)),
-        establishmentRainMmRangeMin: Math.round(Number(k.plantNow_rainP10Mm ?? k.rainP10Mm ?? 45)),
-        establishmentRainMmRangeMax: Math.round(Number(k.plantNow_rainP90Mm ?? k.rainP90Mm ?? 160)),
+        establishmentRainMmMedian: rainP50,
+        establishmentRainMmRangeMin: rainP10,
+        establishmentRainMmRangeMax: rainP90,
+        establishmentThresholdMm: 100,
+        meetsEstablishmentThreshold: meetsThreshold,
       },
       wait_7: {
         plantingDate: wait7Date,
@@ -685,81 +713,105 @@ export async function explain(
       2
     );
 
-    let response: ExplainOutput;
-    if (typeof (activeProvider as any).completeWithMeta === "function") {
-      const meta = await (activeProvider as any).completeWithMeta({
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        json: ExplainOutputSchema,
-        temperature: 0.2,
-        stepName: "explain",
-      });
-      response = meta.content;
-      respondedModel = meta.model;
-    } else {
-      response = await activeProvider.complete<ExplainOutput>({
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        json: ExplainOutputSchema,
-        temperature: 0.2,
-        stepName: "explain",
-      });
-      respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
-    }
+    const expectedMedianMm = Math.round(
+      Number(decision.keyNumbers.plantNow_rainP50Mm ?? decision.keyNumbers.rainP50Mm ?? 95)
+    );
 
-    const fullGenerated = `${response.headline}\n\n${response.reason}`;
-
-    // 1. Percentage check: Farmer replies must not contain any '%' or 'percent'
-    const headlinePctCheck = validateNoPercentages(response.headline);
-    if (!headlinePctCheck.valid) {
-      console.warn(`[Explain] Percentage validator rejected headline: ${headlinePctCheck.reason}. Falling back to template.`);
-      throw new Error(headlinePctCheck.reason);
-    }
-    const reasonPctCheck = validateNoPercentages(response.reason);
-    if (!reasonPctCheck.valid) {
-      console.warn(`[Explain] Percentage validator rejected reason: ${reasonPctCheck.reason}. Falling back to template.`);
-      throw new Error(reasonPctCheck.reason);
-    }
-    if (response.details) {
-      for (const d of response.details) {
-        const detailPctCheck = validateNoPercentages(d);
-        if (!detailPctCheck.valid) {
-          console.warn(`[Explain] Percentage validator rejected detail: ${detailPctCheck.reason}. Falling back to template.`);
-          throw new Error(detailPctCheck.reason);
+    const validateReply = (resp: ExplainOutput): void => {
+      // 1. Percentage check: Farmer replies must not contain any '%' or 'percent'
+      const headlinePctCheck = validateNoPercentages(resp.headline);
+      if (!headlinePctCheck.valid) {
+        throw new Error(headlinePctCheck.reason);
+      }
+      const reasonPctCheck = validateNoPercentages(resp.reason);
+      if (!reasonPctCheck.valid) {
+        throw new Error(reasonPctCheck.reason);
+      }
+      if (resp.details) {
+        for (const d of resp.details) {
+          const detailPctCheck = validateNoPercentages(d);
+          if (!detailPctCheck.valid) {
+            throw new Error(detailPctCheck.reason);
+          }
         }
       }
-    }
 
-    // 2. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon)
-    const structureCheck = validateOutputStructure(response, focus);
-    if (!structureCheck.valid) {
-      console.warn(`[Explain] Structure check rejected LLM reply: ${structureCheck.reason}. Falling back to template.`);
-      throw new Error(`Structure check failed: ${structureCheck.reason}`);
-    }
-
-    // 3. Number Validator (only numbers present in keyNumbers)
-    const invalidNumbers = findInvalidNumbers(fullGenerated, decision);
-    if (invalidNumbers.length > 0) {
-      console.warn(
-        `[Explain] Number validator rejected LLM reply (unmatched numbers: ${invalidNumbers.join(", ")}). Falling back to template.`
-      );
-      throw new Error(`Invalid numbers: ${invalidNumbers.join(", ")}`);
-    }
-
-    // 4. Option Attribution Check (numbers and plain chances not attached to wrong option)
-    const attributionCheck = validateOptionAttribution(fullGenerated, decision);
-    if (!attributionCheck.valid) {
-      console.warn(`[Explain] Option attribution rejected LLM reply: ${attributionCheck.reason}. Falling back to template.`);
-      throw new Error(`Option attribution failed: ${attributionCheck.reason}`);
-    }
-
-    // 5. Yoruba Guard if lang is yo
-    if (lang === "yo") {
-      const yoCheck = validateYoruba(fullGenerated);
-      if (!yoCheck.valid) {
-        console.warn(`[Explain] Yoruba guard rejected LLM reply (${yoCheck.reason}). Falling back to template.`);
-        throw new Error(`Yoruba validation failed: ${yoCheck.reason}`);
+      // 2. Structure Check (12 words, 2 sentences, 3 numbers, no ISO dates, no jargon, median mm for rain_adequacy)
+      const structureCheck = validateOutputStructure(resp, focus, expectedMedianMm);
+      if (!structureCheck.valid) {
+        throw new Error(`Structure check failed: ${structureCheck.reason}`);
       }
+
+      // 3. Number Validator (only numbers present in keyNumbers)
+      const fullText = `${resp.headline}\n\n${resp.reason}`;
+      const invalidNumbers = findInvalidNumbers(fullText, decision);
+      if (invalidNumbers.length > 0) {
+        throw new Error(`Invalid numbers: ${invalidNumbers.join(", ")}`);
+      }
+
+      // 4. Option Attribution Check (numbers and plain chances not attached to wrong option)
+      const attributionCheck = validateOptionAttribution(fullText, decision);
+      if (!attributionCheck.valid) {
+        throw new Error(`Option attribution failed: ${attributionCheck.reason}`);
+      }
+
+      // 5. Yoruba Guard if lang is yo
+      if (lang === "yo") {
+        const yoCheck = validateYoruba(fullText);
+        if (!yoCheck.valid) {
+          throw new Error(`Yoruba validation failed: ${yoCheck.reason}`);
+        }
+      }
+    };
+
+    let response: ExplainOutput;
+    const msgs: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "user", content: userPrompt },
+    ];
+
+    const callModel = async (messages: typeof msgs): Promise<ExplainOutput> => {
+      if (typeof (activeProvider as any).completeWithMeta === "function") {
+        const meta = await (activeProvider as any).completeWithMeta({
+          system: systemPrompt,
+          messages,
+          json: ExplainOutputSchema,
+          temperature: 0.2,
+          stepName: "explain",
+        });
+        respondedModel = meta.model;
+        return meta.content;
+      } else {
+        const parsed = await activeProvider.complete<ExplainOutput>({
+          system: systemPrompt,
+          messages,
+          json: ExplainOutputSchema,
+          temperature: 0.2,
+          stepName: "explain",
+        });
+        respondedModel = (activeProvider as any).lastRespondedModel || activeProvider.name;
+        return parsed;
+      }
+    };
+
+    // Attempt 1
+    response = await callModel(msgs);
+
+    try {
+      validateReply(response);
+    } catch (valErr: any) {
+      console.warn(`[Explain] Attempt 1 validation rejected (${valErr.message}). Retrying once with correction prompt...`);
+      const correctionPrompt = `Your previous response was rejected for the following reason: "${valErr.message}".
+${focus === "rain_adequacy" ? `STRICT RULE FOR RAIN ADEQUACY: You MUST start your reason with: "In ${decision.keyNumbers.seasonsCount || decision.keyNumbers.nAnalogYears || 35} similar past seasons, planting now recorded a median establishment rain of ${expectedMedianMm} mm (between ... and ... mm), which ${expectedMedianMm >= 100 ? "meets the 100 mm seedling threshold" : "is below the 100 mm seedling threshold"}." Then give the verdict, planting date, and replanting risk.` : `STRICT RULE: Fix the issue above. Adhere strictly to the required facts and rules.`}
+Return valid JSON: { "headline": "...", "reason": "...", "details": [...], "followUpQuestion": null }`;
+
+      const retryMsgs: typeof msgs = [
+        { role: "user", content: userPrompt },
+        { role: "assistant", content: JSON.stringify(response) },
+        { role: "user", content: correctionPrompt },
+      ];
+
+      response = await callModel(retryMsgs);
+      validateReply(response);
     }
 
     const latencyMs = Date.now() - t0;

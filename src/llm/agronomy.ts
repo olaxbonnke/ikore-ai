@@ -32,16 +32,176 @@ export function isWateringOrHarvestQuery(text: string): boolean {
   );
 }
 
+export interface AgronomyValidationContext {
+  allowedNumbers: Set<number>;
+  rainMmNumbers: Set<number>;
+  daysNumbers: Set<number>;
+  haNumbers: Set<number>;
+  memoryNumbers: Set<number>;
+  validDates: string[];
+}
+
+/**
+ * Builds the set of allowed numbers and context by unit kind:
+ * - rain total and daily rain mm (mm)
+ * - daysCount, rainDays, dryDays (days)
+ * - farm size (ha)
+ * - memory figures (bags, etc.)
+ * - valid whole dates (e.g. "10 April") matching asOf or rain records
+ */
+export function buildAllowedAgronomyNumbers(
+  farm: FarmProfile,
+  recentRain?: LoadedRecentRain | null,
+  asOf?: string,
+  recalledMemories?: string[]
+): AgronomyValidationContext {
+  const rainMmNumbers = new Set<number>();
+  const daysNumbers = new Set<number>();
+  const haNumbers = new Set<number>();
+  const memoryNumbers = new Set<number>();
+  const allowedNumbers = new Set<number>();
+  const validDates: string[] = [];
+
+  if (farm.hectares && Number.isFinite(farm.hectares)) {
+    haNumbers.add(farm.hectares);
+    haNumbers.add(Math.round(farm.hectares));
+    haNumbers.add(parseFloat(farm.hectares.toFixed(1)));
+    allowedNumbers.add(farm.hectares);
+    allowedNumbers.add(Math.round(farm.hectares));
+    allowedNumbers.add(parseFloat(farm.hectares.toFixed(1)));
+  }
+
+  if (recentRain) {
+    if (Number.isFinite(recentRain.totalRainMm)) {
+      rainMmNumbers.add(recentRain.totalRainMm);
+      rainMmNumbers.add(Math.round(recentRain.totalRainMm));
+      rainMmNumbers.add(parseFloat(recentRain.totalRainMm.toFixed(1)));
+      allowedNumbers.add(recentRain.totalRainMm);
+      allowedNumbers.add(Math.round(recentRain.totalRainMm));
+      allowedNumbers.add(parseFloat(recentRain.totalRainMm.toFixed(1)));
+    }
+
+    if (Number.isFinite(recentRain.daysCount)) {
+      daysNumbers.add(recentRain.daysCount);
+      allowedNumbers.add(recentRain.daysCount);
+    }
+
+    // Rain days (>= 1.0 mm) and dry days
+    if (Array.isArray(recentRain.records)) {
+      let rainDays = 0;
+      for (const r of recentRain.records) {
+        if (typeof r.rain_mm === "number" && Number.isFinite(r.rain_mm)) {
+          rainMmNumbers.add(r.rain_mm);
+          rainMmNumbers.add(Math.round(r.rain_mm));
+          rainMmNumbers.add(parseFloat(r.rain_mm.toFixed(1)));
+          allowedNumbers.add(r.rain_mm);
+          allowedNumbers.add(Math.round(r.rain_mm));
+          allowedNumbers.add(parseFloat(r.rain_mm.toFixed(1)));
+          if (r.rain_mm >= 1.0) rainDays++;
+        }
+        if (typeof r.date === "string") {
+          validDates.push(r.date);
+          const [y, m, d] = r.date.split("-").map((p) => parseInt(p, 10));
+          const monthsEn = [
+            "", "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+          ];
+          if (m && monthsEn[m]) {
+            validDates.push(`${d} ${monthsEn[m]}`);
+            validDates.push(`${d}th ${monthsEn[m]}`);
+            validDates.push(`${d}st ${monthsEn[m]}`);
+            validDates.push(`${d}nd ${monthsEn[m]}`);
+            validDates.push(`${d}rd ${monthsEn[m]}`);
+          }
+        }
+      }
+      daysNumbers.add(rainDays);
+      allowedNumbers.add(rainDays);
+
+      const dryDays = recentRain.records.length - rainDays;
+      daysNumbers.add(dryDays);
+      allowedNumbers.add(dryDays);
+    }
+
+    if (recentRain.startDate) {
+      validDates.push(recentRain.startDate);
+    }
+    if (recentRain.endDate) {
+      validDates.push(recentRain.endDate);
+    }
+  }
+
+  if (asOf) {
+    validDates.push(asOf);
+    const [y, m, d] = asOf.split("-").map((p) => parseInt(p, 10));
+    const monthsEn = [
+      "", "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    if (m && monthsEn[m]) {
+      validDates.push(`${d} ${monthsEn[m]}`);
+      validDates.push(`${d}th ${monthsEn[m]}`);
+      validDates.push(`${d}st ${monthsEn[m]}`);
+      validDates.push(`${d}nd ${monthsEn[m]}`);
+      validDates.push(`${d}rd ${monthsEn[m]}`);
+    }
+  }
+
+  if (Array.isArray(recalledMemories)) {
+    for (const mem of recalledMemories) {
+      if (typeof mem !== "string") continue;
+      const matches = mem.match(/\b\d+(?:\.\d+)?\b/g) || [];
+      for (const m of matches) {
+        const n = parseFloat(m);
+        if (Number.isFinite(n)) {
+          memoryNumbers.add(n);
+          memoryNumbers.add(Math.round(n));
+          memoryNumbers.add(parseFloat(n.toFixed(1)));
+          allowedNumbers.add(n);
+          allowedNumbers.add(Math.round(n));
+          allowedNumbers.add(parseFloat(n.toFixed(1)));
+        }
+      }
+    }
+  }
+
+  return {
+    allowedNumbers,
+    rainMmNumbers,
+    daysNumbers,
+    haNumbers,
+    memoryNumbers,
+    validDates,
+  };
+}
+
 /**
  * Validates agronomy guidance for:
  * 1. Prohibited chemical brand names or active ingredients.
  * 2. Prohibited specific chemical dose patterns (e.g. ml/L, g per litre, l/ha, kg/ha, bags/ha, knapsack).
- * 3. Ungrounded numbers (all numbers must come from the prompt context).
+ * 3. Unit-aware numbers check:
+ *    - mm matches context rainfall
+ *    - days matches daysCount, rainDays, or dryDays
+ *    - ha matches farm hectares
+ *    - prohibited units (cm, cobs, plants, m, %) are rejected
+ *    - bare numbers must match context values
  */
 export function validateAgronomyGuidance(
   text: string,
-  allowedNumbers: Set<number>
+  context: AgronomyValidationContext | Set<number>
 ): { valid: boolean; reason?: string } {
+  const ctx: AgronomyValidationContext =
+    context instanceof Set
+      ? {
+          allowedNumbers: context,
+          rainMmNumbers: context,
+          daysNumbers: context,
+          haNumbers: context,
+          memoryNumbers: context,
+          validDates: [],
+        }
+      : context;
+
   // 1. Specific chemical dosage patterns (ml/L, g/L, l/ha, kg/ha, bags/ha, per knapsack, etc.)
   const dosePattern =
     /\b\d+(?:\.\d+)?\s*(?:ml\/l|ml\/litre|ml\s+per\s+l(?:itre)?|g\/l|g\/litre|g\s+per\s+l(?:itre)?|l\/ha|litres?\/ha|litres?\s+per\s+(?:ha|hectares?)|kg\/ha|kg\s+per\s+(?:ha|hectares?)|bags?\s+per\s+(?:ha|hectares?)|bags?\s*\/\s*(?:ha|hectares?)|ml\s+per\s+20l|per\s+knapsack|knapsack\s+sprayer)\b/i;
@@ -64,117 +224,112 @@ export function validateAgronomyGuidance(
     };
   }
 
-  // 3. Numbers check
-  // Extract all numbers from text
-  const numMatches = text.match(/\b\d+(?:\.\d+)?\b/g) || [];
+  // 3. Mask valid whole dates from context
+  let workingText = text;
+  for (const vd of ctx.validDates) {
+    if (!vd) continue;
+    const escaped = vd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const dateRegex = new RegExp(`\\b${escaped}\\b`, "gi");
+    workingText = workingText.replace(dateRegex, " __VALID_DATE__ ");
+  }
+
+  // 4. Unit-aware check:
+  // Detect single numbers or ranges (e.g. 2-3 cobs, 5-10 days, top 5cm) followed by a unit
+  const unitRegex =
+    /\b(\d+(?:\.\d+)?)(?:\s*(?:-|to|sí)\s*(\d+(?:\.\d+)?))?\s*(cm|mm|m|kg|g|l|ml|%|days?|weeks?|bags?|cobs?|plants?|ha|hectares?|ọjọ́|ọ̀sẹ̀|àpò)\b/gi;
+
+  let unitMatch: RegExpExecArray | null;
+  while ((unitMatch = unitRegex.exec(workingText)) !== null) {
+    const rawMatch = unitMatch[0];
+    const n1 = parseFloat(unitMatch[1]);
+    const n2 = unitMatch[2] ? parseFloat(unitMatch[2]) : undefined;
+    const unit = unitMatch[3].toLowerCase();
+
+    // Check if unit is prohibited or never in context
+    if (["cm", "m", "%"].includes(unit) || unit.startsWith("cob") || unit.startsWith("plant")) {
+      return {
+        valid: false,
+        reason: `Ungrounded measurement or count detected: "${rawMatch}". Describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil') without inventing counts or measurements.`,
+      };
+    }
+
+    const checkNum = (n: number, set: Set<number>): boolean => {
+      return set.has(n) || set.has(Math.round(n)) || set.has(parseFloat(n.toFixed(1)));
+    };
+
+    if (unit === "mm") {
+      if (!checkNum(n1, ctx.rainMmNumbers) || (n2 !== undefined && !checkNum(n2, ctx.rainMmNumbers))) {
+        return {
+          valid: false,
+          reason: `Ungrounded rainfall measurement "${rawMatch}" does not match recorded context rainfall.`,
+        };
+      }
+    } else if (unit.startsWith("day") || unit === "ọjọ́") {
+      if (!checkNum(n1, ctx.daysNumbers) || (n2 !== undefined && !checkNum(n2, ctx.daysNumbers))) {
+        return {
+          valid: false,
+          reason: `Ungrounded day count "${rawMatch}" does not match context.`,
+        };
+      }
+    } else if (unit.startsWith("ha") || unit.startsWith("hectare")) {
+      if (!checkNum(n1, ctx.haNumbers) || (n2 !== undefined && !checkNum(n2, ctx.haNumbers))) {
+        return {
+          valid: false,
+          reason: `Ungrounded land measurement "${rawMatch}" does not match farm hectares.`,
+        };
+      }
+    } else if (unit.startsWith("bag") || unit === "àpò") {
+      if (!checkNum(n1, ctx.memoryNumbers) || (n2 !== undefined && !checkNum(n2, ctx.memoryNumbers))) {
+        return {
+          valid: false,
+          reason: `Ungrounded number: bag count "${rawMatch}" does not match farm memory context.`,
+        };
+      }
+    } else if (unit.startsWith("week") || unit === "ọ̀sẹ̀") {
+      const weeksAllowed = new Set<number>();
+      for (const d of ctx.daysNumbers) {
+        if (d % 7 === 0) weeksAllowed.add(d / 7);
+      }
+      for (const m of ctx.memoryNumbers) weeksAllowed.add(m);
+      if (!checkNum(n1, weeksAllowed) || (n2 !== undefined && !checkNum(n2, weeksAllowed))) {
+        return {
+          valid: false,
+          reason: `Ungrounded week count "${rawMatch}" does not match context.`,
+        };
+      }
+    } else if (["kg", "g", "l", "ml"].includes(unit)) {
+      if (!checkNum(n1, ctx.memoryNumbers) || (n2 !== undefined && !checkNum(n2, ctx.memoryNumbers))) {
+        return {
+          valid: false,
+          reason: `Ungrounded measurement "${rawMatch}" not found in context.`,
+        };
+      }
+    }
+  }
+
+  // Mask all unit matches from workingText
+  workingText = workingText.replace(unitRegex, " __UNIT__ ");
+
+  // 5. Bare numbers check
+  const numMatches = workingText.match(/\b\d+(?:\.\d+)?\b/g) || [];
   for (const raw of numMatches) {
     const num = parseFloat(raw);
     if (!Number.isFinite(num)) continue;
-    // Harmless baseline small integers (1 or 2 e.g. "1 to 2 seeds" or "1 week")
-    if (num === 1 || num === 2) continue;
 
     const allowed =
-      allowedNumbers.has(num) ||
-      allowedNumbers.has(Math.round(num)) ||
-      allowedNumbers.has(parseFloat(num.toFixed(1)));
+      ctx.allowedNumbers.has(num) ||
+      ctx.allowedNumbers.has(Math.round(num)) ||
+      ctx.allowedNumbers.has(parseFloat(num.toFixed(1)));
 
     if (!allowed) {
       return {
         valid: false,
-        reason: `Ungrounded number "${raw}" found in agronomy guidance. Numbers must come strictly from context.`,
+        reason: `Ungrounded bare number "${raw}" found in agronomy guidance. Numbers must come strictly from context.`,
       };
     }
   }
 
   return { valid: true };
-}
-
-/**
- * Builds the set of allowed numbers from farm profile, recent rainfall, dates, and recalled memories.
- */
-export function buildAllowedAgronomyNumbers(
-  farm: FarmProfile,
-  recentRain?: LoadedRecentRain | null,
-  asOf?: string,
-  recalledMemories?: string[]
-): Set<number> {
-  const allowed = new Set<number>();
-
-  // Standard safe intervals
-  allowed.add(1);
-  allowed.add(2);
-  allowed.add(7);
-  allowed.add(14);
-
-  if (farm.hectares) {
-    allowed.add(farm.hectares);
-    allowed.add(Math.round(farm.hectares));
-    allowed.add(parseFloat(farm.hectares.toFixed(1)));
-  }
-
-  if (recentRain) {
-    allowed.add(recentRain.totalRainMm);
-    allowed.add(Math.round(recentRain.totalRainMm));
-    allowed.add(parseFloat(recentRain.totalRainMm.toFixed(1)));
-    allowed.add(recentRain.daysCount);
-
-    // Rain days (>= 1.0 mm) and dry days
-    if (Array.isArray(recentRain.records)) {
-      let rainDays = 0;
-      for (const r of recentRain.records) {
-        if (typeof r.rain_mm === "number" && Number.isFinite(r.rain_mm)) {
-          allowed.add(r.rain_mm);
-          allowed.add(Math.round(r.rain_mm));
-          allowed.add(parseFloat(r.rain_mm.toFixed(1)));
-          if (r.rain_mm >= 1.0) rainDays++;
-        }
-        if (typeof r.date === "string") {
-          const parts = r.date.split("-").map((p) => parseInt(p, 10));
-          parts.forEach((p) => {
-            if (Number.isFinite(p)) allowed.add(p);
-          });
-        }
-      }
-      allowed.add(rainDays);
-      const dryDays = recentRain.records.length - rainDays;
-      allowed.add(dryDays);
-      allowed.add(14 - rainDays);
-    }
-
-    // Add days, months, and years in date ranges
-    for (const dt of [recentRain.startDate, recentRain.endDate]) {
-      if (typeof dt === "string") {
-        const parts = dt.split("-").map((p) => parseInt(p, 10));
-        parts.forEach((p) => {
-          if (Number.isFinite(p)) allowed.add(p);
-        });
-      }
-    }
-  }
-
-  if (asOf) {
-    const parts = asOf.split("-").map((p) => parseInt(p, 10));
-    parts.forEach((p) => {
-      if (Number.isFinite(p)) allowed.add(p);
-    });
-  }
-
-  if (Array.isArray(recalledMemories)) {
-    for (const mem of recalledMemories) {
-      if (typeof mem !== "string") continue;
-      const matches = mem.match(/\b\d+(?:\.\d+)?\b/g) || [];
-      for (const m of matches) {
-        const n = parseFloat(m);
-        if (Number.isFinite(n)) {
-          allowed.add(n);
-          allowed.add(Math.round(n));
-          allowed.add(parseFloat(n.toFixed(1)));
-        }
-      }
-    }
-  }
-
-  return allowed;
 }
 
 function loadAgronomyPrompt(): string {
@@ -394,8 +549,9 @@ Farmer Question: "${question}"
     // Attempt 2: One retry with correction prompt
     const correctionPrompt = `Your previous response was rejected for the following reason: "${failureReason1}".
 Please rewrite your response adhering strictly to these rules:
-1. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
-2. STRICT RULE: DO NOT invent any numbers. You may give helpful practical guidance without using any numbers at all (prefer qualitative terms like "regularly", "when soil is dry", "at knee height"), or only use numbers explicitly given in the context.
+1. STRICT RULE: Remove all measurements and counts not in context; describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil').
+2. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
+3. STRICT RULE: Only use numbers if they are explicitly provided in the context (like recorded rainfall in mm or farm size in ha). Otherwise, use NO numbers or measurements at all.
 Return valid JSON: { "answer": "...", "followUp": "..." }`;
 
     const msgs2: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

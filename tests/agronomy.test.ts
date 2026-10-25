@@ -13,7 +13,7 @@ import {
   explainAgronomy,
 } from "../src/llm/agronomy.ts";
 import type { LLMProvider, LLMCompleteParams } from "../src/llm/provider.ts";
-import { validateOutputStructure } from "../src/llm/explain.ts";
+import { validateOutputStructure, explain } from "../src/llm/explain.ts";
 import { templatePlantingRainAdequacy, templateAgronomyFallback } from "../src/i18n/templates.ts";
 import type { Decision, Farm as FarmProfile } from "../src/core/types.ts";
 
@@ -155,62 +155,79 @@ describe("agronomy guidance validator", () => {
   });
 });
 
-describe("buildAllowedAgronomyNumbers", () => {
+describe("unit-aware agronomy number grounding", () => {
   const farm: FarmProfile = {
     id: "farm_ade_iseyin",
     ownerName: "Ade",
+    lat: 7.97,
+    lon: 3.6,
     lga: "Iseyin",
     state: "Oyo",
     crop: "maize",
     hectares: 3.5,
+    storage: "sack",
+    preferredLang: "yo",
+    riskAversion: "normal",
     zone: "derived_savanna",
-    historicalAnalogCount: 35,
-    sampleHistoricalSeason: "2021",
   };
 
-  const recentRain = {
+  const recentRainWith5mm = {
     records: [
       { date: "2026-04-01", rain_mm: 0.0 },
-      { date: "2026-04-02", rain_mm: 12.4 },
-      { date: "2026-04-03", rain_mm: 5.0 },
+      { date: "2026-04-02", rain_mm: 5.0 },
     ],
-    totalRainMm: 17.4,
+    totalRainMm: 5.0,
     startDate: "2026-04-01",
-    endDate: "2026-04-03",
-    daysCount: 3,
+    endDate: "2026-04-14",
+    daysCount: 14,
     provenance: "zetaris:oko_pg.rain_daily",
     querySql: "SELECT ...",
   };
 
-  it("extracts allowed numbers from farm profile, daily rain records, rain days count, and memories", () => {
-    const memories = [
-      "Last season harvest was 40 bags of maize.",
-      "Offered 45000 per bag at Iseyin market.",
-    ];
-    const allowed = buildAllowedAgronomyNumbers(farm, recentRain, "2026-04-10", memories);
+  const recentRainWithout5mm = {
+    records: [
+      { date: "2026-04-01", rain_mm: 0.0 },
+      { date: "2026-04-02", rain_mm: 12.0 },
+    ],
+    totalRainMm: 12.0,
+    startDate: "2026-04-01",
+    endDate: "2026-04-14",
+    daysCount: 14,
+    provenance: "zetaris:oko_pg.rain_daily",
+    querySql: "SELECT ...",
+  };
 
-    // Baseline standard windows
-    expect(allowed.has(14)).toBe(true);
-    expect(allowed.has(7)).toBe(true);
-    expect(allowed.has(1)).toBe(true);
-    expect(allowed.has(2)).toBe(true);
+  it("rejects ungrounded measurements like 'top 5cm'", () => {
+    const ctx = buildAllowedAgronomyNumbers(farm, recentRainWith5mm, "2026-04-10");
+    const v = validateAgronomyGuidance("Check the top 5cm of soil before watering.", ctx);
+    expect(v.valid).toBe(false);
+    expect(v.reason).toContain("Ungrounded measurement or count detected");
+    expect(v.reason).toContain("5cm");
+  });
 
-    // Farm hectares
-    expect(allowed.has(3.5)).toBe(true);
-    expect(allowed.has(4)).toBe(true);
+  it("rejects ungrounded counts and ranges like '2-3 cobs'", () => {
+    const ctx = buildAllowedAgronomyNumbers(farm, recentRainWith5mm, "2026-04-10");
+    const v = validateAgronomyGuidance("Check 2-3 cobs from different parts of the field.", ctx);
+    expect(v.valid).toBe(false);
+    expect(v.reason).toContain("Ungrounded measurement or count detected");
+    expect(v.reason).toContain("2-3 cobs");
+  });
 
-    // Rain totals and records
-    expect(allowed.has(17.4)).toBe(true);
-    expect(allowed.has(17)).toBe(true);
-    expect(allowed.has(12.4)).toBe(true);
-    expect(allowed.has(5)).toBe(true);
+  it("passes '5 mm of rain in the last 14 days' ONLY when 5 and 14 match context", () => {
+    const ctxValid = buildAllowedAgronomyNumbers(farm, recentRainWith5mm, "2026-04-10");
+    const vPass = validateAgronomyGuidance("Your farm received 5 mm of rain in the last 14 days.", ctxValid);
+    expect(vPass.valid).toBe(true);
 
-    // Rain days (12.4 and 5.0 >= 1.0 => 2 rain days)
-    expect(allowed.has(2)).toBe(true);
+    const ctxInvalid = buildAllowedAgronomyNumbers(farm, recentRainWithout5mm, "2026-04-10");
+    const vFail = validateAgronomyGuidance("Your farm received 5 mm of rain in the last 14 days.", ctxInvalid);
+    expect(vFail.valid).toBe(false);
+    expect(vFail.reason).toContain("Ungrounded rainfall measurement");
+  });
 
-    // Recalled memories numbers
-    expect(allowed.has(40)).toBe(true);
-    expect(allowed.has(45000)).toBe(true);
+  it("passes qualitative descriptions like 'a few cobs'", () => {
+    const ctx = buildAllowedAgronomyNumbers(farm, recentRainWith5mm, "2026-04-10");
+    const v = validateAgronomyGuidance("Check a few cobs from different parts of the field to inspect maturity.", ctx);
+    expect(v.valid).toBe(true);
   });
 });
 
@@ -218,13 +235,16 @@ describe("explainAgronomy retry flow", () => {
   const farm: FarmProfile = {
     id: "farm_bisi_ogbomoso",
     ownerName: "Bisi",
+    lat: 8.13,
+    lon: 4.25,
     lga: "Ogbomoso",
     state: "Oyo",
     crop: "maize",
     hectares: 2.0,
+    storage: "pics",
+    preferredLang: "en",
+    riskAversion: "high",
     zone: "derived_savanna",
-    historicalAnalogCount: 35,
-    sampleHistoricalSeason: "2021",
   };
 
   class SequenceMockProvider implements LLMProvider {
@@ -242,10 +262,10 @@ describe("explainAgronomy retry flow", () => {
 
   it("retries on validator rejection and returns model guidance when attempt 2 passes", async () => {
     const mockProvider = new SequenceMockProvider([
-      // Attempt 1: ungrounded number 999
-      { answer: "Apply 999 units of water to your field.", followUp: null },
-      // Attempt 2: valid, grounded in allowed numbers (14 days)
-      { answer: "Across 14 days, check soil moisture and consult your local ADP extension officer.", followUp: null },
+      // Attempt 1: ungrounded count "top 5cm"
+      { answer: "Check the top 5cm of soil before watering.", followUp: null },
+      // Attempt 2: qualitative, no ungrounded measurements
+      { answer: "Check the topsoil moisture and consult your local ADP extension officer.", followUp: null },
     ]);
 
     const res = await explainAgronomy({
@@ -259,7 +279,7 @@ describe("explainAgronomy retry flow", () => {
     expect(mockProvider.calls.length).toBe(2);
     expect(res.path).toBe("model");
     expect(res.fallbackReason).toBeUndefined();
-    expect(res.text).toContain("Across 14 days");
+    expect(res.text).toContain("topsoil");
   });
 
   it("falls back to localized template when both attempts fail validation", async () => {
@@ -327,13 +347,15 @@ describe("rain adequacy explanation validator and templates", () => {
 
   it("generates grounded rain adequacy template leading with establishment rain", () => {
     const textEn = templatePlantingRainAdequacy(mockDecision, "en");
-    expect(textEn).toContain("No, establishment rain has not been adequate");
+    expect(textEn).toContain("In 35 similar past seasons");
     expect(textEn).toContain("95 mm");
+    expect(textEn).toContain("below the 100 mm seedling threshold");
     expect(textEn).toContain("Wait a week");
     expect(textEn).toContain("17 April");
 
     const textYo = templatePlantingRainAdequacy(mockDecision, "yo");
     expect(textYo).toContain("95 mm");
+    expect(textYo).toContain("Ní àsìkò 35 sẹ́yìn tí ó jọra");
     expect(textYo).toContain("Dúró fún ọ̀sẹ̀ kan");
   });
 
@@ -345,7 +367,7 @@ describe("rain adequacy explanation validator and templates", () => {
       details: [],
       followUpQuestion: null,
     };
-    const checkValid = validateOutputStructure(validOutput, "rain_adequacy");
+    const checkValid = validateOutputStructure(validOutput, "rain_adequacy", 95);
     expect(checkValid.valid).toBe(true);
 
     // Rejects forecast words
@@ -355,8 +377,43 @@ describe("rain adequacy explanation validator and templates", () => {
       details: [],
       followUpQuestion: null,
     };
-    const checkForecast = validateOutputStructure(forecastOutput, "rain_adequacy");
+    const checkForecast = validateOutputStructure(forecastOutput, "rain_adequacy", 95);
     expect(checkForecast.valid).toBe(false);
     expect(checkForecast.reason).toContain("forecast wording");
+  });
+
+  it("enforces median mm figure through the LLM path or falls back to template", async () => {
+    // 1. LLM provides reason with median mm (95 mm) -> passes as path = "llm"
+    class ValidRainLLMProvider implements LLMProvider {
+      readonly name = "mock-rain-valid";
+      async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+        return {
+          headline: "Wait a week. Plant around 17 April.",
+          reason: "In 35 similar past seasons, planting now recorded a median establishment rain of 95 mm (between 45 and 160 mm), which is below the 100 mm seedling threshold. Planting now needed replanting in about 1 in 7 seasons.",
+          details: ["35 past seasons evaluated"],
+          followUpQuestion: null,
+        } as unknown as T;
+      }
+    }
+    const resPass = await explain(mockDecision, "en", new ValidRainLLMProvider(), "rain_adequacy");
+    expect(resPass.path).toBe("llm");
+    expect(resPass.text).toContain("95 mm");
+
+    // 2. LLM omits median mm figure -> rejected & retried, falls back to rain-aware template
+    class MissingRainLLMProvider implements LLMProvider {
+      readonly name = "mock-rain-missing";
+      async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+        return {
+          headline: "Wait a week. Plant around 17 April.",
+          reason: "If you plant now, about 1 in 7 seasons needed replanting. If you wait a week, it almost never happened in 35 past seasons.",
+          details: ["35 past seasons evaluated"],
+          followUpQuestion: null,
+        } as unknown as T;
+      }
+    }
+    const resFail = await explain(mockDecision, "en", new MissingRainLLMProvider(), "rain_adequacy");
+    expect(resFail.path).toBe("template");
+    expect(resFail.text).toContain("In 35 similar past seasons");
+    expect(resFail.text).toContain("95 mm");
   });
 });

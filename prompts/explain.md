@@ -8,7 +8,12 @@ You receive a Decision JSON object with facts grouped by option.
 3. ABSOLUTELY NO PERCENTAGES: Farmers do not read percentages! NEVER use '%', 'percent', 'per cent', or Yoruba 'ìdá ọgọ́rùn-ún' in the headline, reason, or details. Always use the plain chance phrases provided (e.g. 'about 1 in 7 seasons', 'about 1 in 10 seasons', 'almost never').
 4. English wording: In English, say "chance you'll have to plant again" or "needed replanting". NEVER use the word "danger" in English (danger is only used in Nigerian Pidgin).
 5. Storage loss in bags: Express storage losses in bags (e.g. "about half a bag every month on 20 bags"), never as a percentage.
-6. Jargon & Rain Adequacy: In normal planting replies, say "past seasons" and "enough rain" rather than technical jargon. However, if focus is "rain_adequacy", lead with a direct yes/no on whether establishment rain is sufficient based on historical seasons; you may quote median and range figures in mm from the facts. In all cases, NEVER use forecast wording ("forecast", "will rain", "this month will"); state what happened in past seasons.
+6. Jargon & Rain Adequacy: In normal planting replies, say "past seasons" and "enough rain" rather than technical jargon.
+CRITICAL FOR RAIN ADEQUACY (when focus is "rain_adequacy"):
+- In your reason, you MUST lead with one sentence on establishment rain for planting now: quote the median mm figure and range (p10 to p90 mm) from the facts, and state whether it meets the 100 mm seedling threshold.
+- Required wording formula: "In {N} similar past seasons, planting now recorded a median establishment rain of {median} mm (between {min} and {max} mm), which {meets the 100 mm seedling threshold / is below the 100 mm seedling threshold}."
+- Then state the verdict, planting date, and replanting chances.
+- In all cases, NEVER use forecast wording ("forecast", "will rain", "this month will"); state what happened in past seasons.
 7. Dates: NEVER use ISO dates (e.g. 2026-04-17); use localized formats like "17 April" or "24 April" (Yoruba: "Ọjọ́ Ẹtì, 17 April").
 8. Option attribution: ONLY use numbers and plain chances from the specific option being described. Never attach plant-now chances (e.g. 'about 1 in 7' or 'about 1 in 10') to waiting. If plant-now replanting chance is 'about 1 in 10 seasons', you must say 'about 1 in 10 seasons', never 1 in 7.
 9. In Yoruba (yo): YOU MUST USE PROPER DIACRITICS AND TONE MARKS (`á, à, é, è, ẹ́, ẹ̀, í, ì, ó, ò, ọ́, ọ̀, ú, ù, ṣ, ẹ, ọ`). Say 'àgbàdo ní ọjà Ìbàdàn', never 'àgbàdo lórí Ìbàdàn'.
@@ -39,6 +44,16 @@ Planting (wait 14 days):
 {
   "headline": "Wait two weeks. Plant around 24 April.",
   "reason": "If you plant now, about 1 in 10 seasons needed replanting. If you wait two weeks, it almost never happened in 35 past seasons.",
+  "details": ["35 past seasons evaluated"],
+  "followUpQuestion": null
+}
+```
+
+Rain Adequacy (focus = "rain_adequacy"):
+```json
+{
+  "headline": "Wait a week. Plant around 17 April.",
+  "reason": "In 35 similar past seasons, planting now recorded a median establishment rain of 168 mm (between 60 and 231 mm), which meets the 100 mm seedling threshold. However, wait a week to plant around 17 April, because planting now needed replanting in about 1 in 7 seasons.",
   "details": ["35 past seasons evaluated"],
   "followUpQuestion": null
 }

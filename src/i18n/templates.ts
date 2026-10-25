@@ -75,44 +75,77 @@ export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "e
   const nimetEv = decision.evidence?.find((e) => e.id === "ev_nimet_benchmark");
   const nimetNoteEn = nimetEv ? ` ${nimetEv.statistic}.` : "";
 
-  if (lang === "yo") {
-    if (offsetDays === 0 && isAdequateNow) {
-      return `Bẹ́ẹ̀ni, òjò tí a gbàsílẹ̀ nínú àwọn àsìkò sẹ́yìn tó fún ìgbìn àgbàdo báyìí.\n\nNínú àsìkò ${nYears} sẹ́yìn, ìwọ̀n òjò ìbẹ̀rẹ̀ jẹ́ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm). Gbìn báyìí ní nǹkan bí ${formattedDate}.`;
-    }
-    const waitPhrase =
-      offsetDays === 7
-        ? "Dúró fún ọ̀sẹ̀ kan"
-        : offsetDays === 14
-        ? "Dúró fún ọ̀sẹ̀ méjì"
-        : `Dúró fún ọjọ́ ${offsetDays}`;
-    return `Rárá, òjò kò tíì tó báyìí fún ìgbìn àgbàdo tí kò ní ewu.\n\nNínú àsìkò ${nYears} sẹ́yìn, ìwọ̀n òjò ìbẹ̀rẹ̀ tí a gbàsílẹ̀ fún gbígbin báyìí jẹ́ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm). ${waitPhrase} kí o gbìn ní nǹkan bí ${formattedDate}.`;
-  }
-
-  if (lang === "pcm") {
-    if (offsetDays === 0 && isAdequateNow) {
-      return `Yes, past records show say rain reach to plant corn now.\n\nAcross ${nYears} past seasons, establishment rain recorded median of ${rainP50} mm (between ${rainP10} and ${rainP90} mm). Plant now around ${formattedDate}.`;
-    }
-    const waitPhrase =
-      offsetDays === 7
-        ? "Wait one week"
-        : offsetDays === 14
-        ? "Wait two weeks"
-        : `Wait ${offsetDays} days`;
-    return `No, the rain never reach properly to plant corn without risk now.\n\nAcross ${nYears} past seasons, planting now recorded median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm). ${waitPhrase}. Plant around ${formattedDate}.`;
-  }
-
-  // Default English
-  if (offsetDays === 0 && isAdequateNow) {
-    return `Yes, establishment rain has been sufficient in past analog seasons.\n\nAcross ${nYears} past analog seasons, planting now recorded a median establishment rainfall of ${rainP50} mm (range ${rainP10} to ${rainP90} mm). Plant now around ${formattedDate}.${nimetNoteEn}`;
-  }
-  const waitPhrase =
+  const waitPhraseEn =
     offsetDays === 7
       ? "Wait a week"
       : offsetDays === 14
       ? "Wait two weeks"
       : `Wait ${offsetDays} days`;
 
-  return `No, establishment rain has not been adequate for planting right now.\n\nAcross ${nYears} past analog seasons, planting now recorded a median establishment rainfall of ${rainP50} mm (range ${rainP10} to ${rainP90} mm), which carries seedling moisture stress. ${waitPhrase}. Plant around ${formattedDate}.${nimetNoteEn}`;
+  const plantNowChanceEn = String(
+    k[`plainChance_plantNow_${lang}`] || k.plainChance_plantNow_en || "about 1 in 7 seasons"
+  );
+  const waitChanceEn = String(
+    k[`plainChance_chosen_${lang}`] || k.plainChance_chosen_en || "almost never"
+  );
+
+  if (lang === "yo") {
+    const waitPhraseYo =
+      offsetDays === 7
+        ? "Dúró fún ọ̀sẹ̀ kan"
+        : offsetDays === 14
+        ? "Dúró fún ọ̀sẹ̀ méjì"
+        : `Dúró fún ọjọ́ ${offsetDays}`;
+    const plantNowChanceYo = String(
+      k[`plainChance_plantNow_yo`] || "ẹ̀ẹ̀kan nínú àsìkò méje"
+    );
+    const waitChanceYo = String(
+      k[`plainChance_chosen_yo`] || "fẹ́rẹ́ kò ṣẹlẹ̀ rárá"
+    );
+
+    const adequacyClauseYo = isAdequateNow
+      ? "èyí tí ó tó ìwọ̀n 100 mm tí a nílò"
+      : "èyí tí kò tó ìwọ̀n 100 mm tí a nílò";
+
+    if (offsetDays === 0) {
+      return `Ní àsìkò ${nYears} sẹ́yìn tí ó jọra, gbígbin báyìí ní ìwọ̀n òjò ìbẹ̀rẹ̀ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm), ${adequacyClauseYo}. Gbìn báyìí ní nǹkan bí ${formattedDate}. Ewu láti tún gbìn jẹ́ ${plantNowChanceYo}.`;
+    }
+    return `Ní àsìkò ${nYears} sẹ́yìn tí ó jọra, gbígbin báyìí ní ìwọ̀n òjò ìbẹ̀rẹ̀ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm), ${adequacyClauseYo}. Bí ó ti wù kí ó rí, ${waitPhraseYo} kí o gbìn ní nǹkan bí ${formattedDate}. Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${plantNowChanceYo}, ṣùgbọ́n tí o bá dúró, ${waitChanceYo}.`;
+  }
+
+  if (lang === "pcm") {
+    const waitPhrasePcm =
+      offsetDays === 7
+        ? "Wait one week"
+        : offsetDays === 14
+        ? "Wait two weeks"
+        : `Wait ${offsetDays} days`;
+    const plantNowChancePcm = String(
+      k[`plainChance_plantNow_pcm`] || "about 1 for every 7 seasons"
+    );
+    const waitChancePcm = String(
+      k[`plainChance_chosen_pcm`] || "e no dey almost happen"
+    );
+
+    const adequacyClausePcm = isAdequateNow
+      ? "wey reach the 100 mm seedling threshold"
+      : "wey dey below the 100 mm seedling threshold";
+
+    if (offsetDays === 0) {
+      return `Inside ${nYears} similar past seasons, planting now record median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClausePcm}. Plant now around ${formattedDate}. Replant risk na ${plantNowChancePcm}.`;
+    }
+    return `Inside ${nYears} similar past seasons, planting now record median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClausePcm}. However, ${waitPhrasePcm}. Plant around ${formattedDate}, where replanting ${waitChancePcm} (planting now needed replanting in ${plantNowChancePcm}).`;
+  }
+
+  // Default English
+  const adequacyClauseEn = isAdequateNow
+    ? "which meets the 100 mm seedling threshold"
+    : "which is below the 100 mm seedling threshold";
+
+  if (offsetDays === 0) {
+    return `In ${nYears} similar past seasons, planting now recorded a median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClauseEn}. Plant now around ${formattedDate}. Replant chance is ${plantNowChanceEn}.${nimetNoteEn}`;
+  }
+  return `In ${nYears} similar past seasons, planting now recorded a median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClauseEn}. However, ${waitPhraseEn}. Plant around ${formattedDate}, where replanting ${waitChanceEn} (planting now needed replanting in ${plantNowChanceEn}).${nimetNoteEn}`;
 }
 
 /** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7 & Day 4.2 Polish). */
