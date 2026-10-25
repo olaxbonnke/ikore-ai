@@ -30,17 +30,66 @@ export function templateOutOfScope(lang: Lang = "en"): string {
 }
 
 /** Honest localized fallback when agronomy guidance is rejected or fails. */
-export function templateAgronomyFallback(lang: Lang = "en"): string {
+export function templateAgronomyFallback(topic?: string, lang: Lang = "en"): string {
+  // If only 1 argument was passed and it's a Lang string
+  if (topic === "en" || topic === "yo" || topic === "pcm" || topic === "ha") {
+    lang = topic as Lang;
+    topic = "general";
+  }
+
   if (lang === "yo") {
-    return "Fún àbójútó oko àgbàdo rẹ tó dára àti èyí tó wà ní ààbò, jọ̀wọ́ kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP extension officer) tó wà lábúlé rẹ tàbí ilé-iṣẹ́ ajílẹ̀ tó ní àṣẹ fún ìtọ́sọ́nà tó tọ́ àti ìwọ̀n lílò tó dájú.";
+    switch (topic) {
+      case "watering":
+        return "Àgbàdo tí a gbìn sinu òjò gbẹ́kẹ̀le òjò lásán. Ṣàyẹ̀wò ilẹ̀ kí o rí i dájú pé ó tutù tó ìwọ̀n ìka ọwọ́ kan. Tí ọ̀dá bá wà lẹ́yìn gbígbìn, bomi rin ìsàlẹ̀ igi ní kùtùkùtù òwúrọ̀ tàbí ìrọ̀lẹ́ kí o sì yẹra fún àkúnya omi. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún ìtọ́sọ́nà síwájú.";
+      case "fertilizer":
+        return "Lo ajílẹ̀ àkọ́kọ́ nígbà tí àgbàdo bá hù, kí o sì lo èkejì nígbà tí ó bá dé orúnkún. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún irú ajílẹ̀ tó bá ilẹ̀ rẹ mu àti ìwọ̀n lílò tó dájú.";
+      case "pests":
+        return "Ṣàyẹ̀wò oko àgbàdo rẹ ní kùtùkùtù òwúrọ̀ fún kòkòrò armyworm. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún àwọn ọ̀nà ààbò tó yẹ láti gbé láìlo egbòogi eléwu.";
+      case "harvest":
+      case "drying":
+      case "storage":
+        return "Ṣàyẹ̀wò àwọn àgbàdo díẹ̀ lórí oko; nígbà tí wọ́n bá le koko tí kò sì ṣeé tẹ̀ mọ́lẹ̀, wọ́n ti gbó fún ìkórè. Gbẹ wọ́n dáradára kí o tó tọ́jú sí àpò tó péye. Kàn sí alábòójútó ADP fún ìtọ́sọ́nà síwájú.";
+      default:
+        return "Fún àbójútó oko àgbàdo rẹ tó dára àti èyí tó wà ní ààbò, jọ̀wọ́ kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP extension officer) tó wà lábúlé rẹ fún ìtọ́sọ́nà tó tọ́ àti ìmọ̀ràn tó péye.";
+    }
   }
+
   if (lang === "pcm") {
-    return "For correct advice and safe way to handle your maize farm, make you visit your local Agricultural Development Programme (ADP) extension officer or licensed agro-dealer for correct rates.";
+    switch (topic) {
+      case "watering":
+        return "Rain-fed maize dey rely on rain. Check say the soil moist reach about one finger deep. If dry spell catch the plants after planting, water the base early morning or evening and make sure water no flood the farm. Consult your local ADP extension officer for more guidance.";
+      case "fertilizer":
+        return "Apply first fertilizer when corn sprout, then top dress when e reach knee level. Ask your local ADP extension officer or registered agro-dealer for correct rates.";
+      case "pests":
+        return "Check your maize leaves early morning for armyworm. Go meet your local ADP extension officer for safe approved pest control.";
+      case "harvest":
+      case "drying":
+      case "storage":
+        return "Check a few cobs; when the grain hard and you no fit dent am with fingernail, e don ready for harvest. Dry am well before you store. Consult your local ADP officer for proper storage guidance.";
+      default:
+        return "For correct advice and safe way to handle your maize farm, make you visit your local Agricultural Development Programme (ADP) extension officer or licensed agro-dealer for correct rates.";
+    }
   }
+
   if (lang === "ha") {
     return "Don samun ingantacciyar shawarwari kan kula da gonar masara, tuntuɓi jami'in Agricultural Development Programme (ADP) na yankinku ko shagon magunguna da aka amince da shi.";
   }
-  return "For safe and effective maize field management, please consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for approved recommendations and label application rates.";
+
+  // English default
+  switch (topic) {
+    case "watering":
+      return "Rain-fed maize relies primarily on seasonal rainfall. Check that topsoil is moist about a finger deep. If a dry spell occurs after planting, apply water at the base of plants during early morning or cool evening hours, and avoid waterlogging. Consult your local ADP extension officer for site-specific guidance.";
+    case "fertilizer":
+      return "Apply basal fertilizer at seedling emergence and top-dress when maize reaches knee height. Consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for soil-appropriate formulations and application timing.";
+    case "pests":
+      return "Scout maize whorls early in the morning for fall armyworm feeding signs. Consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for safe, approved control methods.";
+    case "harvest":
+    case "drying":
+    case "storage":
+      return "Check a few cobs across your field; when kernels harden and cannot be dented with a fingernail, maize has reached physiological maturity. Dry properly before bagging. Consult your local ADP extension officer for approved storage recommendations.";
+    default:
+      return "For safe and effective maize field management, please consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for approved recommendations and label application rates.";
+  }
 }
 
 /**
@@ -270,7 +319,7 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
 
   if (lang === "pcm") {
     if (offsetDays === 0) {
-      return `Plant now around ${formattedDate}.\n\nGood rain dey ground across ${nYears} past seasons, e no dey almost need planting again.`;
+      return `Plant now around ${formattedDate}.\n\nGood rain dey ground across ${nYears} past seasons, replanting almost never happen.`;
     }
     const waitHeadline =
       offsetDays === 7
@@ -285,7 +334,7 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
         ? "If you wait two weeks"
         : `If you wait ${offsetDays} days`;
 
-    return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance}, people don plant am again. ${waitReason}, e no dey almost happen.`;
+    return `${waitHeadline}. Plant around ${formattedDate}.\n\nIf you plant now, ${plantNowChance}, people don plant am again. ${waitReason}, e almost never happen for ${nYears} past seasons.`;
   }
 
   if (lang === "ha") {

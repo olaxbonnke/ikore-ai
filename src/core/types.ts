@@ -77,6 +77,9 @@ export interface AgentReplyPart {
   kind: "decision" | "guidance";
   reply: string;
   topic?: string;
+  responded_model?: string;
+  fallback_used?: boolean;
+  fallback_reason?: string;
 }
 
 export interface AgentReply {

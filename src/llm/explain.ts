@@ -666,7 +666,7 @@ function loadPromptTemplate(): string {
  * Builds structured facts tied to the option they describe (Step 1 & Step 2).
  * Formats chance and storage loss in plain language so the LLM doesn't calculate them.
  */
-export function buildFactsByOption(decision: Decision, lang: Lang): Record<string, unknown> {
+export function buildFactsByOption(decision: Decision, lang: Lang, focus?: string): Record<string, unknown> {
   const k = decision.keyNumbers;
 
   if (decision.intent === "plant_timing") {
@@ -708,15 +708,19 @@ export function buildFactsByOption(decision: Decision, lang: Lang): Record<strin
     const rainP90 = Math.round(Number(k.plantNow_rainP90Mm ?? k.rainP90Mm ?? 160));
     const meetsThreshold = rainP50 >= 100;
 
+    const plantNowData: Record<string, unknown> = {
+      replantChance: plantNowChance,
+    };
+    if (focus === "rain_adequacy") {
+      plantNowData.establishmentRainMmMedian = rainP50;
+      plantNowData.establishmentRainMmRangeMin = rainP10;
+      plantNowData.establishmentRainMmRangeMax = rainP90;
+      plantNowData.establishmentThresholdMm = 100;
+      plantNowData.meetsEstablishmentThreshold = meetsThreshold;
+    }
+
     return {
-      plant_now: {
-        replantChance: plantNowChance,
-        establishmentRainMmMedian: rainP50,
-        establishmentRainMmRangeMin: rainP10,
-        establishmentRainMmRangeMax: rainP90,
-        establishmentThresholdMm: 100,
-        meetsEstablishmentThreshold: meetsThreshold,
-      },
+      plant_now: plantNowData,
       wait_7: {
         plantingDate: wait7Date,
         duration: "one week",
@@ -931,7 +935,7 @@ export async function explain(
       .replace(/{lang}/g, lang)
       .replace(/{langName}/g, LANG_NAMES[lang] || lang);
 
-    const factsByOption = buildFactsByOption(decision, lang);
+    const factsByOption = buildFactsByOption(decision, lang, focus);
 
     const userPrompt = JSON.stringify(
       {

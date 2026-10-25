@@ -108,7 +108,7 @@ function getAgronomyTransition(topic?: string, lang: Lang = "en"): string {
   } else if (lang === "pcm") {
     switch (topic) {
       case "watering":
-        return "For wetting/watering your corn:";
+        return "On how to water your maize:";
       case "fertilizer":
         return "For fertilizer:";
       case "pests":
@@ -120,12 +120,12 @@ function getAgronomyTransition(topic?: string, lang: Lang = "en"): string {
       case "land_prep":
         return "For preparing the land:";
       case "harvest":
-        return "For harvesting your corn:";
+        return "For harvesting your maize:";
       case "drying":
       case "storage":
-        return "For drying and keeping your corn:";
+        return "For drying and keeping your maize:";
       default:
-        return "On your corn farming:";
+        return "On your maize farming:";
     }
   } else {
     // English default
@@ -984,13 +984,14 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         farm,
         lang,
         asOf,
+        topic: secondaryPart.topic,
         recentRain: undefined,
         recalledMemories,
       });
     } catch (agErr: any) {
       console.warn("[Compound] Agronomy secondary step failed:", agErr.message);
       agronomyRes = {
-        text: templateAgronomyFallback(lang),
+        text: templateAgronomyFallback(secondaryPart.topic, lang),
         path: "template",
         model: "template",
         fallbackReason: `llm_error: ${agErr.message}`,
@@ -1020,17 +1021,35 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const transitionLine = getAgronomyTransition(secondaryPart.topic, lang);
     finalReplyText = `${text}\n\n${transitionLine}\n${agronomyRes.text}`;
 
+    const primaryModel = isSample ? "template" : (explanation.model || "template");
+    const primaryFallbackUsed = explanation.path === "template" || isSample;
+    const primaryFallbackReason = !isSample && (explanation.path === "template" || explanation.fallbackReason)
+      ? (explanation.fallbackReason || "template_by_design")
+      : undefined;
+
+    const secondaryModel = isSample ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
+    const secondaryFallbackUsed = agronomyRes.path === "template" || isSample;
+    const secondaryFallbackReason = !isSample && (agronomyRes.path === "template" || agronomyRes.fallbackReason)
+      ? (agronomyRes.fallbackReason || "template_by_design")
+      : undefined;
+
     replyParts = [
       {
         intent: "plant_timing",
         kind: "decision",
         reply: text,
+        responded_model: primaryModel,
+        fallback_used: primaryFallbackUsed,
+        ...(primaryFallbackReason ? { fallback_reason: primaryFallbackReason } : {}),
       },
       {
         intent: "maize_agronomy",
         kind: "guidance",
         topic: secondaryPart.topic,
         reply: agronomyRes.text,
+        responded_model: secondaryModel,
+        fallback_used: secondaryFallbackUsed,
+        ...(secondaryFallbackReason ? { fallback_reason: secondaryFallbackReason } : {}),
       },
     ];
   }

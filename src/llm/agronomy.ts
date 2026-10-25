@@ -341,11 +341,83 @@ function loadAgronomyPrompt(): string {
   return "You are Ikore AI maize agronomy advisory assistant. Max 80 words, no ungrounded numbers, no chemical brands or doses.";
 }
 
+
+/**
+ * Validator rule: reject planting-timing phrases in agronomy guidance.
+ * Timing belongs to the data-checked decision part only.
+ */
+export function validateNoTimingClaims(text: string): { valid: boolean; reason?: string } {
+  const timingPattern = /(?:\b(?:plant\s+now|time\s+to\s+plant|start\s+planting|planting\s+time|this\s+week|next\s+week|wait\s+(?:a|one|two|\d+)\s+weeks?|plant\s+around|shuka\s+yanzu|lokacin\s+shuka|january|february|march|april|may|june|july|august|september|october|november|december)\b|gbìn\s+báyìí|gbin\s+bayii|ìgbà\s+gbígbìn|igba\s+gbigbin|bẹ̀rẹ̀\s+gbígbìn|bere\s+gbigbin|ọ̀sẹ̀\s+yìí|ose\s+yii|ẹrẹ̀nà|èrèlé|ìgbé|òbíbí|òkúdu|agẹmọ|ògún|ọ̀wẹ́wẹ̀|ọ̀wàrà|bélú|ọ̀pẹ́)/iu;
+  const m = text.match(timingPattern);
+  if (m) {
+    return {
+      valid: false,
+      reason: `timing_claim_in_guidance ("${m[0]}")`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Topic relevance validator:
+ * The guidance must match the requested agronomy topic and avoid cross-topic leaks.
+ */
+export function validateAgronomyTopic(text: string, topic?: string): { valid: boolean; reason?: string } {
+  if (!topic) return { valid: true };
+  const lower = text.toLowerCase();
+
+  if (topic === "watering") {
+    // A watering reply must not talk about storage bags/sacks, market prices, or chemical fertilizer
+    if (/\b(?:storage|store|storing|bags?\s+for\s+\d+|\b45k\b|\bàpò\b.*\btọ́jú\b|market\s+prices?|price\s+go\s+up|sack)\b/i.test(lower)) {
+      return {
+        valid: false,
+        reason: "cross_topic_leak: watering guidance mentions storage/market prices",
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Language validator across en, pcm, and yo:
+ * Ensures yo is real Yoruba (with tone marks) without English or Pidgin words.
+ * Ensures pcm does not contain formal English constructs.
+ */
+export function validateAgronomyLanguage(text: string, lang: Lang): { valid: boolean; reason?: string } {
+  if (lang === "yo") {
+    const yoVal = validateYoruba(text);
+    if (!yoVal.valid) return yoVal;
+
+    // Check for Pidgin or English leaking into Yoruba
+    const englishLeak = /\b(?:the|is|you|your|consult|extension|officer|tips|area|best|storage|check|grains|regular|spoil|sell|when|price|dey|na|wey|dem|make\s+you)\b/i;
+    const m = text.match(englishLeak);
+    if (m) {
+      return {
+        valid: false,
+        reason: `Yoruba guidance contains English or Pidgin words ("${m[0]}")`,
+      };
+    }
+  } else if (lang === "pcm") {
+    const formalEnglish = /\b(?:furthermore|consequently|consult\s+your\s+local|physiological\s+maturity|threshold|establishment|adhere\s+to)\b/i;
+    const m = text.match(formalEnglish);
+    if (m) {
+      return {
+        valid: false,
+        reason: `Pidgin guidance contains overly formal English phrasing ("${m[0]}")`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 export interface ExplainAgronomyParams {
   question: string;
   farm: FarmProfile;
   lang: Lang;
   asOf: string;
+  topic?: string;
   recentRain?: LoadedRecentRain | null;
   recalledMemories?: string[];
   provider?: LLMProvider;
@@ -394,7 +466,7 @@ export function cleanPlainTextAdvice(raw: string): string {
 export async function explainAgronomy(
   params: ExplainAgronomyParams
 ): Promise<AgronomyExplainResult> {
-  const { question, farm, lang, asOf, recentRain, recalledMemories, provider, runId } = params;
+  const { question, farm, lang, asOf, topic, recentRain, recalledMemories, provider, runId } = params;
   const allowedNumbers = buildAllowedAgronomyNumbers(farm, recentRain, asOf, recalledMemories);
   const config = getNightshiftConfig();
   const isSample = config.sampleMode;
@@ -455,7 +527,7 @@ Farmer Question: "${question}"
         sampleAnswer = "Scout maize whorls early in the morning for fall armyworm feeding signs. Consult your local ADP extension officer or registered agro-dealer for safe, approved pest control options.";
       }
     } else {
-      sampleAnswer = templateAgronomyFallback(lang);
+      sampleAnswer = templateAgronomyFallback(topic, lang);
     }
 
     if (runId) {
@@ -563,13 +635,23 @@ Farmer Question: "${question}"
     if (words.length > 90) {
       return { valid: false, reason: `Response too long (${words.length} words, max 80 allowed)` };
     }
+
+    // 1. No planting timing claims in guidance (timing belongs strictly to decision)
+    const tv = validateNoTimingClaims(t);
+    if (!tv.valid) return tv;
+
+    // 2. Topic check
+    const topV = validateAgronomyTopic(t, topic);
+    if (!topV.valid) return topV;
+
+    // 3. Language check
+    const lv = validateAgronomyLanguage(t, lang);
+    if (!lv.valid) return lv;
+
+    // 4. Grounding and dosage checks
     const gv = validateAgronomyGuidance(t, allowedNumbers);
     if (!gv.valid) return gv;
 
-    if (lang === "yo") {
-      const yv = validateYoruba(t);
-      if (!yv.valid) return yv;
-    }
     return { valid: true };
   };
 
@@ -639,7 +721,7 @@ Direct plain-text advice:`;
     const failureReason2 = attempt2.error || val2.reason || "Validation failed";
 
     return {
-      text: templateAgronomyFallback(lang),
+      text: templateAgronomyFallback(topic, lang),
       followUp: null,
       path: "template",
       model: "template",
@@ -652,7 +734,7 @@ Direct plain-text advice:`;
     };
   } catch (err: any) {
     return {
-      text: templateAgronomyFallback(lang),
+      text: templateAgronomyFallback(topic, lang),
       followUp: null,
       path: "template",
       model: "template",
