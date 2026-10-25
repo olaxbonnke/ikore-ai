@@ -38,6 +38,21 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const YORUBA_MONTHS = [
+  "Oṣù Kíní",
+  "Oṣù Kejì",
+  "Oṣù Kẹta",
+  "Oṣù Kẹrin",
+  "Oṣù Kàrún",
+  "Oṣù Kẹfà",
+  "Oṣù Keje",
+  "Oṣù Kẹjọ",
+  "Oṣù Kẹsàn-án",
+  "Oṣù Kẹwàá",
+  "Oṣù Kọkànlá",
+  "Oṣù Kejìlá",
+];
+
 /**
  * Format a calendar date string (YYYY-MM-DD) according to DESIGN.md 8.4:
  * "Dates: '2 Nov' / '2 November' in en/pcm; for yo/ha use the same numeric date,
@@ -59,7 +74,8 @@ export function formatGroundedDate(dateIso: string, lang: Lang = "en"): string {
   const weekday = GLOSSARY[weekdayKey]?.[lang] || GLOSSARY[weekdayKey]?.en || "";
 
   if (lang === "yo") {
-    return `${weekday}, ${day} ${monthName}`;
+    const yoMonth = YORUBA_MONTHS[month - 1] || monthName;
+    return weekday ? `${weekday}, ${day} ${yoMonth}` : `${day} ${yoMonth}`;
   }
   return `${day} ${monthName}`;
 }

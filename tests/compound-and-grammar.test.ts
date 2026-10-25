@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { templatePlanting, templateAgronomyFallback } from "../src/i18n/templates";
 import { understand } from "../src/core/understand";
 import { handle } from "../src/core/orchestrator";
-import { validateNoTimingClaims, validateAgronomyLanguage } from "../src/llm/agronomy";
+import { validateNoTimingClaims, validateAgronomyLanguage, validateNoMetaTalk } from "../src/llm/agronomy";
 import { validateSellingOutput } from "../src/llm/explain";
+import { formatStorageLossBags } from "../src/core/decide";
 import type { Decision } from "../src/core/types";
 
 describe("Regression tests for user rules and bug fixes", () => {
@@ -73,15 +74,17 @@ describe("Regression tests for user rules and bug fixes", () => {
 
     it("verifies yo templates for plant_now, wait_7, wait_14", () => {
       const now = templatePlanting(makeDecision("plant_now"), "yo");
-      expect(now).toContain("Gbìn àgbàdo rẹ báyìí ní nǹkan bí Ọjọ́ Ẹtì, 10 April.");
+      expect(now).toContain("Gbìn àgbàdo rẹ báyìí ní nǹkan bí Ọjọ́ Ẹtì, 10 Oṣù Kẹrin.");
       expect(now).toContain("fẹ́rẹ́ kò ṣẹlẹ̀ rárá");
 
       const w7 = templatePlanting(makeDecision("wait_7"), "yo");
-      expect(w7).toContain("Dúró fún ọ̀sẹ̀ kan kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.");
+      expect(w7).toContain("Dúró ọ̀sẹ̀ kan. Gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 Oṣù Kẹrin.");
+      expect(w7).toContain("Tí o bá dúró ọ̀sẹ̀ kan");
       expect(w7).toContain("fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.");
 
       const w14 = templatePlanting(makeDecision("wait_14"), "yo");
-      expect(w14).toContain("Dúró fún ọ̀sẹ̀ méjì kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 24 April.");
+      expect(w14).toContain("Dúró ọ̀sẹ̀ méjì. Gbìn ní nǹkan bí Ọjọ́ Ẹtì, 24 Oṣù Kẹrin.");
+      expect(w14).toContain("Tí o bá dúró ọ̀sẹ̀ méjì");
       expect(w14).toContain("fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.");
     });
   });
@@ -208,11 +211,30 @@ describe("Regression tests for user rules and bug fixes", () => {
       expect(res.reason).toContain("Storage loss check failed");
     });
 
-    it("accepts honest grounded selling explanation quoting PICS bags and small amount", () => {
+    it("accepts honest grounded selling explanation quoting PICS bags and concrete fraction", () => {
       const dec = makeSellingDecision(true, 0.06);
-      const text = "Store your maize for 8 weeks.\n\nIn 8 of 8 past years, storing 8 weeks earned more than selling now. Storage loss in PICS hermetic bags is a small amount.";
+      const text = "Store your maize for 8 weeks.\n\nIn 8 of 8 past years, storing eight weeks earned more than selling now. Expected loss in PICS bags is less than a tenth of a bag out of your 20.";
       const res = validateSellingOutput(text, dec);
       expect(res.valid).toBe(true);
+    });
+
+    it("verifies formatStorageLossBags produces concrete fractions under 0.25 bags", () => {
+      const loss20 = formatStorageLossBags(20, 0.3);
+      expect(loss20.en).toBe("less than a tenth of a bag out of your 20");
+      expect(loss20.yo).toBe("kò tó ìdá mẹ́wàá àpò kan nínú àpò 20 rẹ");
+      expect(loss20.pcm).toBe("less than one-tenth of bag inside your 20");
+    });
+  });
+
+  describe("6.6 Meta talk rejection in agronomy guidance", () => {
+    it("rejects meta talk and self-referential statements in en, pcm, and yo", () => {
+      expect(validateNoMetaTalk("Planting timing is not my role; I only advise on field operations.").valid).toBe(false);
+      expect(validateNoMetaTalk("As an AI, I only advise on maize operations.").valid).toBe(false);
+      expect(validateNoMetaTalk("No be my role to tell you when to plant.").valid).toBe(false);
+      expect(validateNoMetaTalk("Kì í ṣe ojúṣe mi láti sọ ìgbà gbígbìn.").valid).toBe(false);
+
+      // Practical field advice without meta-talk passes
+      expect(validateNoMetaTalk("Rain-fed maize relies primarily on rainfall. Check that topsoil is moist about a finger deep.").valid).toBe(true);
     });
   });
 });

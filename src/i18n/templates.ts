@@ -40,7 +40,7 @@ export function templateAgronomyFallback(topic?: string, lang: Lang = "en"): str
   if (lang === "yo") {
     switch (topic) {
       case "watering":
-        return "Àgbàdo tí a gbìn sinu òjò gbẹ́kẹ̀le òjò lásán. Ṣàyẹ̀wò ilẹ̀ kí o rí i dájú pé ó tutù tó ìwọ̀n ìka ọwọ́ kan. Tí ọ̀dá bá wà lẹ́yìn gbígbìn, bomi rin ìsàlẹ̀ igi ní kùtùkùtù òwúrọ̀ tàbí ìrọ̀lẹ́ kí o sì yẹra fún àkúnya omi. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún ìtọ́sọ́nà síwájú.";
+        return "Àgbàdo tí a gbìn sínú òjò gbẹ́kẹ̀le òjò lásán. Ṣàyẹ̀wò ilẹ̀ kí o rí i dájú pé ó tutù tó ìwọ̀n ìka ọwọ́ kan. Tí ọ̀dá bá wà lẹ́yìn gbígbìn, bomi rin ìdí àgbàdo ní kùtùkùtù òwúrọ̀ tàbí ìrọ̀lẹ́ kí o sì yẹra fún àkúnya omi. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún ìtọ́sọ́nà síwájú.";
       case "fertilizer":
         return "Lo ajílẹ̀ àkọ́kọ́ nígbà tí àgbàdo bá hù, kí o sì lo èkejì nígbà tí ó bá dé orúnkún. Kàn sí alábòójútó iṣẹ́ àgbẹ̀ (ADP) lábúlé rẹ fún irú ajílẹ̀ tó bá ilẹ̀ rẹ mu àti ìwọ̀n lílò tó dájú.";
       case "pests":
@@ -166,9 +166,9 @@ export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "e
     } else {
       const waitNounYo =
         offsetDays === 7
-          ? "dídúró fún ọ̀sẹ̀ kan"
+          ? "dídúró ọ̀sẹ̀ kan"
           : offsetDays === 14
-          ? "dídúró fún ọ̀sẹ̀ méjì"
+          ? "dídúró ọ̀sẹ̀ méjì"
           : `dídúró fún ọjọ́ ${offsetDays}`;
       const waitPrefixYo = isAdequateNow
         ? "Bí ó ti wù kí ó rí, dídúró ní ààbò jù"
@@ -303,18 +303,18 @@ export function templatePlanting(decision: Decision, lang: Lang = "en"): string 
     }
     const waitHeadline =
       offsetDays === 7
-        ? "Dúró fún ọ̀sẹ̀ kan"
+        ? "Dúró ọ̀sẹ̀ kan"
         : offsetDays === 14
-        ? "Dúró fún ọ̀sẹ̀ méjì"
+        ? "Dúró ọ̀sẹ̀ méjì"
         : `Dúró fún ọjọ́ ${offsetDays}`;
     const waitReason =
       offsetDays === 7
-        ? "Tí o bá dúró fún ọ̀sẹ̀ kan"
+        ? "Tí o bá dúró ọ̀sẹ̀ kan"
         : offsetDays === 14
-        ? "Tí o bá dúró fún ọ̀sẹ̀ méjì"
+        ? "Tí o bá dúró ọ̀sẹ̀ méjì"
         : `Tí o bá dúró fún ọjọ́ ${offsetDays}`;
 
-    return `${waitHeadline} kí o gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${plantNowChance}. ${waitReason}, ${waitChance} nínú àsìkò ${nYears} sẹ́yìn.`;
+    return `${waitHeadline}. Gbìn ní nǹkan bí ${formattedDate}.\n\nTí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${plantNowChance}. ${waitReason}, ${waitChance} nínú àsìkò ${nYears} sẹ́yìn.`;
   }
 
   if (lang === "pcm") {

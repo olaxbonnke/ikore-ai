@@ -184,6 +184,11 @@ export class ZetarisGateway implements DataGateway {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
+      const requestPayload =
+        typeof body === "object" && body !== null && "queryId" in body
+          ? { ...body, queryId: crypto.randomUUID() }
+          : body;
+
       try {
         const response = await this.fetchFn(url, {
           method: "POST",
@@ -193,7 +198,7 @@ export class ZetarisGateway implements DataGateway {
             "X-Org-ID": this.orgId,
             "X-Request-ID": requestId,
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
 

@@ -545,7 +545,7 @@ describe("explainRecall & validateRecallLanguage (src/llm/explain.ts)", () => {
     expect(result.path).toBe("template");
     expect(result.fallbackReason).toContain("Language check failed");
     expect(result.text).toMatch(/sọ fún ọ/);
-    expect(result.text).toMatch(/Ọjọ́ Ẹtì, 17 April/);
+    expect(result.text).toMatch(/Ọjọ́ Ẹtì, 17 Oṣù Kẹrin/);
     expect(result.text).not.toMatch(/I told you|wait a week/i);
   });
 
@@ -636,11 +636,11 @@ describe("wait_14 verdict and date wording (src/i18n/templates.ts)", () => {
     expect(textEn).toContain("about 1 in 10 seasons");
   });
 
-  it("produces 'Dúró fún ọ̀sẹ̀ méjì' and matching plantingDate in Yoruba, never 'ọ̀sẹ̀ kan'", () => {
+  it("produces 'Dúró ọ̀sẹ̀ méjì' and matching plantingDate in Yoruba, never 'ọ̀sẹ̀ kan'", () => {
     const textYo = templatePlanting(wait14Decision, "yo");
-    expect(textYo).toContain("Dúró fún ọ̀sẹ̀ méjì");
+    expect(textYo).toContain("Dúró ọ̀sẹ̀ méjì");
     expect(textYo).not.toContain("ọ̀sẹ̀ kan");
-    expect(textYo).toContain("24 April");
+    expect(textYo).toContain("24 Oṣù Kẹrin");
     expect(textYo).toContain("ẹ̀ẹ̀kan nínú àsìkò mẹ́wàá");
   });
 

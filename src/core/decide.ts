@@ -92,11 +92,14 @@ export function formatStorageLossBags(bags: number, monthlyLossPct: number, pric
 } {
   const rawLoss = bags * (monthlyLossPct / 100);
   if (rawLoss < 0.25) {
+    const fractionPhraseEn = rawLoss <= 0.1 ? "less than a tenth of a bag" : "less than a quarter of a bag";
+    const fractionPhrasePcm = rawLoss <= 0.1 ? "less than one-tenth of bag" : "less than quarter of bag";
+    const fractionPhraseYo = rawLoss <= 0.1 ? "kò tó ìdá mẹ́wàá àpò kan" : "kò tó ìdá mẹ́rin àpò kan";
     return {
       lossBags: rawLoss,
-      en: "a small amount",
-      pcm: "small amount",
-      yo: "iye díẹ̀",
+      en: `${fractionPhraseEn} out of your ${bags}`,
+      pcm: `${fractionPhrasePcm} inside your ${bags}`,
+      yo: `${fractionPhraseYo} nínú àpò ${bags} rẹ`,
     };
   }
   const rounded = Math.round(rawLoss * 2) / 2;
@@ -333,9 +336,9 @@ export function decide(
 
     const isPics = lossPct <= 0.5 || params.storageMethod === "pics";
     keyNumbers.isPics = isPics ? 1 : 0;
-    keyNumbers.storageBagType_en = isPics ? "PICS hermetic bags" : "plain sacks";
+    keyNumbers.storageBagType_en = isPics ? "PICS bags" : "plain sacks";
     keyNumbers.storageBagType_pcm = isPics ? "PICS triple bags" : "ordinary sack";
-    keyNumbers.storageBagType_yo = isPics ? "àpò hermetic PICS" : "àpò lásán";
+    keyNumbers.storageBagType_yo = isPics ? "àpò PICS" : "àpò lásán";
   } else {
     keyNumbers.replantRisk = `${(chosenRisk * 100).toFixed(1)}%`;
     keyNumbers.replantProbability = chosenRisk;

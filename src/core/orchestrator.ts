@@ -527,11 +527,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         stored: storedMemoryId,
       },
       path: agronomyRes.path,
-      model: agronomyRes.model,
+      model: agronomyRes.path === "template" ? "template" : agronomyRes.model,
       fallbackReason: agronomyRes.fallbackReason,
       latencyMs: agronomyRes.latencyMs,
       requestedModel: agronomyRes.requestedModel,
-      respondedModel: agronomyRes.respondedModel,
+      respondedModel: agronomyRes.path === "template" ? "template" : agronomyRes.respondedModel,
       runId,
       traceFile,
       queriesRun,
@@ -1021,14 +1021,14 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const transitionLine = getAgronomyTransition(secondaryPart.topic, lang);
     finalReplyText = `${text}\n\n${transitionLine}\n${agronomyRes.text}`;
 
-    const primaryModel = isSample ? "template" : (explanation.model || "template");
     const primaryFallbackUsed = explanation.path === "template" || isSample;
+    const primaryModel = primaryFallbackUsed ? "template" : (explanation.model || "template");
     const primaryFallbackReason = !isSample && (explanation.path === "template" || explanation.fallbackReason)
       ? (explanation.fallbackReason || "template_by_design")
       : undefined;
 
-    const secondaryModel = isSample ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
     const secondaryFallbackUsed = agronomyRes.path === "template" || isSample;
+    const secondaryModel = secondaryFallbackUsed ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
     const secondaryFallbackReason = !isSample && (agronomyRes.path === "template" || agronomyRes.fallbackReason)
       ? (agronomyRes.fallbackReason || "template_by_design")
       : undefined;

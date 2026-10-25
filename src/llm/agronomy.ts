@@ -343,6 +343,23 @@ function loadAgronomyPrompt(): string {
 
 
 /**
+ * Validator rule: reject self-referential / meta lines ("not my role", "I only advise", "as an AI")
+ * in English, Pidgin, and Yoruba.
+ */
+export function validateNoMetaTalk(text: string): { valid: boolean; reason?: string } {
+  const metaPattern =
+    /(?:\b(?:not\s+my\s+role|only\s+advise\s+on|i\s+only\s+advise|as\s+an\s+ai|as\s+a\s+language\s+model|my\s+role\s+is|outside\s+my\s+scope|not\s+within\s+my\s+scope|not\s+my\s+job|i\s+am\s+an\s+ai|no\s+be\s+my\s+role|no\s+be\s+my\s+work|no\s+be\s+me\s+go\s+tell\s+you)\b|kì\s+í\s+ṣe\s+ojúṣe\s+mi|ki\s+i\s+se\s+ojuse\s+mi|ojúṣe\s+mi\s+ni|ojuse\s+mi\s+ni|gẹ́gẹ́\s+bí\s+ai|gege\s+bi\s+ai|mo\s+wulẹ̀\s+ń\s+gbani\s+nímọ̀ràn|mo\s+wule\s+n\s+gbani\s+nimoran|n\s+kì\s+í\s+ṣe|n\s+ki\s+i\s+se)/iu;
+  const m = text.match(metaPattern);
+  if (m) {
+    return {
+      valid: false,
+      reason: `meta_talk_in_guidance ("${m[0]}")`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
  * Validator rule: reject planting-timing phrases in agronomy guidance.
  * Timing belongs to the data-checked decision part only.
  */
@@ -445,6 +462,11 @@ export interface AgronomyExplainResult {
  */
 export function cleanPlainTextAdvice(raw: string): string {
   let text = (raw || "").trim();
+  // Strip thinking / reasoning tags and blocks
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  text = text.replace(/<thought>[\s\S]*?<\/thought>/gi, "").trim();
+  text = text.replace(/^(?:Thinking Process|Reasoning):[\s\S]*?(?:\n\n|\r\n\r\n)/i, "").trim();
+
   // Strip markdown code blocks
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
   // If model returned JSON despite instructions, extract answer
@@ -461,6 +483,35 @@ export function cleanPlainTextAdvice(raw: string): string {
     text = text.slice(1, -1).trim();
   }
   return text;
+}
+
+/**
+ * Trims advice to maximum word count while respecting sentence boundaries.
+ */
+export function trimAdviceToLength(text: string, maxWords = 80): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+
+  // Split into sentences (by . ! ? followed by whitespace or end of string)
+  const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text];
+  let accumulated = "";
+  for (const s of sentences) {
+    const candidate = accumulated ? `${accumulated} ${s.trim()}` : s.trim();
+    const cWords = candidate.split(/\s+/).filter(Boolean);
+    if (cWords.length <= maxWords) {
+      accumulated = candidate;
+    } else {
+      break;
+    }
+  }
+
+  if (accumulated && accumulated.split(/\s+/).filter(Boolean).length >= 10) {
+    return accumulated.trim();
+  }
+
+  // Fallback: take first maxWords words and clean trailing punctuation
+  const trimmed = words.slice(0, maxWords).join(" ");
+  return trimmed.replace(/[,;:]$/, "") + ".";
 }
 
 export async function explainAgronomy(
@@ -578,10 +629,10 @@ Farmer Question: "${question}"
           temperature: 0.2,
           stepName: "agronomy",
           runId,
-          maxTokens: 1000,
+          maxTokens: 300,
         });
         const rawContent = typeof meta.content === "string" ? meta.content : meta.rawText || "";
-        const cleaned = cleanPlainTextAdvice(rawContent);
+        const cleaned = trimAdviceToLength(cleanPlainTextAdvice(rawContent), 80);
         return {
           text: cleaned,
           rawText: meta.rawText || rawContent,
@@ -597,10 +648,10 @@ Farmer Question: "${question}"
           temperature: 0.2,
           stepName: "agronomy",
           runId,
-          maxTokens: 1000,
+          maxTokens: 300,
         });
         const rawContent = typeof res === "string" ? res : JSON.stringify(res);
-        const cleaned = cleanPlainTextAdvice(rawContent);
+        const cleaned = trimAdviceToLength(cleanPlainTextAdvice(rawContent), 80);
         return {
           text: cleaned,
           rawText: rawContent,
@@ -635,6 +686,10 @@ Farmer Question: "${question}"
     if (words.length > 90) {
       return { valid: false, reason: `Response too long (${words.length} words, max 80 allowed)` };
     }
+
+    // 0. No meta talk / self-referential lines
+    const mv = validateNoMetaTalk(t);
+    if (!mv.valid) return mv;
 
     // 1. No planting timing claims in guidance (timing belongs strictly to decision)
     const tv = validateNoTimingClaims(t);
@@ -728,7 +783,7 @@ Direct plain-text advice:`;
       fallbackReason: `Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`,
       latencyMs: totalLatency,
       requestedModel: config.model,
-      respondedModel,
+      respondedModel: "template",
       finishReason: attempt2.finishReason || attempt1.finishReason,
       completionTokens: (attempt2.completionTokens || 0) + (attempt1.completionTokens || 0),
     };
@@ -739,6 +794,7 @@ Direct plain-text advice:`;
       path: "template",
       model: "template",
       fallbackReason: err?.message || "LLM completion error",
+      respondedModel: "template",
     };
   }
 }

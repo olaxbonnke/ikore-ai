@@ -744,10 +744,10 @@ export function buildFactsByOption(decision: Decision, lang: Lang, focus?: strin
   const isPics = Boolean(k.isPics === 1 || k.isPics === "1" || k.isPics === "true" || ((Number(k.monthlyLossPct) || 2.5) <= 0.5));
   const bagType =
     lang === "yo"
-      ? (k.storageBagType_yo as string || (isPics ? "àpò hermetic PICS" : "àpò lásán"))
+      ? (k.storageBagType_yo as string || (isPics ? "àpò PICS" : "àpò lásán"))
       : lang === "pcm"
       ? (k.storageBagType_pcm as string || (isPics ? "PICS triple bags" : "ordinary sack"))
-      : (k.storageBagType_en as string || (isPics ? "PICS hermetic bags" : "plain sacks"));
+      : (k.storageBagType_en as string || (isPics ? "PICS bags" : "plain sacks"));
 
   const lossText =
     lang === "yo"
@@ -765,21 +765,34 @@ export function buildFactsByOption(decision: Decision, lang: Lang, focus?: strin
   const evidenceSentences: string[] = [];
 
   if (chosen.startsWith("store_")) {
+    const horizonWordEn = horizonWeeks === 4 ? "four" : horizonWeeks === 8 ? "eight" : horizonWeeks === 12 ? "twelve" : `${horizonWeeks}`;
+    const horizonWordPcm = horizonWeeks === 4 ? "four" : horizonWeeks === 8 ? "eight" : horizonWeeks === 12 ? "twelve" : `${horizonWeeks}`;
+    const horizonWordYo = horizonWeeks === 4 ? "mẹ́rin" : horizonWeeks === 8 ? "mẹ́jọ" : horizonWeeks === 12 ? "méjìlá" : `${horizonWeeks}`;
+
     if (lang === "yo") {
       evidenceSentences.push(
-        `Ní ${countEarnedMore} nínú ọdún ${nYears} sẹ́yìn, títọ́jú fún ọ̀sẹ̀ ${horizonWeeks} ní èrè ju títà báyìí lọ.`,
+        `Ní ${countEarnedMore} nínú ọdún ${nYears} sẹ́yìn, títọ́jú fún ọ̀sẹ̀ ${horizonWordYo} ní èrè ju títà báyìí lọ.`,
         `Àdánù ìtọ́jú nínú ${bagType} jẹ́ ${lossText}.`
       );
+      if (k.currentPricePerBag) {
+        evidenceSentences.push(`Iye owó tí a retí lẹ́yìn ọ̀sẹ̀ ${horizonWordYo} ga ju ìfilọ́lẹ̀ ₦${price.toLocaleString()} rẹ lọ.`);
+      }
     } else if (lang === "pcm") {
       evidenceSentences.push(
-        `For ${countEarnedMore} out of ${nYears} past years, to keep corn for ${horizonWeeks} weeks earn pass to sell now.`,
+        `For ${countEarnedMore} out of ${nYears} past years, to keep corn for ${horizonWordPcm} weeks earn pass to sell now.`,
         `Storage loss inside ${bagType} na ${lossText}.`
       );
+      if (k.currentPricePerBag) {
+        evidenceSentences.push(`Expected price after ${horizonWordPcm} weeks dey higher pass your ₦${price.toLocaleString()} offer.`);
+      }
     } else {
       evidenceSentences.push(
-        `In ${countEarnedMore} of ${nYears} past years, storing ${horizonWeeks} weeks earned more than selling now.`,
-        `Storage loss in ${bagType} is ${lossText}.`
+        `In ${countEarnedMore} of ${nYears} past years, storing ${horizonWordEn} weeks earned more than selling now.`,
+        `Expected loss in ${bagType} is ${lossText}.`
       );
+      if (k.currentPricePerBag) {
+        evidenceSentences.push(`Expected price after ${horizonWordEn} weeks is higher than your ₦${price.toLocaleString()} offer.`);
+      }
     }
   } else if (chosen === "sell_now") {
     if (lang === "yo") {

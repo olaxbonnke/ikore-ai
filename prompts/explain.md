@@ -15,7 +15,7 @@ You receive a Decision JSON object with facts grouped by option.
   - Required wording formula: "In {N} similar past seasons, planting now recorded a median establishment rain of {median} mm (between {min} and {max} mm), which {meets the 100 mm seedling threshold / is below the 100 mm seedling threshold}."
   - Then state the verdict, planting date, and replanting chances.
 - In all cases, NEVER use forecast wording ("forecast", "will rain", "this month will"); state what happened in past seasons.
-7. Dates: NEVER use ISO dates (e.g. 2026-04-17); use localized formats like "17 April" or "24 April" (Yoruba: "Ọjọ́ Ẹtì, 17 April").
+7. Dates: NEVER use ISO dates (e.g. 2026-04-17); use localized formats like "17 April" or "24 April" (Yoruba: "Ọjọ́ Ẹtì, 17 Oṣù Kẹrin" or "17 Oṣù Kẹrin").
 8. Option attribution: ONLY use numbers and plain chances from the specific option being described. Never attach plant-now chances (e.g. 'about 1 in 7' or 'about 1 in 10') to waiting. If plant-now replanting chance is 'about 1 in 10 seasons', you must say 'about 1 in 10 seasons', never 1 in 7.
 9. In Yoruba (yo): YOU MUST USE PROPER DIACRITICS AND TONE MARKS (`á, à, é, è, ẹ́, ẹ̀, í, ì, ó, ò, ọ́, ọ̀, ú, ù, ṣ, ẹ, ọ`). Say 'àgbàdo ní ọjà Ìbàdàn', never 'àgbàdo lórí Ìbàdàn'.
 10. In Pidgin (pcm): Use natural Nigerian Pidgin phrasing (e.g. "For {count} out of {n} past years", "danger").
@@ -111,11 +111,21 @@ Selling (sell now):
 ```
 
 #### Yoruba (yo)
-Planting:
+Planting (wait 7 days):
 ```json
 {
-  "headline": "Dúró díẹ̀ kí o gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 April.",
-  "reason": "Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.",
+  "headline": "Dúró ọ̀sẹ̀ kan. Gbìn ní nǹkan bí Ọjọ́ Ẹtì, 17 Oṣù Kẹrin.",
+  "reason": "Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò méje. Tí o bá dúró ọ̀sẹ̀ kan, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.",
+  "details": ["A wo àkọsílẹ̀ ọdún 35 sẹ́yìn"],
+  "followUpQuestion": null
+}
+```
+
+Planting (wait 14 days):
+```json
+{
+  "headline": "Dúró ọ̀sẹ̀ méjì. Gbìn ní nǹkan bí Ọjọ́ Ẹtì, 24 Oṣù Kẹrin.",
+  "reason": "Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ẹ̀ẹ̀kan nínú àsìkò mẹ́wàá. Tí o bá dúró ọ̀sẹ̀ méjì, fẹ́rẹ́ kò ṣẹlẹ̀ rárá nínú àsìkò 35 sẹ́yìn.",
   "details": ["A wo àkọsílẹ̀ ọdún 35 sẹ́yìn"],
   "followUpQuestion": null
 }
