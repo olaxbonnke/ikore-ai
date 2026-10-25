@@ -35,16 +35,16 @@ export function isWateringOrHarvestQuery(text: string): boolean {
 /**
  * Validates agronomy guidance for:
  * 1. Prohibited chemical brand names or active ingredients.
- * 2. Prohibited specific chemical dose patterns (e.g. ml/L, g per litre, l/ha, knapsack).
+ * 2. Prohibited specific chemical dose patterns (e.g. ml/L, g per litre, l/ha, kg/ha, bags/ha, knapsack).
  * 3. Ungrounded numbers (all numbers must come from the prompt context).
  */
 export function validateAgronomyGuidance(
   text: string,
   allowedNumbers: Set<number>
 ): { valid: boolean; reason?: string } {
-  // 1. Specific chemical dosage patterns
+  // 1. Specific chemical dosage patterns (ml/L, g/L, l/ha, kg/ha, bags/ha, per knapsack, etc.)
   const dosePattern =
-    /\b\d+(?:\.\d+)?\s*(?:ml\/l|ml\/litre|ml\s+per\s+l(?:itre)?|g\/l|g\/litre|g\s+per\s+l(?:itre)?|l\/ha|litres?\/ha|kg\/ha|ml\s+per\s+20l|per\s+knapsack|knapsack\s+sprayer)\b/i;
+    /\b\d+(?:\.\d+)?\s*(?:ml\/l|ml\/litre|ml\s+per\s+l(?:itre)?|g\/l|g\/litre|g\s+per\s+l(?:itre)?|l\/ha|litres?\/ha|litres?\s+per\s+(?:ha|hectares?)|kg\/ha|kg\s+per\s+(?:ha|hectares?)|bags?\s+per\s+(?:ha|hectares?)|bags?\s*\/\s*(?:ha|hectares?)|ml\s+per\s+20l|per\s+knapsack|knapsack\s+sprayer)\b/i;
   const doseMatch = text.match(dosePattern);
   if (doseMatch) {
     return {
@@ -90,18 +90,26 @@ export function validateAgronomyGuidance(
 }
 
 /**
- * Builds the set of allowed numbers from farm profile, recent rainfall, and dates.
+ * Builds the set of allowed numbers from farm profile, recent rainfall, dates, and recalled memories.
  */
 export function buildAllowedAgronomyNumbers(
   farm: FarmProfile,
   recentRain?: LoadedRecentRain | null,
-  asOf?: string
+  asOf?: string,
+  recalledMemories?: string[]
 ): Set<number> {
   const allowed = new Set<number>();
+
+  // Standard safe intervals
+  allowed.add(1);
+  allowed.add(2);
+  allowed.add(7);
+  allowed.add(14);
 
   if (farm.hectares) {
     allowed.add(farm.hectares);
     allowed.add(Math.round(farm.hectares));
+    allowed.add(parseFloat(farm.hectares.toFixed(1)));
   }
 
   if (recentRain) {
@@ -110,26 +118,61 @@ export function buildAllowedAgronomyNumbers(
     allowed.add(parseFloat(recentRain.totalRainMm.toFixed(1)));
     allowed.add(recentRain.daysCount);
 
-    // Add days in date ranges
-    const startDay = parseInt(recentRain.startDate.slice(8, 10), 10);
-    const endDay = parseInt(recentRain.endDate.slice(8, 10), 10);
-    if (Number.isFinite(startDay)) allowed.add(startDay);
-    if (Number.isFinite(endDay)) allowed.add(endDay);
+    // Rain days (>= 1.0 mm) and dry days
+    if (Array.isArray(recentRain.records)) {
+      let rainDays = 0;
+      for (const r of recentRain.records) {
+        if (typeof r.rain_mm === "number" && Number.isFinite(r.rain_mm)) {
+          allowed.add(r.rain_mm);
+          allowed.add(Math.round(r.rain_mm));
+          allowed.add(parseFloat(r.rain_mm.toFixed(1)));
+          if (r.rain_mm >= 1.0) rainDays++;
+        }
+        if (typeof r.date === "string") {
+          const parts = r.date.split("-").map((p) => parseInt(p, 10));
+          parts.forEach((p) => {
+            if (Number.isFinite(p)) allowed.add(p);
+          });
+        }
+      }
+      allowed.add(rainDays);
+      const dryDays = recentRain.records.length - rainDays;
+      allowed.add(dryDays);
+      allowed.add(14 - rainDays);
+    }
+
+    // Add days, months, and years in date ranges
+    for (const dt of [recentRain.startDate, recentRain.endDate]) {
+      if (typeof dt === "string") {
+        const parts = dt.split("-").map((p) => parseInt(p, 10));
+        parts.forEach((p) => {
+          if (Number.isFinite(p)) allowed.add(p);
+        });
+      }
+    }
   }
 
   if (asOf) {
-    const y = parseInt(asOf.slice(0, 4), 10);
-    const m = parseInt(asOf.slice(5, 7), 10);
-    const d = parseInt(asOf.slice(8, 10), 10);
-    if (Number.isFinite(y)) allowed.add(y);
-    if (Number.isFinite(m)) allowed.add(m);
-    if (Number.isFinite(d)) allowed.add(d);
+    const parts = asOf.split("-").map((p) => parseInt(p, 10));
+    parts.forEach((p) => {
+      if (Number.isFinite(p)) allowed.add(p);
+    });
   }
 
-  // 14 days default window
-  allowed.add(14);
-  allowed.add(1);
-  allowed.add(2);
+  if (Array.isArray(recalledMemories)) {
+    for (const mem of recalledMemories) {
+      if (typeof mem !== "string") continue;
+      const matches = mem.match(/\b\d+(?:\.\d+)?\b/g) || [];
+      for (const m of matches) {
+        const n = parseFloat(m);
+        if (Number.isFinite(n)) {
+          allowed.add(n);
+          allowed.add(Math.round(n));
+          allowed.add(parseFloat(n.toFixed(1)));
+        }
+      }
+    }
+  }
 
   return allowed;
 }
@@ -168,19 +211,27 @@ export async function explainAgronomy(
   params: ExplainAgronomyParams
 ): Promise<AgronomyExplainResult> {
   const { question, farm, lang, asOf, recentRain, recalledMemories, provider, runId } = params;
-  const allowedNumbers = buildAllowedAgronomyNumbers(farm, recentRain, asOf);
+  const allowedNumbers = buildAllowedAgronomyNumbers(farm, recentRain, asOf, recalledMemories);
   const config = getNightshiftConfig();
   const isSample = config.sampleMode;
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
   // Build context summary for prompt
+  const rainRecordsSummary =
+    recentRain && recentRain.records && recentRain.records.length > 0
+      ? `Daily rain past ${recentRain.records.length} days: ${recentRain.records
+          .map((r) => `${r.date.slice(5)}: ${r.rain_mm}mm`)
+          .join(", ")}`
+      : "";
+
   const rainContext = recentRain
-    ? `Recent rainfall recorded at ${farm.ownerName} (${farm.lga}, ${farm.state}) from ${recentRain.startDate} to ${recentRain.endDate}: ${recentRain.totalRainMm.toFixed(1)} mm across ${recentRain.daysCount} days.`
+    ? `Recent rainfall recorded at ${farm.ownerName} (${farm.lga}, ${farm.state}) from ${recentRain.startDate} to ${recentRain.endDate}: ${recentRain.totalRainMm.toFixed(1)} mm across ${recentRain.daysCount} days (${recentRain.records.filter((r) => r.rain_mm >= 1.0).length} rain days). ${rainRecordsSummary}`
     : "No recent rainfall data queried.";
 
-  const memoryContext = recalledMemories && recalledMemories.length > 0
-    ? `Recalled farm context: ${recalledMemories.slice(0, 2).join(" ")}`
-    : "";
+  const memoryContext =
+    recalledMemories && recalledMemories.length > 0
+      ? `Recalled farm context: ${recalledMemories.slice(0, 3).join(" ")}`
+      : "";
 
   const promptContext = `
 Farmer Location: ${farm.lga}, ${farm.state}
@@ -248,56 +299,146 @@ Farmer Question: "${question}"
   const activeProvider = provider || new NightshiftProvider();
   const systemPrompt = loadAgronomyPrompt().replace("{LANG}", lang);
 
-  const t0 = performance.now();
-  try {
-    let output: AgronomyOutput;
-    let respondedModel = config.model;
-    let latencyMs = 0;
-
-    if ("completeWithMeta" in activeProvider && typeof (activeProvider as any).completeWithMeta === "function") {
-      const meta = await (activeProvider as any).completeWithMeta({
-        system: systemPrompt,
-        messages: [{ role: "user", content: promptContext }],
-        json: AgronomyOutputSchema,
-        temperature: 0.2,
-        stepName: "agronomy",
-      });
-      output = AgronomyOutputSchema.parse(meta.content);
-      respondedModel = meta.model;
-      latencyMs = meta.latencyMs;
-    } else {
-      const parsed = await activeProvider.complete({
-        system: systemPrompt,
-        messages: [{ role: "user", content: promptContext }],
-        json: AgronomyOutputSchema,
-        temperature: 0.2,
-      });
-      output = AgronomyOutputSchema.parse(parsed);
-      respondedModel = (activeProvider as any).lastRespondedModel || config.model;
-      latencyMs = Math.round(performance.now() - t0);
-    }
-
-    const validation = validateAgronomyGuidance(output.answer, allowedNumbers);
-
-    if (!validation.valid) {
+  const callLLM = async (
+    msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>
+  ): Promise<{
+    output: AgronomyOutput | null;
+    rawText: string;
+    model: string;
+    latencyMs: number;
+    parseError?: string;
+  }> => {
+    const tStart = performance.now();
+    try {
+      if (
+        "completeWithMeta" in activeProvider &&
+        typeof (activeProvider as any).completeWithMeta === "function"
+      ) {
+        const meta = await (activeProvider as any).completeWithMeta({
+          system: systemPrompt,
+          messages: msgs,
+          json: AgronomyOutputSchema,
+          temperature: 0.2,
+          stepName: "agronomy",
+          runId,
+          maxTokens: 1000,
+        });
+        const parseRes = AgronomyOutputSchema.safeParse(meta.content);
+        return {
+          output: parseRes.success ? parseRes.data : null,
+          rawText:
+            meta.rawText ||
+            (typeof meta.content === "string" ? meta.content : JSON.stringify(meta.content)),
+          model: meta.model || config.model,
+          latencyMs: meta.latencyMs || Math.round(performance.now() - tStart),
+          parseError: parseRes.success ? undefined : parseRes.error.message,
+        };
+      } else {
+        const res = await activeProvider.complete({
+          system: systemPrompt,
+          messages: msgs,
+          json: AgronomyOutputSchema,
+          temperature: 0.2,
+          stepName: "agronomy",
+          runId,
+          maxTokens: 1000,
+        });
+        const parseRes = AgronomyOutputSchema.safeParse(res);
+        return {
+          output: parseRes.success ? parseRes.data : null,
+          rawText: typeof res === "string" ? res : JSON.stringify(res),
+          model: (activeProvider as any).lastRespondedModel || config.model,
+          latencyMs: Math.round(performance.now() - tStart),
+          parseError: parseRes.success ? undefined : parseRes.error.message,
+        };
+      }
+    } catch (err: any) {
       return {
-        text: templateAgronomyFallback(lang),
-        followUp: null,
-        path: "template",
-        model: "template",
-        fallbackReason: validation.reason,
-        latencyMs,
-        requestedModel: config.model,
-        respondedModel,
+        output: null,
+        rawText: "",
+        model: config.model,
+        latencyMs: Math.round(performance.now() - tStart),
+        parseError: err?.message || "LLM completion error",
       };
     }
+  };
+
+  try {
+    // Attempt 1
+    const msgs1: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "user", content: promptContext },
+    ];
+    const attempt1 = await callLLM(msgs1);
+    let totalLatency = attempt1.latencyMs;
+    let respondedModel = attempt1.model;
+
+    if (attempt1.output) {
+      const val1 = validateAgronomyGuidance(attempt1.output.answer, allowedNumbers);
+      if (val1.valid) {
+        return {
+          text: attempt1.output.answer,
+          followUp: attempt1.output.followUp || null,
+          path: "model",
+          model: respondedModel,
+          latencyMs: totalLatency,
+          requestedModel: config.model,
+          respondedModel,
+        };
+      }
+    }
+
+    const failureReason1 = attempt1.parseError
+      ? `JSON format error: ${attempt1.parseError}`
+      : validateAgronomyGuidance(attempt1.output?.answer || "", allowedNumbers).reason || "Validation failed";
+
+    // Attempt 2: One retry with correction prompt
+    const correctionPrompt = `Your previous response was rejected for the following reason: "${failureReason1}".
+Please rewrite your response adhering strictly to these rules:
+1. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
+2. STRICT RULE: DO NOT invent any numbers. You may give helpful practical guidance without using any numbers at all (prefer qualitative terms like "regularly", "when soil is dry", "at knee height"), or only use numbers explicitly given in the context.
+Return valid JSON: { "answer": "...", "followUp": "..." }`;
+
+    const msgs2: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "user", content: promptContext },
+      {
+        role: "assistant",
+        content: attempt1.output
+          ? JSON.stringify(attempt1.output)
+          : attempt1.rawText || "{}",
+      },
+      { role: "user", content: correctionPrompt },
+    ];
+
+    const attempt2 = await callLLM(msgs2);
+    totalLatency += attempt2.latencyMs;
+    respondedModel = attempt2.model || respondedModel;
+
+    if (attempt2.output) {
+      const val2 = validateAgronomyGuidance(attempt2.output.answer, allowedNumbers);
+      if (val2.valid) {
+        return {
+          text: attempt2.output.answer,
+          followUp: attempt2.output.followUp || null,
+          path: "model",
+          model: respondedModel,
+          latencyMs: totalLatency,
+          requestedModel: config.model,
+          respondedModel,
+        };
+      }
+    }
+
+    const failureReason2 = attempt2.parseError
+      ? `JSON format error: ${attempt2.parseError}`
+      : validateAgronomyGuidance(attempt2.output?.answer || "", allowedNumbers).reason || "Validation failed";
 
     return {
-      text: output.answer,
-      followUp: output.followUp || null,
-      path: "model",
-      model: respondedModel,
-      latencyMs,
+      text: templateAgronomyFallback(lang),
+      followUp: null,
+      path: "template",
+      model: "template",
+      fallbackReason: `Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`,
+      latencyMs: totalLatency,
       requestedModel: config.model,
       respondedModel,
     };

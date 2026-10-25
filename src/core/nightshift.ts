@@ -94,7 +94,7 @@ export async function completeChat<T = string>(
     model: requestedModel,
     messages,
     temperature: params.temperature ?? 0.2,
-    max_tokens: 600,
+    max_tokens: params.maxTokens ?? 1000,
   };
 
   // Only send chat_template_kwargs when model id contains 'nemotron'

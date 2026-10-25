@@ -10,6 +10,7 @@ export interface LLMCompleteParams<T> {
   messages: LLMMessage[];
   json?: ZodType<T>;
   temperature?: number;
+  maxTokens?: number;
   stepName?: string;
   runId?: string;
 }
