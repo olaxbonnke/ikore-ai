@@ -393,8 +393,9 @@ export function validateOutputStructure(
   }
 
   const reasonSentences = countSentences(output.reason);
-  if (reasonSentences > 2) {
-    return { valid: false, reason: `Reason has ${reasonSentences} sentences (max 2 allowed)` };
+  const maxSentences = focus === "rain_adequacy" ? 4 : 2;
+  if (reasonSentences > maxSentences) {
+    return { valid: false, reason: `Reason has ${reasonSentences} sentences (max ${maxSentences} allowed)` };
   }
 
   const reasonNumbers = findNumericTokens(output.reason);

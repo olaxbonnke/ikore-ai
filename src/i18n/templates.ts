@@ -43,6 +43,20 @@ export function templateAgronomyFallback(lang: Lang = "en"): string {
   return "For safe and effective maize field management, please consult your local Agricultural Development Programme (ADP) extension officer or registered agro-dealer for approved recommendations and label application rates.";
 }
 
+/**
+ * Sanitizes template strings to ensure grammatical hygiene:
+ * - No double periods (e.g. "..")
+ * - No capital letter following a comma (e.g. ", Wait")
+ * - Preserves balanced spacing
+ */
+export function cleanTemplateText(text: string): string {
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/\.{2,}/g, ".");
+  cleaned = cleaned.replace(/,\s+([A-Z])/g, (_match, letter) => `, ${letter.toLowerCase()}`);
+  cleaned = cleaned.replace(/[ \t]+/g, " ");
+  return cleaned;
+}
+
 /** Pre-written grounded explanation for rain adequacy questions leading with establishment rain. */
 export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "en"): string {
   const chosen = decision.chosen;
@@ -73,29 +87,15 @@ export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "e
 
   // Check if NiMet benchmark evidence is attached
   const nimetEv = decision.evidence?.find((e) => e.id === "ev_nimet_benchmark");
-  const nimetNoteEn = nimetEv ? ` ${nimetEv.statistic}.` : "";
-
-  const waitPhraseEn =
-    offsetDays === 7
-      ? "Wait a week"
-      : offsetDays === 14
-      ? "Wait two weeks"
-      : `Wait ${offsetDays} days`;
 
   const plantNowChanceEn = String(
-    k[`plainChance_plantNow_${lang}`] || k.plainChance_plantNow_en || "about 1 in 7 seasons"
+    k[`plainChance_plantNow_en`] || "about 1 in 7 seasons"
   );
   const waitChanceEn = String(
-    k[`plainChance_chosen_${lang}`] || k.plainChance_chosen_en || "almost never"
+    k[`plainChance_chosen_en`] || "almost never"
   );
 
   if (lang === "yo") {
-    const waitPhraseYo =
-      offsetDays === 7
-        ? "Dúró fún ọ̀sẹ̀ kan"
-        : offsetDays === 14
-        ? "Dúró fún ọ̀sẹ̀ méjì"
-        : `Dúró fún ọjọ́ ${offsetDays}`;
     const plantNowChanceYo = String(
       k[`plainChance_plantNow_yo`] || "ẹ̀ẹ̀kan nínú àsìkò méje"
     );
@@ -104,48 +104,119 @@ export function templatePlantingRainAdequacy(decision: Decision, lang: Lang = "e
     );
 
     const adequacyClauseYo = isAdequateNow
-      ? "èyí tí ó tó ìwọ̀n 100 mm tí a nílò"
-      : "èyí tí kò tó ìwọ̀n 100 mm tí a nílò";
+      ? "tó ju ìwọ̀n 100 mm tí wọ́n nílò lọ"
+      : "kò tó ìwọ̀n 100 mm tí àwọn èso nílò";
+    const rainSentenceYo = `Ní àsìkò ${nYears} sẹ́yìn tí ó jọra, gbígbin báyìí gba ìwọ̀n òjò àárín ${rainP50} mm nígbà tí àwọn èso ń fìdí múlẹ̀ (láàrín ${rainP10} sí ${rainP90} mm), ${adequacyClauseYo}.`;
+
+    let verdictSentenceYo = "";
+    let replantSentenceYo = "";
 
     if (offsetDays === 0) {
-      return `Ní àsìkò ${nYears} sẹ́yìn tí ó jọra, gbígbin báyìí ní ìwọ̀n òjò ìbẹ̀rẹ̀ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm), ${adequacyClauseYo}. Gbìn báyìí ní nǹkan bí ${formattedDate}. Ewu láti tún gbìn jẹ́ ${plantNowChanceYo}.`;
+      verdictSentenceYo = "Gbìn báyìí.";
+      replantSentenceYo = `Gbígbin báyìí nílò àtún-gbìn ní ${plantNowChanceYo}.`;
+    } else {
+      const waitNounYo =
+        offsetDays === 7
+          ? "dídúró fún ọ̀sẹ̀ kan"
+          : offsetDays === 14
+          ? "dídúró fún ọ̀sẹ̀ méjì"
+          : `dídúró fún ọjọ́ ${offsetDays}`;
+      const waitPrefixYo = isAdequateNow
+        ? "Bí ó ti wù kí ó rí, dídúró ní ààbò jù"
+        : "Ìdí nìyí tí dídúró fi ní ààbò jù";
+      verdictSentenceYo = `${waitPrefixYo}: gbìn ní nǹkan bí ${formattedDate}.`;
+      replantSentenceYo = `Gbígbin báyìí nílò àtún-gbìn ní ${plantNowChanceYo}; ${waitNounYo} ${waitChanceYo}.`;
     }
-    return `Ní àsìkò ${nYears} sẹ́yìn tí ó jọra, gbígbin báyìí ní ìwọ̀n òjò ìbẹ̀rẹ̀ ${rainP50} mm (láàrín ${rainP10} sí ${rainP90} mm), ${adequacyClauseYo}. Bí ó ti wù kí ó rí, ${waitPhraseYo} kí o gbìn ní nǹkan bí ${formattedDate}. Tí o bá gbìn báyìí, ewu láti tún gbìn jẹ́ ${plantNowChanceYo}, ṣùgbọ́n tí o bá dúró, ${waitChanceYo}.`;
+
+    let nimetSentenceYo = "";
+    if (nimetEv?.statistic) {
+      const windowMatch = nimetEv.statistic.match(/between\s+([^.]+)\./i);
+      const windowStr = windowMatch ? windowMatch[1].replace(" and ", " sí ") : "15 sí 30 April";
+      nimetSentenceYo = ` Àsọtẹ́lẹ̀ ojú-ọjọ́ NiMet fún 2026 fi ìbẹ̀rẹ̀ òjò sí láàrín ${windowStr}, ọjọ́ ${formattedDate} sì bọ́ sí àárín àsìkò náà.`;
+    }
+
+    return cleanTemplateText(`${rainSentenceYo} ${verdictSentenceYo} ${replantSentenceYo}${nimetSentenceYo}`);
   }
 
   if (lang === "pcm") {
-    const waitPhrasePcm =
-      offsetDays === 7
-        ? "Wait one week"
-        : offsetDays === 14
-        ? "Wait two weeks"
-        : `Wait ${offsetDays} days`;
     const plantNowChancePcm = String(
       k[`plainChance_plantNow_pcm`] || "about 1 for every 7 seasons"
     );
     const waitChancePcm = String(
-      k[`plainChance_chosen_pcm`] || "e no dey almost happen"
+      k[`plainChance_chosen_pcm`] || "almost never"
     );
 
     const adequacyClausePcm = isAdequateNow
-      ? "wey reach the 100 mm seedling threshold"
-      : "wey dey below the 100 mm seedling threshold";
+      ? "above the 100 mm wey seedlings need"
+      : "below the 100 mm wey seedlings need";
+    const rainSentencePcm = `For ${nYears} similar past seasons, planting now get median of ${rainP50} mm rain while seedlings dey establish (between ${rainP10} and ${rainP90} mm), ${adequacyClausePcm}.`;
+
+    let verdictSentencePcm = "";
+    let replantSentencePcm = "";
 
     if (offsetDays === 0) {
-      return `Inside ${nYears} similar past seasons, planting now record median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClausePcm}. Plant now around ${formattedDate}. Replant risk na ${plantNowChancePcm}.`;
+      verdictSentencePcm = "Plant now.";
+      replantSentencePcm = `Planting now need replanting for ${plantNowChancePcm}.`;
+    } else {
+      const waitNounPcm =
+        offsetDays === 7
+          ? "to wait one week"
+          : offsetDays === 14
+          ? "to wait two weeks"
+          : `to wait ${offsetDays} days`;
+      const waitPrefixPcm = isAdequateNow
+        ? "Even so, to wait dey safer"
+        : "Na why to wait dey safer";
+      verdictSentencePcm = `${waitPrefixPcm}: plant around ${formattedDate}.`;
+      replantSentencePcm = `Planting now need replanting for ${plantNowChancePcm}; ${waitNounPcm} ${waitChancePcm} happen.`;
     }
-    return `Inside ${nYears} similar past seasons, planting now record median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClausePcm}. However, ${waitPhrasePcm}. Plant around ${formattedDate}, where replanting ${waitChancePcm} (planting now needed replanting in ${plantNowChancePcm}).`;
+
+    let nimetSentencePcm = "";
+    if (nimetEv?.statistic) {
+      const windowMatch = nimetEv.statistic.match(/between\s+([^.]+)\./i);
+      const windowStr = windowMatch ? windowMatch[1] : "15 and 30 April";
+      nimetSentencePcm = ` NiMet 2026 outlook put onset for Oyo between ${windowStr}, and ${formattedDate} dey inside that window.`;
+    }
+
+    return cleanTemplateText(`${rainSentencePcm} ${verdictSentencePcm} ${replantSentencePcm}${nimetSentencePcm}`);
   }
 
   // Default English
   const adequacyClauseEn = isAdequateNow
-    ? "which meets the 100 mm seedling threshold"
-    : "which is below the 100 mm seedling threshold";
+    ? "above the 100 mm they need"
+    : "below the 100 mm seedlings need";
+  const rainSentenceEn = `In ${nYears} similar past seasons, planting now got a median of ${rainP50} mm of rain while seedlings established (between ${rainP10} and ${rainP90} mm), ${adequacyClauseEn}.`;
+
+  let verdictSentenceEn = "";
+  let replantSentenceEn = "";
 
   if (offsetDays === 0) {
-    return `In ${nYears} similar past seasons, planting now recorded a median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClauseEn}. Plant now around ${formattedDate}. Replant chance is ${plantNowChanceEn}.${nimetNoteEn}`;
+    verdictSentenceEn = "Plant now.";
+    replantSentenceEn = `Planting now needed replanting in ${plantNowChanceEn}.`;
+  } else {
+    const waitNounEn =
+      offsetDays === 7
+        ? "waiting a week"
+        : offsetDays === 14
+        ? "waiting two weeks"
+        : `waiting ${offsetDays} days`;
+    const waitPrefixEn = isAdequateNow
+      ? "Even so, waiting is safer"
+      : "That's why waiting is safer";
+    verdictSentenceEn = `${waitPrefixEn}: plant around ${formattedDate}.`;
+    replantSentenceEn = `Planting now needed replanting in ${plantNowChanceEn}; ${waitNounEn} ${waitChanceEn} did.`;
   }
-  return `In ${nYears} similar past seasons, planting now recorded a median establishment rain of ${rainP50} mm (between ${rainP10} and ${rainP90} mm), ${adequacyClauseEn}. However, ${waitPhraseEn}. Plant around ${formattedDate}, where replanting ${waitChanceEn} (planting now needed replanting in ${plantNowChanceEn}).${nimetNoteEn}`;
+
+  let nimetSentenceEn = "";
+  if (nimetEv?.statistic) {
+    let stat = nimetEv.statistic.trim();
+    stat = stat.replace(/\bforecast\b/gi, "outlook");
+    stat = stat.replace(/\.\s*Ikore's suggested date,\s*([^,]+),\s*/i, ", and $1 ");
+    stat = stat.replace(/\.+$/, "") + ".";
+    nimetSentenceEn = ` ${stat}`;
+  }
+
+  return cleanTemplateText(`${rainSentenceEn} ${verdictSentenceEn} ${replantSentenceEn}${nimetSentenceEn}`);
 }
 
 /** Pre-written grounded template explanations for planting decisions (DESIGN.md step 7 & Day 4.2 Polish). */

@@ -14,6 +14,8 @@ export interface TraceStep {
   status: "ok" | "failed" | "skipped";
   requested_model?: string;
   responded_model?: string;
+  finish_reason?: string;
+  completion_tokens?: number;
 }
 
 /**
@@ -73,6 +75,8 @@ export class RunTracer {
     status?: "ok" | "failed" | "skipped";
     requested_model?: string;
     responded_model?: string;
+    finish_reason?: string;
+    completion_tokens?: number;
   }): void {
     const record: TraceStep = {
       ts: new Date().toISOString(),
@@ -90,6 +94,12 @@ export class RunTracer {
     }
     if (entry.responded_model) {
       record.responded_model = entry.responded_model;
+    }
+    if (entry.finish_reason !== undefined) {
+      record.finish_reason = entry.finish_reason;
+    }
+    if (entry.completion_tokens !== undefined) {
+      record.completion_tokens = entry.completion_tokens;
     }
 
     const line = JSON.stringify(record) + "\n";

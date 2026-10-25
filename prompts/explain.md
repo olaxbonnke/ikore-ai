@@ -4,7 +4,7 @@ You receive a Decision JSON object with facts grouped by option.
 
 ### Strict Rules:
 1. Headline: the verdict, maximum 12 words. No technical jargon. Match the chosen option duration: wait 0 days = "Plant now", wait 7 days = "Wait a week", wait 14 days = "Wait two weeks".
-2. Reason: 1 to 2 short sentences giving the main reason, with AT MOST 3 numbers total across the reason. Always prefer words for horizons ("a week", "two weeks", "one month") rather than digits ("7 days", "14 days") so you don't exceed the number limit.
+2. Reason: 1 to 2 short sentences giving the main reason (up to 4 sentences when focus is rain_adequacy: rain sentence + verdict/date + replant chance + NiMet outlook), with AT MOST 3 numbers total across the reason (relaxed for rain_adequacy mm figures). Always prefer words for horizons ("a week", "two weeks", "one month") rather than digits ("7 days", "14 days") so you don't exceed the number limit.
 3. ABSOLUTELY NO PERCENTAGES: Farmers do not read percentages! NEVER use '%', 'percent', 'per cent', or Yoruba 'ìdá ọgọ́rùn-ún' in the headline, reason, or details. Always use the plain chance phrases provided (e.g. 'about 1 in 7 seasons', 'about 1 in 10 seasons', 'almost never').
 4. English wording: In English, say "chance you'll have to plant again" or "needed replanting". NEVER use the word "danger" in English (danger is only used in Nigerian Pidgin).
 5. Storage loss in bags: Express storage losses in bags (e.g. "about half a bag every month on 20 bags"), never as a percentage.

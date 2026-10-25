@@ -49,6 +49,8 @@ export interface ChatCompletionResult<T = string> {
   rawText: string;
   model: string;
   latencyMs: number;
+  finishReason?: string;
+  completionTokens?: number;
 }
 
 /**
@@ -193,6 +195,8 @@ export async function completeChat<T = string>(
   const respondedModel = (data.model as string) || requestedModel;
   const choice = data.choices?.[0];
   const content = choice?.message?.content;
+  const finishReason = choice?.finish_reason as string | undefined;
+  const completionTokens = data.usage?.completion_tokens as number | undefined;
 
   if (typeof content !== "string") {
     logLLMCall({
@@ -235,6 +239,8 @@ export async function completeChat<T = string>(
     rawText: content,
     model: respondedModel,
     latencyMs,
+    finishReason,
+    completionTokens,
   };
 }
 

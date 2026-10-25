@@ -385,6 +385,8 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       latency_ms: Math.round(performance.now() - tExplain),
       requested_model: agronomyRes.requestedModel,
       responded_model: agronomyRes.respondedModel,
+      finish_reason: agronomyRes.finishReason,
+      completion_tokens: agronomyRes.completionTokens,
       status: "ok",
     });
 

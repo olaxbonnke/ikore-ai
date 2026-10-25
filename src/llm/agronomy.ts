@@ -3,6 +3,7 @@ import * as path from "path";
 import { z } from "zod";
 import type { Lang } from "../core/types.ts";
 import { templateAgronomyFallback } from "../i18n/templates.ts";
+import { validateYoruba } from "./explain.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 import type { Farm as FarmProfile } from "../core/types.ts";
@@ -360,6 +361,34 @@ export interface AgronomyExplainResult {
   latencyMs?: number;
   requestedModel?: string;
   respondedModel?: string;
+  finishReason?: string;
+  completionTokens?: number;
+}
+
+/**
+ * Cleans plain-text advice returned by the model:
+ * - strips markdown formatting or fences
+ * - extracts answer if model accidentally returned JSON
+ * - strips enclosing quotes
+ */
+export function cleanPlainTextAdvice(raw: string): string {
+  let text = (raw || "").trim();
+  // Strip markdown code blocks
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  // If model returned JSON despite instructions, extract answer
+  if (text.startsWith("{") && text.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed.answer === "string") {
+        text = parsed.answer.trim();
+      }
+    } catch {}
+  }
+  // Strip enclosing quotes
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    text = text.slice(1, -1).trim();
+  }
+  return text;
 }
 
 export async function explainAgronomy(
@@ -457,11 +486,13 @@ Farmer Question: "${question}"
   const callLLM = async (
     msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>
   ): Promise<{
-    output: AgronomyOutput | null;
+    text: string;
     rawText: string;
     model: string;
     latencyMs: number;
-    parseError?: string;
+    finishReason?: string;
+    completionTokens?: number;
+    error?: string;
   }> => {
     const tStart = performance.now();
     try {
@@ -472,50 +503,74 @@ Farmer Question: "${question}"
         const meta = await (activeProvider as any).completeWithMeta({
           system: systemPrompt,
           messages: msgs,
-          json: AgronomyOutputSchema,
           temperature: 0.2,
           stepName: "agronomy",
           runId,
           maxTokens: 1000,
         });
-        const parseRes = AgronomyOutputSchema.safeParse(meta.content);
+        const rawContent = typeof meta.content === "string" ? meta.content : meta.rawText || "";
+        const cleaned = cleanPlainTextAdvice(rawContent);
         return {
-          output: parseRes.success ? parseRes.data : null,
-          rawText:
-            meta.rawText ||
-            (typeof meta.content === "string" ? meta.content : JSON.stringify(meta.content)),
+          text: cleaned,
+          rawText: meta.rawText || rawContent,
           model: meta.model || config.model,
           latencyMs: meta.latencyMs || Math.round(performance.now() - tStart),
-          parseError: parseRes.success ? undefined : parseRes.error.message,
+          finishReason: meta.finishReason,
+          completionTokens: meta.completionTokens,
         };
       } else {
         const res = await activeProvider.complete({
           system: systemPrompt,
           messages: msgs,
-          json: AgronomyOutputSchema,
           temperature: 0.2,
           stepName: "agronomy",
           runId,
           maxTokens: 1000,
         });
-        const parseRes = AgronomyOutputSchema.safeParse(res);
+        const rawContent = typeof res === "string" ? res : JSON.stringify(res);
+        const cleaned = cleanPlainTextAdvice(rawContent);
         return {
-          output: parseRes.success ? parseRes.data : null,
-          rawText: typeof res === "string" ? res : JSON.stringify(res),
+          text: cleaned,
+          rawText: rawContent,
           model: (activeProvider as any).lastRespondedModel || config.model,
           latencyMs: Math.round(performance.now() - tStart),
-          parseError: parseRes.success ? undefined : parseRes.error.message,
+          finishReason: (activeProvider as any).lastFinishReason,
+          completionTokens: (activeProvider as any).lastCompletionTokens,
         };
       }
     } catch (err: any) {
       return {
-        output: null,
+        text: "",
         rawText: "",
         model: config.model,
         latencyMs: Math.round(performance.now() - tStart),
-        parseError: err?.message || "LLM completion error",
+        error: err?.message || "LLM completion error",
       };
     }
+  };
+
+  const validateCandidate = (t: string, finishReason?: string): { valid: boolean; reason?: string } => {
+    if (finishReason === "length") {
+      return {
+        valid: false,
+        reason: "Model completion was truncated (finish_reason=length)",
+      };
+    }
+    if (!t || t.trim().length === 0) {
+      return { valid: false, reason: "Empty response from model" };
+    }
+    const words = t.trim().split(/\s+/).filter(Boolean);
+    if (words.length > 90) {
+      return { valid: false, reason: `Response too long (${words.length} words, max 80 allowed)` };
+    }
+    const gv = validateAgronomyGuidance(t, allowedNumbers);
+    if (!gv.valid) return gv;
+
+    if (lang === "yo") {
+      const yv = validateYoruba(t);
+      if (!yv.valid) return yv;
+    }
+    return { valid: true };
   };
 
   try {
@@ -527,40 +582,37 @@ Farmer Question: "${question}"
     let totalLatency = attempt1.latencyMs;
     let respondedModel = attempt1.model;
 
-    if (attempt1.output) {
-      const val1 = validateAgronomyGuidance(attempt1.output.answer, allowedNumbers);
-      if (val1.valid) {
-        return {
-          text: attempt1.output.answer,
-          followUp: attempt1.output.followUp || null,
-          path: "model",
-          model: respondedModel,
-          latencyMs: totalLatency,
-          requestedModel: config.model,
-          respondedModel,
-        };
-      }
+    const val1 = validateCandidate(attempt1.text, attempt1.finishReason);
+    if (val1.valid) {
+      return {
+        text: attempt1.text,
+        followUp: null,
+        path: "model",
+        model: respondedModel,
+        latencyMs: totalLatency,
+        requestedModel: config.model,
+        respondedModel,
+        finishReason: attempt1.finishReason,
+        completionTokens: attempt1.completionTokens,
+      };
     }
 
-    const failureReason1 = attempt1.parseError
-      ? `JSON format error: ${attempt1.parseError}`
-      : validateAgronomyGuidance(attempt1.output?.answer || "", allowedNumbers).reason || "Validation failed";
+    const failureReason1 = attempt1.error || val1.reason || "Validation failed";
 
     // Attempt 2: One retry with correction prompt
     const correctionPrompt = `Your previous response was rejected for the following reason: "${failureReason1}".
 Please rewrite your response adhering strictly to these rules:
-1. STRICT RULE: Remove all measurements and counts not in context; describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil').
-2. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
-3. STRICT RULE: Only use numbers if they are explicitly provided in the context (like recorded rainfall in mm or farm size in ha). Otherwise, use NO numbers or measurements at all.
-Return valid JSON: { "answer": "...", "followUp": "..." }`;
+1. STRICT RULE: Output ONLY plain text (max 60 words). No JSON, no markdown formatting.
+2. STRICT RULE: Remove all measurements and counts not in context; describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil').
+3. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
+4. STRICT RULE: Only use numbers if they are explicitly provided in the context (like recorded rainfall in mm or farm size in ha). Otherwise, use NO numbers or measurements at all.
+Direct plain-text advice:`;
 
     const msgs2: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "user", content: promptContext },
       {
         role: "assistant",
-        content: attempt1.output
-          ? JSON.stringify(attempt1.output)
-          : attempt1.rawText || "{}",
+        content: attempt1.rawText || attempt1.text || "",
       },
       { role: "user", content: correctionPrompt },
     ];
@@ -569,24 +621,22 @@ Return valid JSON: { "answer": "...", "followUp": "..." }`;
     totalLatency += attempt2.latencyMs;
     respondedModel = attempt2.model || respondedModel;
 
-    if (attempt2.output) {
-      const val2 = validateAgronomyGuidance(attempt2.output.answer, allowedNumbers);
-      if (val2.valid) {
-        return {
-          text: attempt2.output.answer,
-          followUp: attempt2.output.followUp || null,
-          path: "model",
-          model: respondedModel,
-          latencyMs: totalLatency,
-          requestedModel: config.model,
-          respondedModel,
-        };
-      }
+    const val2 = validateCandidate(attempt2.text, attempt2.finishReason);
+    if (val2.valid) {
+      return {
+        text: attempt2.text,
+        followUp: null,
+        path: "model",
+        model: respondedModel,
+        latencyMs: totalLatency,
+        requestedModel: config.model,
+        respondedModel,
+        finishReason: attempt2.finishReason,
+        completionTokens: attempt2.completionTokens,
+      };
     }
 
-    const failureReason2 = attempt2.parseError
-      ? `JSON format error: ${attempt2.parseError}`
-      : validateAgronomyGuidance(attempt2.output?.answer || "", allowedNumbers).reason || "Validation failed";
+    const failureReason2 = attempt2.error || val2.reason || "Validation failed";
 
     return {
       text: templateAgronomyFallback(lang),
@@ -597,6 +647,8 @@ Return valid JSON: { "answer": "...", "followUp": "..." }`;
       latencyMs: totalLatency,
       requestedModel: config.model,
       respondedModel,
+      finishReason: attempt2.finishReason || attempt1.finishReason,
+      completionTokens: (attempt2.completionTokens || 0) + (attempt1.completionTokens || 0),
     };
   } catch (err: any) {
     return {

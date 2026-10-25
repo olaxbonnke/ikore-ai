@@ -25,5 +25,7 @@ export interface LLMProvider {
     rawText: string;
     model: string;
     latencyMs: number;
+    finishReason?: string;
+    completionTokens?: number;
   }>;
 }

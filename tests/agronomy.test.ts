@@ -305,6 +305,72 @@ describe("explainAgronomy retry flow", () => {
     expect(res.fallbackReason).toContain("Attempt 2");
     expect(res.text).toMatch(/ADP.*extension officer/);
   });
+
+  it("accepts a plain-text Yoruba reply that passes the validator with model path", async () => {
+    class YorubaPlainMockProvider implements LLMProvider {
+      readonly name = "mock-yo";
+      async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+        return "Ṣàyẹ̀wò oko àgbàdo rẹ fún ọ̀rinrin ilẹ̀ kí o tó bomirin. Kàn sí alábòójútó ADP fún ìmọ̀ràn kíkún." as unknown as T;
+      }
+    }
+
+    const res = await explainAgronomy({
+      question: "Báwo ni mo ṣe lè rin omi fún àgbàdo mi?",
+      farm: { ...farm, preferredLang: "yo" },
+      lang: "yo",
+      asOf: "2026-04-10",
+      provider: new YorubaPlainMockProvider(),
+    });
+
+    expect(res.path).toBe("model");
+    expect(res.text).toContain("Ṣàyẹ̀wò");
+    expect(res.fallbackReason).toBeUndefined();
+  });
+
+  it("triggers retry when finish_reason is length (truncated response)", async () => {
+    class TruncatedMockProvider implements LLMProvider {
+      readonly name = "mock-trunc";
+      public calls = 0;
+      async completeWithMeta<T>(_params: LLMCompleteParams<T>): Promise<any> {
+        this.calls++;
+        if (this.calls === 1) {
+          return {
+            content: "Fún àbójútó oko àgbàdo rẹ tó dára, jọ̀wọ́ kàn sí",
+            rawText: "Fún àbójútó oko àgbàdo rẹ tó dára, jọ̀wọ́ kàn sí",
+            model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+            latencyMs: 150,
+            finishReason: "length",
+            completionTokens: 1000,
+          };
+        }
+        return {
+          content: "Fún àbójútó oko àgbàdo rẹ tó dára, kàn sí alábòójútó ADP tó wà lábúlé rẹ.",
+          rawText: "Fún àbójútó oko àgbàdo rẹ tó dára, kàn sí alábòójútó ADP tó wà lábúlé rẹ.",
+          model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+          latencyMs: 120,
+          finishReason: "stop",
+          completionTokens: 35,
+        };
+      }
+      async complete<T>(params: LLMCompleteParams<T>): Promise<T> {
+        return (await this.completeWithMeta(params)).content;
+      }
+    }
+
+    const mockProvider = new TruncatedMockProvider();
+    const res = await explainAgronomy({
+      question: "Báwo ni mo ṣe lè lo ajílẹ̀ fún àgbàdo mi?",
+      farm: { ...farm, preferredLang: "yo" },
+      lang: "yo",
+      asOf: "2026-04-10",
+      provider: mockProvider,
+    });
+
+    expect(mockProvider.calls).toBe(2);
+    expect(res.path).toBe("model");
+    expect(res.text).toContain("alábòójútó ADP");
+    expect(res.finishReason).toBe("stop");
+  });
 });
 
 describe("rain adequacy explanation validator and templates", () => {
@@ -349,14 +415,109 @@ describe("rain adequacy explanation validator and templates", () => {
     const textEn = templatePlantingRainAdequacy(mockDecision, "en");
     expect(textEn).toContain("In 35 similar past seasons");
     expect(textEn).toContain("95 mm");
-    expect(textEn).toContain("below the 100 mm seedling threshold");
-    expect(textEn).toContain("Wait a week");
-    expect(textEn).toContain("17 April");
+    expect(textEn).toContain("below the 100 mm seedlings need");
+    expect(textEn).toContain("That's why waiting is safer: plant around 17 April.");
+    expect(textEn).toContain("waiting a week almost never did");
 
     const textYo = templatePlantingRainAdequacy(mockDecision, "yo");
     expect(textYo).toContain("95 mm");
     expect(textYo).toContain("Ní àsìkò 35 sẹ́yìn tí ó jọra");
-    expect(textYo).toContain("Dúró fún ọ̀sẹ̀ kan");
+    expect(textYo).toContain("Ìdí nìyí tí dídúró fi ní ààbò jù");
+  });
+
+  it("produces exact requested phrasing when establishment rain is above threshold with NiMet outlook", () => {
+    const bisiDecision: Decision = {
+      ...mockDecision,
+      keyNumbers: {
+        ...mockDecision.keyNumbers,
+        plantNow_rainP10Mm: 60,
+        plantNow_rainP50Mm: 168,
+        plantNow_rainP90Mm: 231,
+      },
+      evidence: [
+        {
+          id: "ev_nimet_benchmark",
+          kind: "forecast",
+          label: "NiMet benchmark",
+          source: "NiMet",
+          statistic: "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 17 April, falls inside that window.",
+        },
+      ],
+    };
+
+    const textEn = templatePlantingRainAdequacy(bisiDecision, "en");
+    expect(textEn).toBe(
+      "In 35 similar past seasons, planting now got a median of 168 mm of rain while seedlings established (between 60 and 231 mm), above the 100 mm they need. Even so, waiting is safer: plant around 17 April. Planting now needed replanting in about 1 in 7 seasons; waiting a week almost never did. NiMet's 2026 outlook puts onset in Oyo between 15 and 30 April, and 17 April falls inside that window."
+    );
+  });
+
+  it("asserts no double periods, no capital letter after a comma, and balanced parentheses across all branches and languages", () => {
+    const optionsToTest = ["plant_now", "wait_7", "wait_14"];
+    const rainLevels = [
+      { p50: 168, p10: 60, p90: 231 },
+      { p50: 80, p10: 30, p90: 110 },
+    ];
+    const languages = ["en", "yo", "pcm"] as const;
+    const evidenceVariants = [
+      [],
+      [
+        {
+          id: "ev_nimet_benchmark",
+          kind: "forecast" as const,
+          label: "NiMet",
+          source: "NiMet",
+          statistic: "NiMet's 2026 forecast puts onset in Oyo between 15 and 30 April. Ikore's suggested date, 17 April, falls inside that window.",
+        },
+      ],
+    ];
+
+    for (const opt of optionsToTest) {
+      for (const rain of rainLevels) {
+        for (const ev of evidenceVariants) {
+          for (const lang of languages) {
+            const dec: Decision = {
+              ...mockDecision,
+              chosen: opt,
+              keyNumbers: {
+                ...mockDecision.keyNumbers,
+                plantingDate: opt === "plant_now" ? "2026-04-10" : opt === "wait_7" ? "2026-04-17" : "2026-04-24",
+                plantNow_rainP50Mm: rain.p50,
+                plantNow_rainP10Mm: rain.p10,
+                plantNow_rainP90Mm: rain.p90,
+              },
+              options: [
+                {
+                  option: "plant_now",
+                  label: "Plant now",
+                  score: 60,
+                  notes: ["Plant immediately"],
+                  outcome: { mean: 60, p10: 40, p50: 60, p90: 80, riskMetric: 0.141, riskLabel: "replant risk", n: 35 },
+                },
+                {
+                  option: opt,
+                  label: opt,
+                  score: 85,
+                  notes: ["Wait option"],
+                  outcome: { mean: 85, p10: 70, p50: 85, p90: 95, riskMetric: 0.007, riskLabel: "replant risk", n: 35 },
+                },
+              ],
+              evidence: ev,
+            };
+
+            const text = templatePlantingRainAdequacy(dec, lang);
+
+            // Assert no double periods
+            expect(text).not.toContain("..");
+            // Assert no capital letters following comma
+            expect(text).not.toMatch(/,\s+[A-Z]/);
+            // Assert balanced parentheses
+            const openParens = (text.match(/\(/g) || []).length;
+            const closeParens = (text.match(/\)/g) || []).length;
+            expect(openParens).toBe(closeParens);
+          }
+        }
+      }
+    }
   });
 
   it("validates that rain adequacy output allows mm figures but rejects forecast words", () => {
