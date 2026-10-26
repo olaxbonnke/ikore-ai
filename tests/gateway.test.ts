@@ -429,6 +429,46 @@ describe("ZetarisGateway HTTP and retry lifecycle", () => {
     expect(result.rows).toEqual([{ resolved: true }]);
   });
 
+  it("sends a different queryId on retry when first attempt aborts", async () => {
+    const sentQueryIds: string[] = [];
+    let callCount = 0;
+
+    const mockFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      callCount++;
+      if (init?.body) {
+        const parsed = JSON.parse(init.body as string);
+        if (parsed.queryId) {
+          sentQueryIds.push(parsed.queryId);
+        }
+      }
+      if (callCount === 1) {
+        const abortErr = new Error("This operation was aborted");
+        abortErr.name = "AbortError";
+        throw abortErr;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [{ ok: 1 }],
+        }),
+      } as unknown as Response;
+    });
+
+    const gateway = new ZetarisGateway({
+      restUrl: "https://api.example.com/api/v1.0",
+      apiKey: "secret-key",
+      orgId: "org-456",
+      fetchFn: mockFetch,
+    });
+
+    const result = await gateway.query("SELECT 1 AS ok");
+    expect(callCount).toBe(2);
+    expect(result.rows).toEqual([{ ok: 1 }]);
+    expect(sentQueryIds).toHaveLength(2);
+    expect(sentQueryIds[0]).not.toBe(sentQueryIds[1]);
+  });
+
   it("does not retry on 4xx errors and throws typed ZetarisError with status and requestId", async () => {
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
