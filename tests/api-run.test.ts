@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as healthGet } from "../src/app/api/health/route.ts";
 import { POST as runPost } from "../src/app/api/run/route.ts";
 import { classifyErrorComponent } from "../src/core/errors.ts";
+import * as explainModule from "../src/llm/explain.ts";
 
 describe("JSON API: /api/health and /api/run", () => {
   beforeEach(() => {
@@ -591,6 +592,80 @@ describe("JSON API: /api/health and /api/run", () => {
         expect(json.reply).not.toMatch(/Planting advice reminder/i);
         expect(json.reply).not.toMatch(/Advice reminder/i);
       }
+    });
+
+    it("reports metadata (responded_model, fallback_used, fallback_reason) on recall replies in template mode", async () => {
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
+
+      const reqRecall = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Remind me, when did you say I should plant?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(reqRecall);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+
+      expect(json.intent).toBe("recall_previous");
+      expect(json.responded_model).toBe("template");
+      expect(json.fallback_used).toBe(true);
+      expect(json.fallback_reason).toBe("template_by_design");
+      expect(json.llm.responded_model).toBe("template");
+      expect(json.llm.fallback_used).toBe(true);
+      expect(json.llm.fallback_reason).toBe("template_by_design");
+      expect(json.parts).toBeDefined();
+      expect(json.parts.length).toBe(1);
+      expect(json.parts[0].intent).toBe("recall_previous");
+      expect(json.parts[0].kind).toBe("guidance");
+      expect(json.parts[0].responded_model).toBe("template");
+      expect(json.parts[0].fallback_used).toBe(true);
+      expect(json.parts[0].fallback_reason).toBe("template_by_design");
+    });
+
+    it("reports live Nemotron model metadata when recall goes through LLM", async () => {
+      vi.stubEnv("SAMPLE_MODE", "false");
+      vi.stubEnv("DATA_MODE", "snapshot");
+
+      const spy = vi.spyOn(explainModule, "explainRecall").mockResolvedValueOnce({
+        text: "On 10 April I told you to wait a week and plant around 17 April.",
+        path: "llm",
+        model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+        latencyMs: 142,
+      });
+
+      const reqRecall = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Remind me, when did you say I should plant?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(reqRecall);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+
+      expect(json.intent).toBe("recall_previous");
+      expect(json.responded_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
+      expect(json.fallback_used).toBe(false);
+      expect(json.fallback_reason).toBeUndefined();
+      expect(json.llm.responded_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
+      expect(json.llm.fallback_used).toBe(false);
+      expect(json.llm.fallback_reason).toBeUndefined();
+      expect(json.parts).toBeDefined();
+      expect(json.parts[0].responded_model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b");
+      expect(json.parts[0].fallback_used).toBe(false);
+      expect(json.parts[0].fallback_reason).toBeUndefined();
+
+      spy.mockRestore();
     });
   });
 });

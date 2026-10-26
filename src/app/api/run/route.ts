@@ -108,6 +108,27 @@ export async function POST(req: Request) {
     (Array.isArray(reply.recalledMemories) && reply.recalledMemories.length > 0) ||
     Boolean(reply.storedMemoryId);
 
+  const isFallback = reply.path === "template" || isSample;
+  const respondedModel = isFallback ? "template" : (reply.respondedModel || reply.model || "template");
+  const fallbackReason = isFallback
+    ? (reply.intent === "recall_previous"
+        ? (reply.fallbackReason || "template_by_design")
+        : (!isSample ? (reply.fallbackReason || "template_by_design") : undefined))
+    : undefined;
+
+  const parts = reply.parts && reply.parts.length > 0
+    ? reply.parts
+    : [
+        {
+          intent: reply.intent || reply.decision?.intent || "unknown",
+          kind: reply.decision ? ("decision" as const) : ("guidance" as const),
+          reply: reply.text,
+          responded_model: respondedModel,
+          fallback_used: isFallback,
+          ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
+        },
+      ];
+
   return NextResponse.json(
     {
       run_id: reply.runId || runId,
@@ -116,17 +137,18 @@ export async function POST(req: Request) {
       guidance_type: reply.guidance_type || (reply.decision ? "decision" : "general"),
       decision: reply.decision || null,
       reply: reply.text,
-      ...(reply.parts && reply.parts.length > 0 ? { parts: reply.parts } : {}),
+      responded_model: respondedModel,
+      fallback_used: isFallback,
+      ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
+      parts,
       evidence: reply.decision?.keyNumbers || {},
       llm: {
         provider: isSample ? "sample" : (reply.path === "llm" || reply.path === "model" ? "nightshift" : "template"),
         requested_model: isSample ? "none" : (reply.requestedModel || process.env.METERLESS_MODEL || "meterless/auto"),
-        responded_model: isSample ? "template" : (reply.respondedModel || reply.model || "template"),
+        responded_model: respondedModel,
         latency_ms: reply.latencyMs ?? 0,
-        fallback_used: reply.path === "template" || isSample,
-        ...(!isSample && (reply.path === "template" || reply.fallbackReason)
-          ? { fallback_reason: reply.fallbackReason || "template_by_design" }
-          : {}),
+        fallback_used: isFallback,
+        ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
       },
       zetaris: {
         queries_run: reply.queriesRun || [],

@@ -318,10 +318,21 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         path: "template",
         fallbackReason: "no_previous_advice",
         model: "template",
+        respondedModel: "template",
         runId,
         traceFile,
         queriesRun: [],
         rowCounts: {},
+        parts: [
+          {
+            intent: "recall_previous",
+            kind: "guidance",
+            reply: text,
+            responded_model: "template",
+            fallback_used: true,
+            fallback_reason: "no_previous_advice",
+          },
+        ],
       };
     }
 
@@ -334,7 +345,13 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     });
 
     const reqModel = isSample ? "none" : (process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
-    const respModel = isSample ? "template" : (explanation.model || "template");
+    const isFallback = explanation.path === "template" || isSample;
+    const respModel = isFallback
+      ? "template"
+      : (explanation.model || process.env.METERLESS_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
+    const finalFallbackReason = isFallback
+      ? (explanation.fallbackReason || "template_by_design")
+      : undefined;
 
     tracer.log({
       step: "explain",
@@ -364,12 +381,24 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       recalledMemories,
       path: explanation.path,
       model: respModel,
+      requestedModel: reqModel,
+      respondedModel: respModel,
       latencyMs: explanation.latencyMs,
-      fallbackReason: explanation.fallbackReason,
+      fallbackReason: finalFallbackReason,
       runId,
       traceFile,
       queriesRun: [],
       rowCounts: {},
+      parts: [
+        {
+          intent: "recall_previous",
+          kind: "guidance",
+          reply: explanation.text,
+          responded_model: respModel,
+          fallback_used: isFallback,
+          ...(finalFallbackReason ? { fallback_reason: finalFallbackReason } : {}),
+        },
+      ],
     };
   }
 
