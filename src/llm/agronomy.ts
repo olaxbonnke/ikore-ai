@@ -50,6 +50,91 @@ export interface AgronomyValidationContext {
  * - memory figures (bags, etc.)
  * - valid whole dates (e.g. "10 April") matching asOf or rain records
  */
+/**
+ * Whitelist filter for guidance memories.
+ * Only admits farm profile and fact memories (hectares, zone, state, soil, storage method).
+ * Rejects all advice records (plant timing, sell/store, verdicts, question logs).
+ */
+export function isProfileOrFactMemory(mem: string): boolean {
+  if (typeof mem !== "string") return false;
+  const s = mem.trim();
+  if (!s) return false;
+
+  // Strict blacklist check on advice records, decisions, verdicts, and question logs
+  if (
+    /(?:question:|advice\s+for|verdict:|verdict\b|decisionid|chosen\b|advised\s+to|store_[0-9a-z]|sell_now|wait_[0-9a-z]|plant_now)/i.test(s)
+  ) {
+    return false;
+  }
+
+  // Check JSON representation if present
+  try {
+    if (s.startsWith("{") && s.endsWith("}")) {
+      const parsed = JSON.parse(s);
+      if (parsed.type && !/(?:profile|fact)/i.test(parsed.type)) return false;
+      if (parsed.tags && Array.isArray(parsed.tags)) {
+        const hasProfileTag = parsed.tags.some((t: string) => /profile|fact|hectares|zone|state|soil|storage/i.test(t));
+        if (!hasProfileTag) return false;
+      }
+      return true;
+    }
+  } catch {
+    // not JSON
+  }
+
+  // Whitelist pattern matching for farm profile facts
+  if (s.startsWith("[Demo profile") || s.startsWith("[Demo fact")) {
+    return true;
+  }
+  if (/^(?:farm\s*(?:profile|size)|field\s*size|hectares|location|state|storage\s*method|soil\s*(?:type|condition))/i.test(s)) {
+    return true;
+  }
+  if (/\b(?:hectares|ha|sandy\s+loam|clay|loam|derived_savanna|savanna|guinea|pics|hermetic|sack)\b/i.test(s) && !/(?:offered|buyer|price|naira|₦)/i.test(s)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Extracts the specific sub-question for the agronomy part from a compound query.
+ */
+export function extractAgronomySubQuestion(text: string, topic?: string, lang?: Lang): string {
+  if (!text) return "";
+
+  // Split on conjunctions and punctuation
+  const conjunctionRegex = /\s+(?:and(?:\s+how|\s+what)?|also|as\s+well\s+as|báwo\s+sì\s+ni|bawo\s+si\s+ni|àti(?:\s+báwo)?|ati(?:\s+bawo)?|con)\s+|[.?,;]\s+/iu;
+  const parts = text.split(conjunctionRegex).map((p) => p.trim()).filter(Boolean);
+
+  for (const part of parts) {
+    if (topic === "watering" && /(?:wet|water|irrigate|bomi|omi|rin)/i.test(part) && !/(?:start\s+planting|gbìn|gbin\s+àgbàdo)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+    if (topic === "fertilizer" && /(?:fertiliz|aj[ií]l[eẹ̀é]|npk|urea)/i.test(part) && !/(?:start\s+planting|gbìn)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+    if (topic === "weeding" && /(?:weed|kor[ií]ko)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+    if (topic === "pests" && /(?:pest|insect|kokoro|kòkòrò|armyworm)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+    if (topic === "harvest" && /(?:harvest|ikore|ìkórè)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+    if (topic === "storage" && /(?:store|storage|tọ́jú|toju|sack|bag)/i.test(part)) {
+      return part.endsWith("?") ? part : `${part}?`;
+    }
+  }
+
+  if (topic === "watering") {
+    if (lang === "yo") return "Báwo ni kí n ṣe bomi rin àgbàdo mi?";
+    if (lang === "pcm") return "How I go wet my maize?";
+    return "How should I water my maize?";
+  }
+  return text;
+}
+
 export function buildAllowedAgronomyNumbers(
   farm: FarmProfile,
   recentRain?: LoadedRecentRain | null,
@@ -151,6 +236,7 @@ export function buildAllowedAgronomyNumbers(
   if (Array.isArray(recalledMemories)) {
     for (const mem of recalledMemories) {
       if (typeof mem !== "string") continue;
+      if (!isProfileOrFactMemory(mem)) continue;
       const matches = mem.match(/\b\d+(?:\.\d+)?\b/g) || [];
       for (const m of matches) {
         const n = parseFloat(m);
@@ -189,8 +275,17 @@ export function buildAllowedAgronomyNumbers(
  */
 export function validateAgronomyGuidance(
   text: string,
-  context: AgronomyValidationContext | Set<number>
+  context: AgronomyValidationContext | Set<number>,
+  lang?: Lang,
+  topic?: string
 ): { valid: boolean; reason?: string } {
+  const cv = validateNoCurrencyOrTokens(text);
+  if (!cv.valid) return cv;
+
+  if (topic) {
+    const tr = validateTopicSpecificRestrictions(text, topic);
+    if (!tr.valid) return tr;
+  }
   const ctx: AgronomyValidationContext =
     context instanceof Set
       ? {
@@ -346,6 +441,77 @@ function loadAgronomyPrompt(): string {
  * Validator rule: reject self-referential / meta lines ("not my role", "I only advise", "as an AI")
  * in English, Pidgin, and Yoruba.
  */
+/**
+ * Validator rule: reject currency and internal snake_case tokens in every guidance topic.
+ */
+export function validateNoCurrencyOrTokens(text: string): { valid: boolean; reason?: string } {
+  // Reject currency: ₦, naira, NGN, kobo (case-insensitive)
+  const currencyPattern = /(?:[₦]|(?:\b(?:naira|ngn|kobo)\b))/i;
+  const currMatch = text.match(currencyPattern);
+  if (currMatch) {
+    return {
+      valid: false,
+      reason: `grounding_failed: currency found ("${currMatch[0]}")`,
+    };
+  }
+
+  // Reject internal snake_case tokens (e.g. store_4w, store_8w, sell_now, wait_7, plant_now, etc.)
+  const tokenPattern = /\b[a-z0-9]+_[a-z0-9]+(?:_[a-z0-9]+)*\b/i;
+  const tokenMatch = text.match(tokenPattern);
+  if (tokenMatch) {
+    return {
+      valid: false,
+      reason: `grounding_failed: internal snake_case token found ("${tokenMatch[0]}")`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Topic specific restrictions validator:
+ * Reject bag counts and market or selling terms for topics where they don't belong (watering, planting, weeding, pests).
+ * Storage and harvest may mention bags (including PICS or hermetic bags), but never prices.
+ */
+export function validateTopicSpecificRestrictions(text: string, topic?: string): { valid: boolean; reason?: string } {
+  const normTopic = (topic || "").toLowerCase();
+  const allowsBags = normTopic === "storage" || normTopic === "harvest";
+
+  if (!allowsBags) {
+    // Reject bag counts and bag words in topics like watering, planting, weeding, pests
+    const bagPattern = /(?:\b\d+\s*(?:bags?|àpò|apo)\b)|(?:\b(?:àpò|apo)\s*\d+\b)|(?:^|[^\p{L}\p{N}])(?:bags?|àpò|apo)(?:[^\p{L}\p{N}]|$)/iu;
+    const bagMatch = text.match(bagPattern);
+    if (bagMatch) {
+      return {
+        valid: false,
+        reason: `grounding_failed: bag count or bag reference found in ${topic || "general"} guidance ("${bagMatch[0]}")`,
+      };
+    }
+  }
+
+  // Market or selling terms: not allowed in watering, planting, weeding, pests, fertilizer, etc.
+  const marketSellingPattern = /(?:\b(?:sell|selling|buyer|offered|offer|sale\s+price|market\s+price|ọjà|títà|tita|oníbàárà|onibaara)\b)/i;
+  const marketMatch = text.match(marketSellingPattern);
+  if (marketMatch) {
+    return {
+      valid: false,
+      reason: `grounding_failed: market or selling term found in ${topic || "guidance"} ("${marketMatch[0]}")`,
+    };
+  }
+
+  // Watering specific cross-topic leaks
+  if (normTopic === "watering") {
+    if (/\b(?:storage|store|storing|sack|tọ́jú|toju|fertilizer|npk|urea|pesticide|ajílẹ̀|ajile|weed|weeding|koríko|koriko)\b/i.test(text)) {
+      return {
+        valid: false,
+        reason: "grounding_failed: cross-topic content in watering guidance",
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 export function validateNoMetaTalk(text: string): { valid: boolean; reason?: string } {
   const metaPattern =
     /(?:\b(?:not\s+my\s+role|only\s+advise\s+on|i\s+only\s+advise|as\s+an\s+ai|as\s+a\s+language\s+model|my\s+role\s+is|outside\s+my\s+scope|not\s+within\s+my\s+scope|not\s+my\s+job|i\s+am\s+an\s+ai|no\s+be\s+my\s+role|no\s+be\s+my\s+work|no\s+be\s+me\s+go\s+tell\s+you)\b|kì\s+í\s+ṣe\s+ojúṣe\s+mi|ki\s+i\s+se\s+ojuse\s+mi|ojúṣe\s+mi\s+ni|ojuse\s+mi\s+ni|gẹ́gẹ́\s+bí\s+ai|gege\s+bi\s+ai|mo\s+wulẹ̀\s+ń\s+gbani\s+nímọ̀ràn|mo\s+wule\s+n\s+gbani\s+nimoran|n\s+kì\s+í\s+ṣe|n\s+ki\s+i\s+se)/iu;
@@ -364,7 +530,7 @@ export function validateNoMetaTalk(text: string): { valid: boolean; reason?: str
  * Timing belongs to the data-checked decision part only.
  */
 export function validateNoTimingClaims(text: string): { valid: boolean; reason?: string } {
-  const timingPattern = /(?:\b(?:plant\s+now|time\s+to\s+plant|start\s+planting|planting\s+time|this\s+week|next\s+week|wait\s+(?:a|one|two|\d+)\s+weeks?|plant\s+around|shuka\s+yanzu|lokacin\s+shuka|january|february|march|april|may|june|july|august|september|october|november|december)\b|gbìn\s+báyìí|gbin\s+bayii|ìgbà\s+gbígbìn|igba\s+gbigbin|bẹ̀rẹ̀\s+gbígbìn|bere\s+gbigbin|ọ̀sẹ̀\s+yìí|ose\s+yii|ẹrẹ̀nà|èrèlé|ìgbé|òbíbí|òkúdu|agẹmọ|ògún|ọ̀wẹ́wẹ̀|ọ̀wàrà|bélú|ọ̀pẹ́)/iu;
+  const timingPattern = /(?:\b(?:plant\s+now|time\s+to\s+plant|start\s+planting|planting\s+time|planting\s+timing|worry\s+about\s+planting|comment\s+on\s+planting|regarding\s+planting|this\s+week|next\s+week|wait\s+(?:a|one|two|\d+)\s+weeks?|plant\s+around|shuka\s+yanzu|lokacin\s+shuka|january|february|march|april|may|june|july|august|september|october|november|december)\b|gbìn\s+báyìí|gbin\s+bayii|ìgbà\s+gbígbìn|igba\s+gbigbin|bẹ̀rẹ̀\s+gbígbìn|bere\s+gbigbin|ọ̀sẹ̀\s+yìí|ose\s+yii|ẹrẹ̀nà|èrèlé|ìgbé|òbíbí|òkúdu|agẹmọ|ògún|ọ̀wẹ́wẹ̀|ọ̀wàrà|bélú|ọ̀pẹ́)/iu;
   const m = text.match(timingPattern);
   if (m) {
     return {
@@ -439,6 +605,7 @@ export interface ExplainAgronomyParams {
   recalledMemories?: string[];
   provider?: LLMProvider;
   runId?: string;
+  isCompound?: boolean;
 }
 
 export interface AgronomyExplainResult {
@@ -517,8 +684,9 @@ export function trimAdviceToLength(text: string, maxWords = 80): string {
 export async function explainAgronomy(
   params: ExplainAgronomyParams
 ): Promise<AgronomyExplainResult> {
-  const { question, farm, lang, asOf, topic, recentRain, recalledMemories, provider, runId } = params;
-  const allowedNumbers = buildAllowedAgronomyNumbers(farm, recentRain, asOf, recalledMemories);
+  const { question, farm, lang, asOf, topic, recentRain, recalledMemories, provider, runId, isCompound } = params;
+  const safeMemories = (recalledMemories || []).filter(isProfileOrFactMemory);
+  const allowedNumbers = buildAllowedAgronomyNumbers(farm, recentRain, asOf, safeMemories);
   const config = getNightshiftConfig();
   const isSample = config.sampleMode;
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
@@ -536,9 +704,13 @@ export async function explainAgronomy(
     : "No recent rainfall data queried.";
 
   const memoryContext =
-    recalledMemories && recalledMemories.length > 0
-      ? `Recalled farm context: ${recalledMemories.slice(0, 3).join(" ")}`
+    safeMemories.length > 0
+      ? `Recalled farm context: ${safeMemories.slice(0, 3).join(" ")}`
       : "";
+
+  const compoundDirective = isCompound
+    ? `\nCRITICAL COMPOUND QUERY RULE:\nThe farmer's planting date decision has already been answered separately in part 1 of this reply.\nDo NOT mention, advise on, or comment on planting dates, when to plant, planting timing, or waiting.\nFocus EXCLUSIVELY and DIRECTLY on ${topic || "agronomy guidance"}.\n`
+    : "";
 
   const promptContext = `
 Farmer Location: ${farm.lga}, ${farm.state}
@@ -547,6 +719,7 @@ Zone: ${farm.zone || "derived_savanna"}
 Current Date (asOf): ${asOf}
 ${rainContext}
 ${memoryContext}
+${compoundDirective}
 Farmer Question: "${question}"
 `;
 
@@ -687,11 +860,19 @@ Farmer Question: "${question}"
       return { valid: false, reason: `Response too long (${words.length} words, max 80 allowed)` };
     }
 
-    // 0. No meta talk / self-referential lines
+    // 0. Currency and internal tokens
+    const cv = validateNoCurrencyOrTokens(t);
+    if (!cv.valid) return cv;
+
+    // 1. Topic specific restrictions (bag counts, market/selling terms)
+    const topRestr = validateTopicSpecificRestrictions(t, topic);
+    if (!topRestr.valid) return topRestr;
+
+    // 2. No meta talk / self-referential lines
     const mv = validateNoMetaTalk(t);
     if (!mv.valid) return mv;
 
-    // 1. No planting timing claims in guidance (timing belongs strictly to decision)
+    // 3. No planting timing claims in guidance
     const tv = validateNoTimingClaims(t);
     if (!tv.valid) return tv;
 
@@ -704,7 +885,7 @@ Farmer Question: "${question}"
     if (!lv.valid) return lv;
 
     // 4. Grounding and dosage checks
-    const gv = validateAgronomyGuidance(t, allowedNumbers);
+    const gv = validateAgronomyGuidance(t, allowedNumbers, lang, topic);
     if (!gv.valid) return gv;
 
     return { valid: true };
@@ -780,7 +961,7 @@ Direct plain-text advice:`;
       followUp: null,
       path: "template",
       model: "template",
-      fallbackReason: `Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`,
+      fallbackReason: `grounding_failed: Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`,
       latencyMs: totalLatency,
       requestedModel: config.model,
       respondedModel: "template",
@@ -793,7 +974,7 @@ Direct plain-text advice:`;
       followUp: null,
       path: "template",
       model: "template",
-      fallbackReason: err?.message || "LLM completion error",
+      fallbackReason: `grounding_failed: ${err.message}`,
       respondedModel: "template",
     };
   }

@@ -11,6 +11,11 @@ import {
   buildAllowedAgronomyNumbers,
   isWateringOrHarvestQuery,
   explainAgronomy,
+  isProfileOrFactMemory,
+  extractAgronomySubQuestion,
+  validateNoCurrencyOrTokens,
+  validateTopicSpecificRestrictions,
+  validateNoTimingClaims,
 } from "../src/llm/agronomy.ts";
 import type { LLMProvider, LLMCompleteParams } from "../src/llm/provider.ts";
 import { validateOutputStructure, explain } from "../src/llm/explain.ts";
@@ -228,6 +233,160 @@ describe("unit-aware agronomy number grounding", () => {
     const ctx = buildAllowedAgronomyNumbers(farm, recentRainWith5mm, "2026-04-10");
     const v = validateAgronomyGuidance("Check a few cobs from different parts of the field to inspect maturity.", ctx);
     expect(v.valid).toBe(true);
+  });
+});
+
+describe("guidance memory filtering and tight grounding validation", () => {
+  const farm: FarmProfile = {
+    id: "farm_bisi_ogbomoso",
+    ownerName: "Bisi",
+    lat: 8.13,
+    lon: 4.25,
+    lga: "Ogbomoso",
+    state: "Oyo",
+    crop: "maize",
+    hectares: 2.0,
+    storage: "pics",
+    preferredLang: "yo",
+    riskAversion: "high",
+    zone: "derived_savanna",
+  };
+
+  it("filters memories with a strict whitelist: admits facts/profile and rejects advice records", () => {
+    // Whitelisted facts / profile
+    expect(isProfileOrFactMemory("Farm size: 2.0 hectares in Ogbomoso, Oyo State")).toBe(true);
+    expect(isProfileOrFactMemory("Storage method: pics bags")).toBe(true);
+    expect(isProfileOrFactMemory("Soil type: sandy loam, derived savanna zone")).toBe(true);
+    expect(isProfileOrFactMemory(JSON.stringify({ type: "farm_profile", content: "2.0 ha in Oyo" }))).toBe(true);
+
+    // Rejected advice records
+    expect(isProfileOrFactMemory("Question: When should I plant maize? Advice: wait 1 week")).toBe(false);
+    expect(isProfileOrFactMemory("Decision: store_4w, expected price ₦920,220")).toBe(false);
+    expect(isProfileOrFactMemory("Verdict: wait_7")).toBe(false);
+    expect(isProfileOrFactMemory("Advised to sell now at ₦45,000 per bag for 20 bags")).toBe(false);
+    expect(isProfileOrFactMemory(JSON.stringify({ type: "sell_advice", content: "Sell at 45000" }))).toBe(false);
+  });
+
+  it("builds allowed agronomy numbers strictly from profile facts and part data, never from advice memories", () => {
+    const adviceMemories = [
+      "Question: I have 20 bags of maize and a buyer is offering ₦45,000 per bag. Advice: store_4w for ₦920,220",
+    ];
+    const ctx = buildAllowedAgronomyNumbers(farm, undefined, "2026-04-10", adviceMemories);
+
+    // Numbers from advice records must NOT be added to memoryNumbers or allowedNumbers
+    expect(ctx.memoryNumbers.has(20)).toBe(false);
+    expect(ctx.memoryNumbers.has(45000)).toBe(false);
+    expect(ctx.memoryNumbers.has(920220)).toBe(false);
+    expect(ctx.allowedNumbers.has(45000)).toBe(false);
+
+    // Profile numbers are preserved
+    expect(ctx.haNumbers.has(2.0)).toBe(true);
+  });
+
+  it("rejects currency and internal snake_case tokens in any guidance topic", () => {
+    // Currency rejection
+    expect(validateNoCurrencyOrTokens("The buyer offered ₦45,000 per bag.").valid).toBe(false);
+    expect(validateNoCurrencyOrTokens("The price is 45000 naira per bag.").valid).toBe(false);
+    expect(validateNoCurrencyOrTokens("Total return is 920220 NGN.").valid).toBe(false);
+    expect(validateNoCurrencyOrTokens("Only costs 50 kobo.").valid).toBe(false);
+
+    // Internal token rejection
+    expect(validateNoCurrencyOrTokens("We recommend store_4w for storage.").valid).toBe(false);
+    expect(validateNoCurrencyOrTokens("The verdict is wait_7.").valid).toBe(false);
+    expect(validateNoCurrencyOrTokens("Action chosen: sell_now.").valid).toBe(false);
+
+    // Valid text without currency or tokens
+    expect(validateNoCurrencyOrTokens("Water your maize at the plant base during dry spells.").valid).toBe(true);
+  });
+
+  it("enforces topic-specific restrictions: watering rejects bags and market terms, storage allows bags", () => {
+    // Watering topic rejects bag counts and bag words
+    const wBags = validateTopicSpecificRestrictions("Apply water to 20 bags", "watering");
+    expect(wBags.valid).toBe(false);
+    expect(wBags.reason).toContain("grounding_failed");
+
+    const wYorubaBags = validateTopicSpecificRestrictions("Bomi rin àpò 20", "watering");
+    expect(wYorubaBags.valid).toBe(false);
+
+    // Watering topic rejects market/selling terms
+    const wSell = validateTopicSpecificRestrictions("Sell to the highest buyer at the market", "watering");
+    expect(wSell.valid).toBe(false);
+
+    const wYorubaSell = validateTopicSpecificRestrictions("Tita lórí ọjà", "watering");
+    expect(wYorubaSell.valid).toBe(false);
+
+    // Storage topic allows bag references, but rejects market/selling terms
+    const sBags = validateTopicSpecificRestrictions("Store your harvested grains in hermetic PICS bags", "storage");
+    expect(sBags.valid).toBe(true);
+
+    const sSell = validateTopicSpecificRestrictions("Store now and sell to a buyer later", "storage");
+    expect(sSell.valid).toBe(false);
+  });
+
+  it("narrows timing phrase restrictions: rejects planting timing advice but allows 'after planting'", () => {
+    // Planting timing claims rejected
+    const t1 = validateNoTimingClaims("Do not worry about planting timing.");
+    expect(t1.valid).toBe(false);
+    expect(t1.reason).toContain("timing_claim_in_guidance");
+
+    const t2 = validateNoTimingClaims("Regarding planting timing, hold off until rain stabilizes.");
+    expect(t2.valid).toBe(false);
+
+    // Normal agronomic guidance containing 'after planting' passes
+    const t3 = validateNoTimingClaims("If a dry spell occurs after planting, water at the root base.");
+    expect(t3.valid).toBe(true);
+
+    const t4 = validateNoTimingClaims("Two weeks after planting, apply light watering if soil is dry.");
+    expect(t4.valid).toBe(true);
+  });
+
+  it("extracts topic sub-question cleanly from compound queries", () => {
+    const en = extractAgronomySubQuestion("when do i start planting and how should i wet my maize", "watering", "en");
+    expect(en.toLowerCase()).toContain("wet");
+    expect(en.toLowerCase()).not.toContain("when do i start planting");
+
+    const yo = extractAgronomySubQuestion("Ìgbà wo ni kí n gbìn àgbàdo mi, báwo sì ni kí n bomi rin ín?", "watering", "yo");
+    expect(yo.toLowerCase()).toContain("bomi rin");
+    expect(yo.toLowerCase()).not.toContain("gbìn àgbàdo");
+  });
+
+  it("rejects Yoruba leaked sell/store text with grounding_failed", () => {
+    const leakedYoruba =
+      "Ìgbà kó gba àgbàdo, ó jẹ́ rẹ̀ kó gba 45,000 naira per bag. Ìgbà tí ó kọ́ra 20 bags kó jẹ́ rẹ̀ ₦920,220. Ìgbà kó gba àgbàdo nípa 4w store_4w...";
+    const ctx = buildAllowedAgronomyNumbers(farm, undefined, "2026-04-10");
+    const v = validateAgronomyGuidance(leakedYoruba, ctx, "yo", "watering");
+
+    expect(v.valid).toBe(false);
+    expect(v.reason).toMatch(/grounding_failed/);
+  });
+
+  it("falls back to safe template with grounding_failed when model leaks sell/store text", async () => {
+    class LeakedMockProvider implements LLMProvider {
+      readonly name = "mock-leaked";
+      async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+        return {
+          answer:
+            "Ìgbà kó gba àgbàdo, ó jẹ́ rẹ̀ kó gba 45,000 naira per bag. Ìgbà tí ó kọ́ra 20 bags kó jẹ́ rẹ̀ ₦920,220. Ìgbà kó gba àgbàdo nípa 4w store_4w.",
+          followUp: null,
+        } as unknown as T;
+      }
+    }
+
+    const res = await explainAgronomy({
+      question: "báwo sì ni kí n bomi rin ín?",
+      farm,
+      lang: "yo",
+      asOf: "2026-04-10",
+      topic: "watering",
+      provider: new LeakedMockProvider(),
+    });
+
+    expect(res.path).toBe("template");
+    expect(res.fallbackReason).toContain("grounding_failed");
+    expect(res.text).toBe(templateAgronomyFallback("watering", "yo"));
+    expect(res.text).not.toContain("45,000");
+    expect(res.text).not.toContain("naira");
+    expect(res.text).not.toContain("store_4w");
   });
 });
 

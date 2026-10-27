@@ -29,7 +29,7 @@ import { simulateSelling, type CashNeed, type MonthlyPriceRecord } from "./simul
 import type { AgentReply, EvidenceItem, IncomingMessage, OptionResult, Lang } from "./types.ts";
 import { RunTracer } from "./tracer.ts";
 import { understand } from "./understand.ts";
-import { isWateringOrHarvestQuery, explainAgronomy } from "../llm/agronomy.ts";
+import { isWateringOrHarvestQuery, explainAgronomy, isProfileOrFactMemory, extractAgronomySubQuestion } from "../llm/agronomy.ts";
 
 export function formatNiMetBenchmarkEvidence(
   row: {
@@ -470,13 +470,14 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     }
 
     const tExplain = performance.now();
+    const guidanceMemories = recalledMemories.filter(isProfileOrFactMemory);
     const agronomyRes = await explainAgronomy({
       question: message.text,
       farm,
       lang,
       asOf,
       recentRain,
-      recalledMemories,
+      recalledMemories: guidanceMemories,
       runId,
     });
 
@@ -1006,16 +1007,19 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
 
   if (secondaryPart) {
     const tAgStart = performance.now();
+    const guidanceMemories = recalledMemories.filter(isProfileOrFactMemory);
+    const subQuestion = extractAgronomySubQuestion(message.text, secondaryPart.topic, lang);
     let agronomyRes: any;
     try {
       agronomyRes = await explainAgronomy({
-        question: message.text,
+        question: subQuestion,
         farm,
         lang,
         asOf,
         topic: secondaryPart.topic,
         recentRain: undefined,
-        recalledMemories,
+        recalledMemories: guidanceMemories,
+        isCompound: true,
       });
     } catch (agErr: any) {
       console.warn("[Compound] Agronomy secondary step failed:", agErr.message);
@@ -1023,7 +1027,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
         text: templateAgronomyFallback(secondaryPart.topic, lang),
         path: "template",
         model: "template",
-        fallbackReason: `llm_error: ${agErr.message}`,
+        fallbackReason: "grounding_failed",
       };
     }
 
@@ -1059,7 +1063,7 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const secondaryFallbackUsed = agronomyRes.path === "template" || isSample;
     const secondaryModel = secondaryFallbackUsed ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
     const secondaryFallbackReason = !isSample && (agronomyRes.path === "template" || agronomyRes.fallbackReason)
-      ? (agronomyRes.fallbackReason || "template_by_design")
+      ? (agronomyRes.fallbackReason || "grounding_failed")
       : undefined;
 
     replyParts = [

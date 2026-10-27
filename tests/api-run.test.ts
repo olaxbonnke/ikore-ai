@@ -437,6 +437,43 @@ describe("JSON API: /api/health and /api/run", () => {
       expect(components).not.toContain("zetaris");
     });
 
+    it("proves recall_previous still returns earlier sell/store advice", async () => {
+      vi.stubEnv("SAMPLE_MODE", "true");
+      vi.stubEnv("DATA_MODE", "snapshot");
+
+      // 1. Run sell_or_store advice for farm_bisi_ogbomoso
+      const reqSeed = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "I have 20 bags of maize and a buyer is offering N45,000 per bag. Should I sell now or store?",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+      const seedRes = await runPost(reqSeed);
+      expect(seedRes.status).toBe(200);
+
+      // 2. Ask "Remind me what you told me about selling my maize"
+      const reqRecall = new Request("http://localhost:3000/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "Remind me what you told me about selling my maize",
+          farm_id: "farm_bisi_ogbomoso",
+          lang: "en",
+        }),
+      });
+
+      const res = await runPost(reqRecall);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+
+      expect(json.intent).toBe("recall_previous");
+      expect(json.memory.recalled.length).toBeGreaterThan(0);
+      expect(json.reply).toMatch(/sell|store|bag|45,?000/i);
+    });
+
     it("handles recall_previous in Nigerian Pidgin and Yoruba", async () => {
       vi.stubEnv("SAMPLE_MODE", "true");
       vi.stubEnv("DATA_MODE", "snapshot");
