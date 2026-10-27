@@ -161,10 +161,10 @@ To run live queries and live LLM generations:
 
 ## Live System Output Examples
 
-The following are untruncated outputs from actual live runs connected to Zetaris and Meterless Nightshift (`nvidia/nemotron-3.5-lightning-30b-a3b`):
+The following are untruncated outputs from actual live runs connected to Zetaris and Meterless Nightshift (`nvidia/nemotron-3.5-lightning-30b-a3b`). Live runs write execution traces to `logs/`, which is gitignored and not committed to the repository; the four sample traces below are real runs recorded on 27 October 2026 and committed under `samples/traces/` for audit and inspection:
 
 ### 1. English Compound Query: Planting Decision + Watering Guidance
-- **Trace**: `logs/trace-run_1793069788246_mz596.jsonl`
+- **Trace**: [`samples/traces/trace-run_1793069788246_mz596.jsonl`](samples/traces/trace-run_1793069788246_mz596.jsonl)
 - **Question**: `"when do i start planting and how should i wet my maize"`
 - **Farm**: Mama Bisi (`farm_bisi_ogbomoso`) | **Language**: `en`
 - **Elapsed Time**: 7.24s | **Status**: 200 OK
@@ -189,7 +189,7 @@ Check the topsoil with your finger. If it feels dry, give water at the base of t
 ---
 
 ### 2. Yoruba Compound Query: Planting Decision + Watering Guidance
-- **Trace**: `logs/trace-run_1793070596526_wvquc.jsonl`
+- **Trace**: [`samples/traces/trace-run_1793070596526_wvquc.jsonl`](samples/traces/trace-run_1793070596526_wvquc.jsonl)
 - **Question**: `"Ìgbà wo ni kí n gbìn àgbàdo mi, báwo sì ni kí n bomi rin ín?"`
 - **Farm**: Mama Bisi (`farm_bisi_ogbomoso`) | **Language**: `yo`
 - **Elapsed Time**: 18.13s | **Status**: 200 OK
@@ -215,7 +215,7 @@ Nípa bíbomi rin àgbàdo:
 ---
 
 ### 3. Sell or Store Decision: Farm Ade Iseyin
-- **Trace**: `logs/trace-run_1793066866740_x0u5s.jsonl`
+- **Trace**: [`samples/traces/trace-run_1793066866740_x0u5s.jsonl`](samples/traces/trace-run_1793066866740_x0u5s.jsonl)
 - **Question**: `"I have 20 bags of maize and a buyer is offering N45,000 per bag. Should I sell now or store?"`
 - **Farm**: Baba Ade (`farm_ade_iseyin`) | **Language**: `en`
 - **Elapsed Time**: 4.21s | **Status**: 200 OK
@@ -241,7 +241,7 @@ In 8 of 8 past years, storing eight weeks earned more than selling now. Storage 
 ---
 
 ### 4. Memory Recall Query: Fast-Path Reminder
-- **Trace**: `logs/trace-run_1793069330337_b8ibk.jsonl`
+- **Trace**: [`samples/traces/trace-run_1793069330337_b8ibk.jsonl`](samples/traces/trace-run_1793069330337_b8ibk.jsonl)
 - **Question**: `"Remind me what you told me about selling my maize"`
 - **Farm**: Mama Bisi (`farm_bisi_ogbomoso`) | **Language**: `en`
 - **Elapsed Time**: 3.37s | **Status**: 200 OK
