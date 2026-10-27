@@ -8,6 +8,13 @@ import {
   validateOutputStructure,
   validateRecallLanguage,
   validateYoruba,
+  validateRepetition,
+  REPETITION_MIN_CLAUSE_WORDS,
+  REPETITION_MAX_CLAUSE_REPETITIONS,
+  REPETITION_NGRAM_SIZE,
+  REPETITION_MAX_NGRAM_REPETITIONS,
+  REPETITION_MIN_WORDS_FOR_RATIO,
+  REPETITION_MIN_UNIQUE_RATIO,
   type ExplainOutput,
 } from "../src/core/explain.ts";
 import type { Decision, Lang } from "../src/core/types.ts";
@@ -735,5 +742,92 @@ describe("maize_agronomy and out-of-scope question classification", () => {
 
     const q2 = extractRules("Ìgbà wo ni màá gbìn isu?");
     expect(q2.intent).toBe("out_of_scope");
+  });
+});
+
+describe("validateRepetition universal guard (src/core/explain.ts)", () => {
+  it("exports named repetition constants with required thresholds", () => {
+    expect(REPETITION_MIN_CLAUSE_WORDS).toBe(4);
+    expect(REPETITION_MAX_CLAUSE_REPETITIONS).toBe(3);
+    expect(REPETITION_NGRAM_SIZE).toBe(5);
+    expect(REPETITION_MAX_NGRAM_REPETITIONS).toBe(3);
+    expect(REPETITION_MIN_WORDS_FOR_RATIO).toBe(30);
+    expect(REPETITION_MIN_UNIQUE_RATIO).toBe(0.4);
+  });
+
+  it("rejects the exact looping Yoruba text that repeated ~6 times", () => {
+    const loopingYoruba =
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+      "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé.";
+
+    const check = validateRepetition(loopingYoruba);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("repetition:");
+  });
+
+  it("accepts a normal Yoruba watering reply", () => {
+    const normalYoruba =
+      "Bomi rin àgbàdo rẹ ní àárọ̀ kùtùkùtù nígbà tí ilẹ̀ bá ti bẹ̀rẹ̀ sí ní gbẹ. " +
+      "Rí i dájú pé omi kò dúró sórí ilẹ̀ fún àkókò pípẹ́ kí gbòǹgbò má baà jẹrà.";
+
+    const check = validateRepetition(normalYoruba);
+    expect(check.valid).toBe(true);
+    expect(check.reason).toBeUndefined();
+  });
+
+  it("accepts a normal English reply", () => {
+    const normalEnglish =
+      "Water your maize once or twice a week when rainfall is low. " +
+      "Ensure the water reaches the root zone by checking the topsoil in the morning. " +
+      "Avoid watering during midday heat so the water does not evaporate before the plants can absorb it.";
+
+    const check = validateRepetition(normalEnglish);
+    expect(check.valid).toBe(true);
+    expect(check.reason).toBeUndefined();
+  });
+
+  it("does not falsely reject natural repetition of short word 'the' in English", () => {
+    const textWithThe =
+      "The farmer inspected the field in the early morning. " +
+      "The soil around the maize stems had sufficient moisture from the recent rainfall. " +
+      "The roots had already established well into the deeper ground layer.";
+
+    const check = validateRepetition(textWithThe);
+    expect(check.valid).toBe(true);
+    expect(check.reason).toBeUndefined();
+  });
+
+  it("does not falsely reject natural repetition of short word 'ni' in Yoruba", () => {
+    const textWithNi =
+      "Àgbàdo nílò omi ní àárọ̀ kùtùkùtù nígbà tí oòrùn kò tíì yọ. " +
+      "Nígbà tí ilẹ̀ bá gbẹ, bomirin ní ìrọ̀lẹ́ pẹ̀lú kí omi lè wọ inú ilẹ̀ dáadáa fún àwọn gbòǹgbò àgbàdo rẹ ní oko.";
+
+    const check = validateRepetition(textWithNi);
+    expect(check.valid).toBe(true);
+    expect(check.reason).toBeUndefined();
+  });
+
+  it("rejects when a 5-word sequence repeats 3 or more times even without punctuation", () => {
+    const repeating5Gram =
+      "bomi rin agbado re daadaa bomi rin agbado re daadaa bomi rin agbado re daadaa fun ikore to dara";
+
+    const check = validateRepetition(repeating5Gram);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("repetition:");
+  });
+
+  it("rejects when unique word ratio is below 0.4 for text over 30 words", () => {
+    // 32 words with 11 unique words (ratio = 11/32 = 0.34 < 0.4), crafted so no 5-word sequence repeats 3 times
+    const lowDiversity =
+      "alpha beta alpha gamma alpha delta alpha epsilon alpha zeta alpha eta alpha theta alpha iota alpha kappa " +
+      "beta gamma beta delta beta epsilon beta zeta beta eta beta theta beta iota beta kappa";
+
+    const check = validateRepetition(lowDiversity);
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain("repetition: unique word ratio");
   });
 });

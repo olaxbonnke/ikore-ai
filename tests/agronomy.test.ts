@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   extractRules,
@@ -583,6 +585,126 @@ describe("explainAgronomy retry flow", () => {
     expect(res.path).toBe("model");
     expect(res.text).toContain("alábòójútó ADP");
     expect(res.finishReason).toBe("stop");
+  });
+
+  describe("Repetition loop guard and template fallback", () => {
+    it("rejects degenerate looping Yoruba text and falls back to the Yoruba watering template", async () => {
+      const loopingYoruba =
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé. " +
+        "Kọ́sọ́ tí a ń gbọ́ ní a ń kọ́ sí iṣẹ́ àlàyé.";
+
+      class LoopingMockProvider implements LLMProvider {
+        readonly name = "mock-looping";
+        public calls = 0;
+        async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+          this.calls++;
+          return loopingYoruba as unknown as T;
+        }
+      }
+
+      const provider = new LoopingMockProvider();
+      const res = await explainAgronomy({
+        question: "báwo sì ni kí n bomi rin ín?",
+        farm: { ...farm, preferredLang: "yo" },
+        lang: "yo",
+        asOf: "2026-04-10",
+        topic: "watering",
+        provider,
+      });
+
+      expect(provider.calls).toBe(2); // One attempt + one retry
+      expect(res.path).toBe("template");
+      expect(res.model).toBe("template");
+      expect(res.fallbackReason).toBe("repetition");
+      expect(res.text).toBe(templateAgronomyFallback("watering", "yo"));
+    });
+
+    it("accepts a normal Yoruba watering reply and passes with path='model'", async () => {
+      const normalYoruba =
+        "Bomi rin àgbàdo rẹ ní àárọ̀ kùtùkùtù nígbà tí ilẹ̀ bá ti bẹ̀rẹ̀ sí ní gbẹ. " +
+        "Rí i dájú pé omi kò dúró sórí ilẹ̀ fún àkókò pípẹ́ kí gbòǹgbò má baà jẹrà.";
+
+      class NormalYoProvider implements LLMProvider {
+        readonly name = "mock-yo-normal";
+        async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+          return normalYoruba as unknown as T;
+        }
+      }
+
+      const res = await explainAgronomy({
+        question: "báwo sì ni kí n bomi rin ín?",
+        farm: { ...farm, preferredLang: "yo" },
+        lang: "yo",
+        asOf: "2026-04-10",
+        topic: "watering",
+        provider: new NormalYoProvider(),
+      });
+
+      expect(res.path).toBe("model");
+      expect(res.fallbackReason).toBeUndefined();
+      expect(res.text).toContain("Bomi rin");
+    });
+
+    it("accepts a normal English watering reply and passes with path='model'", async () => {
+      const normalEnglish =
+        "Water your maize once or twice a week when rainfall is low. " +
+        "Ensure the water reaches the root zone by checking the topsoil in the morning. " +
+        "Avoid watering during midday heat so the water does not evaporate before the plants can absorb it.";
+
+      class NormalEnProvider implements LLMProvider {
+        readonly name = "mock-en-normal";
+        async complete<T>(_params: LLMCompleteParams<T>): Promise<T> {
+          return normalEnglish as unknown as T;
+        }
+      }
+
+      const res = await explainAgronomy({
+        question: "how should i wet my maize",
+        farm,
+        lang: "en",
+        asOf: "2026-04-10",
+        topic: "watering",
+        provider: new NormalEnProvider(),
+      });
+
+      expect(res.path).toBe("model");
+      expect(res.fallbackReason).toBeUndefined();
+      expect(res.text).toContain("Water your maize");
+    });
+
+    it("logs status=rejected reason=repetition in validate trace entry when repetition occurs", async () => {
+      const { RunTracer } = await import("../src/core/tracer.ts");
+      const tracer = new RunTracer();
+
+      const agronomyRes = {
+        text: templateAgronomyFallback("watering", "yo"),
+        path: "template",
+        fallbackReason: "repetition",
+      };
+
+      tracer.log({
+        step: "validate",
+        component: "validator",
+        input_summary: `text_length=${agronomyRes.text.length}`,
+        output_summary: agronomyRes.fallbackReason
+          ? (agronomyRes.fallbackReason.includes("repetition")
+              ? "status=rejected reason=repetition"
+              : `status=fallback reason="${agronomyRes.fallbackReason}"`)
+          : "status=valid",
+        latency_ms: 1,
+        status: "ok",
+      });
+
+      const tracePath = path.resolve(process.cwd(), tracer.traceFile);
+      const content = fs.readFileSync(tracePath, "utf-8").trim();
+      const line = JSON.parse(content.split(/\r?\n/).pop()!);
+      expect(line.step).toBe("validate");
+      expect(line.output_summary).toBe("status=rejected reason=repetition");
+    });
   });
 });
 

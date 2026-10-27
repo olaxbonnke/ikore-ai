@@ -368,7 +368,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       step: "validate",
       component: "validator",
       input_summary: `text_length=${explanation.text.length}`,
-      output_summary: `status=valid path=${explanation.path}`,
+      output_summary: explanation.fallbackReason
+        ? (explanation.fallbackReason.includes("repetition")
+            ? "status=rejected reason=repetition"
+            : `status=fallback reason="${explanation.fallbackReason}"`)
+        : `status=valid path=${explanation.path}`,
       latency_ms: 1,
       status: "ok",
     });
@@ -498,7 +502,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       step: "validate",
       component: "validator",
       input_summary: `text_length=${agronomyRes.text.length}`,
-      output_summary: agronomyRes.fallbackReason ? `status=fallback reason="${agronomyRes.fallbackReason}"` : "status=valid",
+      output_summary: agronomyRes.fallbackReason
+        ? (agronomyRes.fallbackReason.includes("repetition")
+            ? "status=rejected reason=repetition"
+            : `status=fallback reason="${agronomyRes.fallbackReason}"`)
+        : "status=valid",
       latency_ms: 1,
       status: "ok",
     });
@@ -733,7 +741,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       step: "validate",
       component: "validator",
       input_summary: `text_length=${explanation.text.length}`,
-      output_summary: `status=valid path=${explanation.path}`,
+      output_summary: explanation.fallbackReason
+        ? (explanation.fallbackReason.includes("repetition")
+            ? "status=rejected reason=repetition"
+            : `status=fallback reason="${explanation.fallbackReason}"`)
+        : `status=valid path=${explanation.path}`,
       latency_ms: 1,
       status: "ok",
     });
@@ -956,7 +968,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     step: "validate",
     component: "validator",
     input_summary: `text_length=${explanation.text.length}`,
-    output_summary: `status=valid path=${explanation.path}`,
+    output_summary: explanation.fallbackReason
+      ? (explanation.fallbackReason.includes("repetition")
+          ? "status=rejected reason=repetition"
+          : `status=fallback reason="${explanation.fallbackReason}"`)
+      : `status=valid path=${explanation.path}`,
     latency_ms: 1,
     status: "ok",
   });
@@ -1046,7 +1062,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
       step: "validate",
       component: "validator",
       input_summary: `part=secondary text_length=${agronomyRes.text.length}`,
-      output_summary: agronomyRes.fallbackReason ? `status=fallback reason="${agronomyRes.fallbackReason}"` : "status=valid",
+      output_summary: agronomyRes.fallbackReason
+        ? (agronomyRes.fallbackReason.includes("repetition")
+            ? "status=rejected reason=repetition"
+            : `status=fallback reason="${agronomyRes.fallbackReason}"`)
+        : "status=valid",
       latency_ms: 1,
       status: "ok",
     });
@@ -1057,17 +1077,21 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const primaryFallbackUsed = explanation.path === "template" || isSample;
     const primaryModel = primaryFallbackUsed ? "template" : (explanation.model || "template");
     const primaryFallbackReason = !isSample && (explanation.path === "template" || explanation.fallbackReason)
-      ? (explanation.fallbackReason || "template_by_design")
+      ? (explanation.fallbackReason?.includes("repetition")
+          ? "repetition"
+          : (explanation.fallbackReason || "template_by_design"))
       : undefined;
 
     const secondaryFallbackUsed = agronomyRes.path === "template" || isSample;
     const secondaryModel = secondaryFallbackUsed ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
     const secondaryFallbackReason = !isSample && (agronomyRes.path === "template" || agronomyRes.fallbackReason)
-      ? (agronomyRes.fallbackReason?.includes("language_quality")
-          ? "language_quality"
-          : (agronomyRes.fallbackReason?.includes("grounding_failed")
-              ? "grounding_failed"
-              : (agronomyRes.fallbackReason || "grounding_failed")))
+      ? (agronomyRes.fallbackReason?.includes("repetition")
+          ? "repetition"
+          : (agronomyRes.fallbackReason?.includes("language_quality")
+              ? "language_quality"
+              : (agronomyRes.fallbackReason?.includes("grounding_failed")
+                  ? "grounding_failed"
+                  : (agronomyRes.fallbackReason || "grounding_failed"))))
       : undefined;
 
     replyParts = [

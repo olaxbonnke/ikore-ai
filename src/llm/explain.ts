@@ -503,6 +503,87 @@ export function validateYoruba(text: string): { valid: boolean; reason?: string 
 }
 
 /**
+ * Named constants for repetition checking.
+ */
+export const REPETITION_MIN_CLAUSE_WORDS = 4;
+export const REPETITION_MAX_CLAUSE_REPETITIONS = 3;
+export const REPETITION_NGRAM_SIZE = 5;
+export const REPETITION_MAX_NGRAM_REPETITIONS = 3;
+export const REPETITION_MIN_WORDS_FOR_RATIO = 30;
+export const REPETITION_MIN_UNIQUE_RATIO = 0.4;
+
+/**
+ * Universal repetition validator across all languages (en, yo, pcm) and paths (decision, guidance, recall).
+ * Normalises text (Unicode NFC, lowercase, strip punctuation).
+ * Rejects if:
+ * 1. Any sentence or clause of 4 or more words appears 3 or more times.
+ * 2. Any 5-word sequence repeats 3 or more times.
+ * 3. Unique words divided by total words is below 0.4 for replies over 30 words.
+ */
+export function validateRepetition(text: string): { valid: boolean; reason?: string } {
+  if (!text || typeof text !== "string") {
+    return { valid: true };
+  }
+
+  // 1. Normalise: Unicode NFC and lowercase
+  const normalized = text.normalize("NFC").toLowerCase();
+
+  // 2. Clause / sentence repetition check (4+ words appearing 3+ times)
+  const rawClauses = normalized.split(/[.,;:!?\n\r\t—–()[\]"“”'’]+/);
+  const clauseCounts = new Map<string, number>();
+
+  for (const rawClause of rawClauses) {
+    const strippedClause = rawClause.replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ").trim();
+    const clauseWords = strippedClause.split(/\s+/).filter(Boolean);
+    if (clauseWords.length >= REPETITION_MIN_CLAUSE_WORDS) {
+      const clauseKey = clauseWords.join(" ");
+      const count = (clauseCounts.get(clauseKey) || 0) + 1;
+      clauseCounts.set(clauseKey, count);
+      if (count >= REPETITION_MAX_CLAUSE_REPETITIONS) {
+        return {
+          valid: false,
+          reason: `repetition: clause appeared ${count} times: "${clauseKey}"`,
+        };
+      }
+    }
+  }
+
+  // 3. Strip punctuation to tokenize all words
+  const strippedFull = normalized.replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ");
+  const allWords = strippedFull.trim().split(/\s+/).filter(Boolean);
+
+  // 4. 5-word sequence repetition check (repeating 3+ times)
+  if (allWords.length >= REPETITION_NGRAM_SIZE) {
+    const ngramCounts = new Map<string, number>();
+    for (let i = 0; i <= allWords.length - REPETITION_NGRAM_SIZE; i++) {
+      const ngram = allWords.slice(i, i + REPETITION_NGRAM_SIZE).join(" ");
+      const count = (ngramCounts.get(ngram) || 0) + 1;
+      ngramCounts.set(ngram, count);
+      if (count >= REPETITION_MAX_NGRAM_REPETITIONS) {
+        return {
+          valid: false,
+          reason: `repetition: 5-word sequence appeared ${count} times: "${ngram}"`,
+        };
+      }
+    }
+  }
+
+  // 5. Unique words ratio check (below 0.4 for replies over 30 words)
+  if (allWords.length > REPETITION_MIN_WORDS_FOR_RATIO) {
+    const uniqueWords = new Set(allWords);
+    const ratio = uniqueWords.size / allWords.length;
+    if (ratio < REPETITION_MIN_UNIQUE_RATIO) {
+      return {
+        valid: false,
+        reason: `repetition: unique word ratio ${ratio.toFixed(2)} is below ${REPETITION_MIN_UNIQUE_RATIO} (${uniqueWords.size}/${allWords.length} words)`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
  * Load system prompt template from file.
  */
 /**
@@ -1019,6 +1100,12 @@ export async function explain(
           throw new Error(`Yoruba validation failed: ${yoCheck.reason}`);
         }
       }
+
+      // 6. Repetition check (across all languages and decision types)
+      const repCheck = validateRepetition(fullText);
+      if (!repCheck.valid) {
+        throw new Error(`Repetition check failed: ${repCheck.reason}`);
+      }
     };
 
     let response: ExplainOutput;
@@ -1128,6 +1215,8 @@ Return valid JSON: { "headline": "...", "reason": "...", "details": [...], "foll
     const formattedFallbackReason =
       err.name === "AbortError" || /timeout/i.test(err.message)
         ? "timeout"
+        : /repetition/i.test(err.message)
+        ? "repetition"
         : /failed|rejected|words|sentences|numbers|percentage|jargon|invalid|check/i.test(err.message)
         ? `validation_failed: ${err.message}`
         : `llm_error: ${err.message}`;
@@ -1356,6 +1445,12 @@ General Rules:
       }
     }
 
+    // 4. Repetition check
+    const repLoopCheck = validateRepetition(replyText);
+    if (!repLoopCheck.valid) {
+      throw new Error(`Repetition check failed: ${repLoopCheck.reason}`);
+    }
+
     const latencyMs = Math.round(performance.now() - t0);
     return {
       text: replyText,
@@ -1372,7 +1467,7 @@ General Rules:
       path: "template",
       model: "template",
       latencyMs,
-      fallbackReason: err.message,
+      fallbackReason: /repetition/i.test(err.message) ? "repetition" : err.message,
     };
   }
 }

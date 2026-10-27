@@ -3,7 +3,7 @@ import * as path from "path";
 import { z } from "zod";
 import type { Lang } from "../core/types.ts";
 import { templateAgronomyFallback } from "../i18n/templates.ts";
-import { validateYoruba } from "./explain.ts";
+import { validateYoruba, validateRepetition } from "./explain.ts";
 import { NightshiftProvider, logLLMCall, getNightshiftConfig } from "../core/nightshift.ts";
 import type { LLMProvider } from "./provider.ts";
 import type { Farm as FarmProfile } from "../core/types.ts";
@@ -895,6 +895,10 @@ Farmer Question: "${question}"
     const cv = validateNoCurrencyOrTokens(t);
     if (!cv.valid) return cv;
 
+    // Repetition check (across all languages and topics)
+    const repV = validateRepetition(t);
+    if (!repV.valid) return repV;
+
     // 1. Topic specific restrictions (bag counts, market/selling terms)
     const topRestr = validateTopicSpecificRestrictions(t, topic);
     if (!topRestr.valid) return topRestr;
@@ -948,18 +952,15 @@ Farmer Question: "${question}"
 
     const failureReason1 = attempt1.error || val1.reason || "Validation failed";
 
-    // Cap Yoruba guidance at 1 attempt before falling back to natural template on validation failure
-    // (Allow retry only when attempt1 was truncated with finish_reason === 'length')
-    if (lang === "yo" && attempt1.finishReason !== "length") {
-      const fbReason = failureReason1.includes("language_quality")
-        ? "language_quality"
-        : (failureReason1.includes("grounding_failed") ? "grounding_failed" : failureReason1);
+    // Cap Yoruba guidance at 1 attempt before falling back to natural template on language_quality failure
+    // (Allow retry only when attempt1 was truncated with finish_reason === 'length' or for repetition/grounding)
+    if (lang === "yo" && failureReason1.includes("language_quality") && attempt1.finishReason !== "length") {
       return {
         text: templateAgronomyFallback(topic, lang),
         followUp: null,
         path: "template",
         model: "template",
-        fallbackReason: fbReason,
+        fallbackReason: "language_quality",
         latencyMs: totalLatency,
         requestedModel: config.model,
         respondedModel: "template",
@@ -972,9 +973,10 @@ Farmer Question: "${question}"
     const correctionPrompt = `Your previous response was rejected for the following reason: "${failureReason1}".
 Please rewrite your response adhering strictly to these rules:
 1. STRICT RULE: Output ONLY plain text (max 60 words). No JSON, no markdown formatting.
-2. STRICT RULE: Remove all measurements and counts not in context; describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil').
-3. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
-4. STRICT RULE: Only use numbers if they are explicitly provided in the context (like recorded rainfall in mm or farm size in ha). Otherwise, use NO numbers or measurements at all.
+2. STRICT RULE: Do not repeat sentences, clauses, or words in a loop. Write concise, varied sentences.
+3. STRICT RULE: Remove all measurements and counts not in context; describe checks qualitatively (e.g. 'a few cobs from different parts of the field', 'the topsoil').
+4. STRICT RULE: DO NOT include any specific chemical dose rates (e.g. ml/L, kg/ha, bags/ha) or chemical brand names (Sniper, DDVP, chlorpyrifos, etc.). Advise consulting the local ADP extension officer or registered agro-dealer.
+5. STRICT RULE: Only use numbers if they are explicitly provided in the context (like recorded rainfall in mm or farm size in ha). Otherwise, use NO numbers or measurements at all.
 Direct plain-text advice:`;
 
     const msgs2: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
@@ -1007,11 +1009,13 @@ Direct plain-text advice:`;
 
     const failureReason2 = attempt2.error || val2.reason || "Validation failed";
     const combined = `${failureReason1}; ${failureReason2}`;
-    const fbReason = combined.includes("language_quality")
-      ? "language_quality"
-      : (combined.includes("grounding_failed")
-          ? "grounding_failed"
-          : `grounding_failed: Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`);
+    const fbReason = combined.includes("repetition")
+      ? "repetition"
+      : (combined.includes("language_quality")
+          ? "language_quality"
+          : (combined.includes("grounding_failed")
+              ? "grounding_failed"
+              : `grounding_failed: Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`));
 
     return {
       text: templateAgronomyFallback(topic, lang),
@@ -1026,12 +1030,17 @@ Direct plain-text advice:`;
       completionTokens: (attempt2.completionTokens || 0) + (attempt1.completionTokens || 0),
     };
   } catch (err: any) {
+    const fbReason = err.message?.includes("repetition")
+      ? "repetition"
+      : (err.message?.includes("language_quality")
+          ? "language_quality"
+          : `grounding_failed: ${err.message}`);
     return {
       text: templateAgronomyFallback(topic, lang),
       followUp: null,
       path: "template",
       model: "template",
-      fallbackReason: err.message?.includes("language_quality") ? "language_quality" : `grounding_failed: ${err.message}`,
+      fallbackReason: fbReason,
       respondedModel: "template",
     };
   }
