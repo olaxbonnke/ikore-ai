@@ -569,16 +569,47 @@ export function validateAgronomyTopic(text: string, topic?: string): { valid: bo
  */
 export function validateAgronomyLanguage(text: string, lang: Lang): { valid: boolean; reason?: string } {
   if (lang === "yo") {
-    const yoVal = validateYoruba(text);
-    if (!yoVal.valid) return yoVal;
-
-    // Check for Pidgin or English leaking into Yoruba
-    const englishLeak = /\b(?:the|is|you|your|consult|extension|officer|tips|area|best|storage|check|grains|regular|spoil|sell|when|price|dey|na|wey|dem|make\s+you)\b/i;
+    // 1. Check for English words leaking into Yoruba
+    const englishLeak =
+      /\b(?:finger|deep|topsoil|soil|water|watering|plant|planting|plants|morning|evening|check|checking|dry|wet|root|base|leaf|leaves|field|maize|corn|when|how|what|and|the|is|in|on|at|to|for|with|of|by|from|about|early|late|spoil|damage|fertilizer|officer|extension|agent|farmer|crop|yield|soggy|stop|flood|flooding|consult|tips|area|best|storage|grains|regular|sell|price|dey|na|wey|dem|make\s+you)\b/i;
     const m = text.match(englishLeak);
     if (m) {
       return {
         valid: false,
-        reason: `Yoruba guidance contains English or Pidgin words ("${m[0]}")`,
+        reason: `language_quality: English or Pidgin word detected ("${m[0]}")`,
+      };
+    }
+
+    // 2. Check for repetitive looping phrases (e.g. model loop)
+    if (/(?:\b(.{2,20})\b)(?:\s+\1){2,}/iu.test(text)) {
+      return {
+        valid: false,
+        reason: "language_quality: repetitive looping phrase detected",
+      };
+    }
+
+    // 3. Minimum Yoruba tone mark & diacritic density
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    if (words.length < 5) {
+      return {
+        valid: false,
+        reason: "language_quality: guidance text too short",
+      };
+    }
+    const yorubaWords = words.filter((w) => /[áàéèíìóòúùẹ́ẹ̀ọ́ọ̀ṣẸỌṢ\u0300\u0301\u0323]/i.test(w));
+    const yorubaRatio = yorubaWords.length / words.length;
+    if (yorubaRatio < 0.4) {
+      return {
+        valid: false,
+        reason: `language_quality: insufficient Yoruba tone marks/diacritics (${(yorubaRatio * 100).toFixed(0)}% < 40%)`,
+      };
+    }
+
+    const yoVal = validateYoruba(text);
+    if (!yoVal.valid) {
+      return {
+        valid: false,
+        reason: `language_quality: ${yoVal.reason}`,
       };
     }
   } else if (lang === "pcm") {
@@ -917,6 +948,26 @@ Farmer Question: "${question}"
 
     const failureReason1 = attempt1.error || val1.reason || "Validation failed";
 
+    // Cap Yoruba guidance at 1 attempt before falling back to natural template on validation failure
+    // (Allow retry only when attempt1 was truncated with finish_reason === 'length')
+    if (lang === "yo" && attempt1.finishReason !== "length") {
+      const fbReason = failureReason1.includes("language_quality")
+        ? "language_quality"
+        : (failureReason1.includes("grounding_failed") ? "grounding_failed" : failureReason1);
+      return {
+        text: templateAgronomyFallback(topic, lang),
+        followUp: null,
+        path: "template",
+        model: "template",
+        fallbackReason: fbReason,
+        latencyMs: totalLatency,
+        requestedModel: config.model,
+        respondedModel: "template",
+        finishReason: attempt1.finishReason,
+        completionTokens: attempt1.completionTokens,
+      };
+    }
+
     // Attempt 2: One retry with correction prompt
     const correctionPrompt = `Your previous response was rejected for the following reason: "${failureReason1}".
 Please rewrite your response adhering strictly to these rules:
@@ -955,13 +1006,19 @@ Direct plain-text advice:`;
     }
 
     const failureReason2 = attempt2.error || val2.reason || "Validation failed";
+    const combined = `${failureReason1}; ${failureReason2}`;
+    const fbReason = combined.includes("language_quality")
+      ? "language_quality"
+      : (combined.includes("grounding_failed")
+          ? "grounding_failed"
+          : `grounding_failed: Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`);
 
     return {
       text: templateAgronomyFallback(topic, lang),
       followUp: null,
       path: "template",
       model: "template",
-      fallbackReason: `grounding_failed: Attempt 1: ${failureReason1}; Attempt 2: ${failureReason2}`,
+      fallbackReason: fbReason,
       latencyMs: totalLatency,
       requestedModel: config.model,
       respondedModel: "template",
@@ -974,7 +1031,7 @@ Direct plain-text advice:`;
       followUp: null,
       path: "template",
       model: "template",
-      fallbackReason: `grounding_failed: ${err.message}`,
+      fallbackReason: err.message?.includes("language_quality") ? "language_quality" : `grounding_failed: ${err.message}`,
       respondedModel: "template",
     };
   }

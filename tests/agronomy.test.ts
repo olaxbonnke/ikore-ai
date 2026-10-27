@@ -16,6 +16,7 @@ import {
   validateNoCurrencyOrTokens,
   validateTopicSpecificRestrictions,
   validateNoTimingClaims,
+  validateAgronomyLanguage,
 } from "../src/llm/agronomy.ts";
 import type { LLMProvider, LLMCompleteParams } from "../src/llm/provider.ts";
 import { validateOutputStructure, explain } from "../src/llm/explain.ts";
@@ -387,6 +388,59 @@ describe("guidance memory filtering and tight grounding validation", () => {
     expect(res.text).not.toContain("45,000");
     expect(res.text).not.toContain("naira");
     expect(res.text).not.toContain("store_4w");
+  });
+
+  it("rejects mangled Yoruba guidance with English words or looping repetitions via language_quality", () => {
+    const mangledYoruba =
+      "Bomi rin ín máa ń fi gọ́run tó ń gba ọ̀rọ̀ nípa ọ̀pọ̀. Kọ́kọ́ aṣawọ́ nípa finger deep nípa topsoil. Nígbàa nípa aṣawọ́ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ ní";
+    const vMangled = validateAgronomyLanguage(mangledYoruba, "yo");
+    expect(vMangled.valid).toBe(false);
+    expect(vMangled.reason).toContain("language_quality");
+
+    // Clean template passes
+    const cleanTemplate = templateAgronomyFallback("watering", "yo");
+    const vClean = validateAgronomyLanguage(cleanTemplate, "yo");
+    expect(vClean.valid).toBe(true);
+  });
+
+  it("rejects Yoruba text with low tone mark / diacritic density", () => {
+    const unaccentedYoruba = "Bomi rin agbado re ni aro kutukutu laisi omi pupo lori oko re.";
+    const v = validateAgronomyLanguage(unaccentedYoruba, "yo");
+    expect(v.valid).toBe(false);
+    expect(v.reason).toContain("insufficient Yoruba tone marks/diacritics");
+  });
+
+  it("caps Yoruba guidance at 1 attempt before falling back to natural template on language_quality rejection", async () => {
+    class MangledYorubaMockProvider implements LLMProvider {
+      readonly name = "mock-yo-mangled";
+      public calls: any[] = [];
+      async complete<T>(params: LLMCompleteParams<T>): Promise<T> {
+        this.calls.push(params);
+        return {
+          answer:
+            "Bomi rin ín máa ń fi gọ́run tó ń gba ọ̀rọ̀ nípa ọ̀pọ̀. Kọ́kọ́ aṣawọ́ nípa finger deep nípa topsoil. Nígbàa nípa aṣawọ́ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀ nípa ọ̀pọ̀.",
+          followUp: null,
+        } as unknown as T;
+      }
+    }
+
+    const mockProvider = new MangledYorubaMockProvider();
+    const res = await explainAgronomy({
+      question: "báwo sì ni kí n bomi rin ín?",
+      farm,
+      lang: "yo",
+      asOf: "2026-04-10",
+      topic: "watering",
+      provider: mockProvider,
+    });
+
+    // Proves it was capped at 1 attempt (did not retry)
+    expect(mockProvider.calls.length).toBe(1);
+    expect(res.path).toBe("template");
+    expect(res.model).toBe("template");
+    expect(res.fallbackReason).toBe("language_quality");
+    expect(res.text).toBe(templateAgronomyFallback("watering", "yo"));
+    expect(res.text).toContain("Àgbàdo tí a gbìn sínú òjò gbẹ́kẹ̀le òjò lásán");
   });
 });
 

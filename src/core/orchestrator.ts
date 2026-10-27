@@ -1063,7 +1063,11 @@ export async function handle(message: IncomingMessage): Promise<AgentReply> {
     const secondaryFallbackUsed = agronomyRes.path === "template" || isSample;
     const secondaryModel = secondaryFallbackUsed ? "template" : (agronomyRes.respondedModel || agronomyRes.model || "template");
     const secondaryFallbackReason = !isSample && (agronomyRes.path === "template" || agronomyRes.fallbackReason)
-      ? (agronomyRes.fallbackReason || "grounding_failed")
+      ? (agronomyRes.fallbackReason?.includes("language_quality")
+          ? "language_quality"
+          : (agronomyRes.fallbackReason?.includes("grounding_failed")
+              ? "grounding_failed"
+              : (agronomyRes.fallbackReason || "grounding_failed")))
       : undefined;
 
     replyParts = [
